@@ -19,25 +19,13 @@ const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
 
 const prefetchModules = () => {
-  // Use requestIdleCallback if available, otherwise setTimeout
-  const schedule = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 1000));
-  
-  schedule(() => {
-    // Stagger imports to avoid network congestion
-    const imports = [
-      importDashboard,
-      importDeviceList,
-      importDeviceDetail,
-      importAddDeviceForm,
-      importMaintenancePlanner,
-      importSettings,
-      importTaskTracker
-    ];
-    
-    imports.forEach((imp, index) => {
-      setTimeout(() => imp(), index * 200);
-    });
-  });
+  importDashboard();
+  importDeviceList();
+  importDeviceDetail();
+  importAddDeviceForm();
+  importMaintenancePlanner();
+  importSettings();
+  importTaskTracker();
 };
 
 import { MedicalDevice, MedicalTask, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority } from './types';
