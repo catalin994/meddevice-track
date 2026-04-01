@@ -59,8 +59,8 @@ const DeviceCard = React.memo(({
   onDelete: (e: React.MouseEvent, id: string) => void 
 }) => {
   return (
-    <div 
-      className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
+    <div
+      className={`bg-white border border-slate-200 shadow-sm relative overflow-hidden rounded group flex flex-col md:flex-row items-center gap-6 p-6 transition-shadow transition-transform duration-200 hover:shadow-md hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
     >
       {/* Selection Checkbox */}
       <div className="absolute top-6 left-6 md:static">
@@ -151,12 +151,15 @@ const DeviceCard = React.memo(({
   );
 });
 
+const PAGE_SIZE = 15;
+
 const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '' }) => {
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>('ALL');
   const [filterDept, setFilterDept] = useState<string | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
-  
+  const [page, setPage] = useState(1);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingDevice, setEditingDevice] = useState<MedicalDevice | null>(null);
   
@@ -175,6 +178,9 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
   }, [devices]);
 
   const effectiveSearch = (localSearch || externalSearch).toLowerCase().trim();
+
+  // Reset to page 1 when filters change
+  const resetPage = useCallback(() => setPage(1), []);
 
   const filteredDevices = useMemo(() => {
     if (!devices) return [];
@@ -201,6 +207,9 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       return matchSearch && matchStatus && matchDept && matchCategory;
     });
   }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory]);
+
+  const pagedDevices = useMemo(() => filteredDevices.slice(0, page * PAGE_SIZE), [filteredDevices, page]);
+  const hasMore = filteredDevices.length > page * PAGE_SIZE;
 
   const handleOpenQuickEdit = useCallback((e: React.MouseEvent, device: MedicalDevice) => {
     e.preventDefault();
@@ -308,7 +317,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
             />
           </div>
           <button 
-            onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); }}
+            onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); resetPage(); }}
             className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
             title="Reset Filters"
           >
@@ -319,21 +328,21 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
           <div className="space-y-1">
             <label className="tech-label ml-1">Department</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterDept} onChange={(e) => { setFilterDept(e.target.value); resetPage(); }}>
               <option value="ALL">ALL DEPTS</option>
               {allAvailableDepartments.map(dept => <option key={dept} value={dept}>{dept.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="space-y-1">
             <label className="tech-label ml-1">Category</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); resetPage(); }}>
               <option value="ALL">ALL CATEGORIES</option>
               {DEVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="space-y-1">
             <label className="tech-label ml-1">Status</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value as any); resetPage(); }}>
               <option value="ALL">ALL STATUSES</option>
               {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
             </select>
@@ -358,8 +367,8 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {filteredDevices.map((device) => (
-            <DeviceCard 
+          {pagedDevices.map((device) => (
+            <DeviceCard
               key={device.id}
               device={device}
               isSelected={selectedIds.has(device.id)}
@@ -369,6 +378,14 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
               onDelete={handleDeleteClick}
             />
           ))}
+          {hasMore && (
+            <button
+              onClick={() => setPage(p => p + 1)}
+              className="w-full py-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 border border-slate-200 transition-colors"
+            >
+              Load More ({filteredDevices.length - page * PAGE_SIZE} remaining)
+            </button>
+          )}
 
           {filteredDevices.length === 0 && (
             <div className="hardware-card py-32 text-center rounded-[2.5rem]">
