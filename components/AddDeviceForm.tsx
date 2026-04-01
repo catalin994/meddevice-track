@@ -182,7 +182,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
   }, []);
 
   return (
-    <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-w-5xl mx-auto animate-fade-in mb-20">
+    <div className="bg-white rounded-3xl shadow border border-slate-200 overflow-hidden max-w-5xl mx-auto animate-fade-in mb-20">
       {(isProcessing || isSubmitting) && <div className="absolute inset-0 bg-slate-900/90 z-[200] flex items-center justify-center"><Activity className="w-12 h-12 text-blue-500 animate-spin" /></div>}
       
       <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -231,7 +231,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
             </div>
             <div className="flex justify-end gap-4 pt-6">
               <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase">Cancel</button>
-              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-xl hover:bg-blue-700">Save Asset</button>
+              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-sm hover:bg-blue-700">Save Asset</button>
             </div>
           </form>
         )}

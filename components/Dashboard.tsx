@@ -62,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 hardware-card p-10 rounded-[2.5rem]">
+        <div className="lg:col-span-7 hardware-card p-10 rounded-2xl">
           <div className="flex items-center justify-between mb-10">
             <div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Fleet Integrity Matrix</h3>
@@ -102,7 +102,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
           </div>
         </div>
 
-        <div className="lg:col-span-5 hardware-card p-10 rounded-[2.5rem]">
+        <div className="lg:col-span-5 hardware-card p-10 rounded-2xl">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Field Dispatch</h3>
@@ -122,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
                        <span className="tech-label text-[10px] font-mono">{task.id}</span>
                     </div>
                   </div>
-                  <div className={`shrink-0 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
+                  <div className={`shrink-0 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg ' : 'bg-orange-500 text-white '}`}>
                     {task.priority}
                   </div>
                 </div>
@@ -138,7 +138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         </div>
       </div>
 
-      <div className="hardware-card p-10 rounded-[2.5rem]">
+      <div className="hardware-card p-10 rounded-2xl">
         <div className="flex justify-between items-center mb-10">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Maintenance Watchdog</h3>
@@ -151,8 +151,8 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {upcomingMaintenance.map(device => (
-            <div key={device.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center gap-5 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-shadow duration-200">
-              <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : device.daysRemaining < 7 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
+            <div key={device.id} className="p-6 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-5 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-shadow duration-200">
+              <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg ' : device.daysRemaining < 7 ? 'bg-amber-500 text-white ' : 'bg-blue-600 text-white shadow-lg '}`}>
                 <Clock className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
             </div>
           ))}
           {upcomingMaintenance.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+            <div className="col-span-full py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
               <p className="tech-label">All systems operational. No upcoming PMs.</p>
             </div>
@@ -180,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
 };
 
 const StatCard = React.memo(({ title, value, icon, trend, color, bgColor }: { title: string, value: number, icon: React.ReactNode, trend: string, color: string, bgColor: string }) => (
-  <div className="hardware-card p-6 rounded-[2rem] group hover:border-blue-200 transition-colors">
+  <div className="hardware-card p-6 rounded-xl group hover:border-blue-200 transition-colors">
     <div className="flex items-center justify-between mb-4">
       <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${bgColor} ${color}`}>
         {icon}

@@ -138,7 +138,7 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
       
       {/* CLOUD CONNECTION PANEL */}
-      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-100">
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-5">
             <div className={`p-5 rounded-3xl ${isSupabaseConfigured ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
@@ -185,14 +185,14 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Link Cloud Instance</button>
+              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow hover:bg-blue-700 transition active:scale-95">Link Cloud Instance</button>
               {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-600 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Disconnect Cloud"><LogOut className="w-6 h-6" /></button>}
             </div>
         </div>
       </div>
 
       {/* SQL SCHEMA FIX */}
-      <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/10 shadow-xl relative overflow-hidden">
+      <div className="bg-slate-900 p-8 rounded-2xl border border-white/10 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Terminal className="w-40 h-40 text-blue-400" />
         </div>
@@ -224,7 +224,7 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
 
       {/* RECOVERY HUB */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-blue-900 p-8 rounded-[2.5rem] border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
+        <div className="bg-blue-900 p-8 rounded-2xl border border-blue-800 shadow relative overflow-hidden flex flex-col justify-between h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
             <Wand2 className="w-40 h-40 text-white" />
           </div>
@@ -239,7 +239,7 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
               Forces a scan of legacy browser buffers to recover devices from older app versions or alternate data nodes.
             </p>
             <div className="space-y-4">
-              <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
+              <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-sm hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
                 {isRepairing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                 Run Recovery
               </button>
@@ -251,7 +251,7 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
           </div>
         </div>
 
-        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+        <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-full">
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">

@@ -114,7 +114,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
-      <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
@@ -137,7 +137,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
         </div>
         <button 
           onClick={() => { resetForm(); setIsAdding(true); }}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-sm hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
         >
           <Plus className="w-4 h-4" /> New Ticket
         </button>
@@ -155,7 +155,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           />
         ))}
         {filteredTasks.length === 0 && (
-          <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50">
+          <div className="py-24 text-center bg-white rounded-2xl border-4 border-dashed border-slate-50">
             <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
               <CheckSquare className="w-16 h-16 text-slate-200" />
             </div>
@@ -167,8 +167,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
       {(isAdding || editingTask) && (
         <div className="fixed inset-0 z-[100] bg-slate-900/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-fade-in overflow-hidden border-4 border-white">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-2xl shadow w-full max-w-2xl animate-fade-in overflow-hidden border-4 border-white">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
                     {editingTask ? 'Augment Task Data' : 'Open Service Ticket'}
@@ -235,7 +235,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
               <div className="pt-4 flex gap-4">
                 <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition">Discard</button>
-                <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
+                <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-5 h-5" /> {editingTask ? 'Commit Data Updates' : 'Authorize Ticket'}
                 </button>
               </div>

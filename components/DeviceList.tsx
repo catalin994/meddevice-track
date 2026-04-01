@@ -59,7 +59,7 @@ const DeviceCard = React.memo(({
 }) => {
   return (
     <div
-      className={`bg-white border border-slate-200 shadow-sm relative overflow-hidden rounded group flex flex-col md:flex-row items-center gap-6 p-6 transition-shadow transition-transform duration-200 hover:shadow-md hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
+      className={`bg-white border border-slate-200 shadow-sm relative overflow-hidden rounded group flex flex-col md:flex-row items-center gap-6 p-6 transition-shadow transition-transform duration-200 hover:shadow-md hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50' : 'border-l-transparent hover:border-l-blue-400'}`}
     >
       {/* Selection Checkbox */}
       <div className="absolute top-6 left-6 md:static">
@@ -255,7 +255,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       {/* QUICK EDIT OVERLAY */}
       {editingDevice && (
         <div className="fixed inset-0 z-[500] bg-slate-900/40 flex items-center justify-center p-4">
-          <div className="hardware-card p-10 w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-slide-up">
+          <div className="hardware-card p-10 w-full max-w-xl rounded-2xl shadow animate-slide-up">
              <div className="flex justify-between items-center mb-8">
                 <div>
                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Registry Quick Update</h3>
@@ -294,7 +294,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
 
              <div className="flex gap-4">
                 <button onClick={() => setEditingDevice(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Discard</button>
-                <button onClick={handleSaveQuickEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition active:scale-95 flex items-center justify-center gap-3">
+                <button onClick={handleSaveQuickEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700  transition active:scale-95 flex items-center justify-center gap-3">
                    <Save className="w-5 h-5" /> Commit Data
                 </button>
              </div>
@@ -303,7 +303,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       )}
 
       {/* FILTER CONTROLS */}
-      <div className="hardware-card p-8 rounded-[2.5rem] flex flex-col gap-6">
+      <div className="hardware-card p-8 rounded-2xl flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row items-center gap-4 w-full">
           <div className="relative flex-1 w-full group">
             <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />
@@ -387,14 +387,14 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
           )}
 
           {filteredDevices.length === 0 && (
-            <div className="hardware-card py-32 text-center rounded-[2.5rem]">
+            <div className="hardware-card py-32 text-center rounded-2xl">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
                 <Box className="w-10 h-10 text-slate-200" />
               </div>
               <p className="tech-label mb-8 text-slate-400">No matching assets found in the registry</p>
               <button 
                 onClick={onAddDevice}
-                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
+                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
               >
                 <Plus className="w-5 h-5" /> Register New Asset
               </button>

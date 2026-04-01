@@ -211,10 +211,10 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   }, []);
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative">
+    <div className="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden flex flex-col h-full relative">
       {showPurgeConfirm && (
         <div className="fixed inset-0 z-[600] bg-slate-900/40 flex items-center justify-center p-4">
-           <div className="hardware-card p-12 max-w-lg w-full text-center rounded-[3rem] shadow-2xl">
+           <div className="hardware-card p-12 max-w-lg w-full text-center rounded-2xl shadow">
               <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
                  <Trash2 className="w-10 h-10" />
               </div>
@@ -224,7 +224,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               </p>
               <div className="flex gap-4">
                  <button disabled={isPurging} onClick={() => setShowPurgeConfirm(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Discard Request</button>
-                 <button disabled={isPurging} onClick={handleFinalPurge} className="flex-[2] py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-500/20 transition flex items-center justify-center gap-3">
+                 <button disabled={isPurging} onClick={handleFinalPurge} className="flex-[2] py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700  transition flex items-center justify-center gap-3">
                     {isPurging ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                     {isPurging ? "Purging..." : "Confirm Purge"}
                  </button>
@@ -233,11 +233,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         </div>
       )}
 
-      <div className="p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/50 relative overflow-hidden">
+      <div className="p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600 opacity-20" />
         <div className="flex items-start gap-6">
           <div className="hidden md:flex flex-col items-center gap-2">
-            <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)] ${device.status === DeviceStatus.ACTIVE ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-amber-500 shadow-amber-500/50'} `} />
+            <div className={`w-3 h-3 rounded-full  ${device.status === DeviceStatus.ACTIVE ? 'bg-emerald-500 ' : 'bg-amber-500 '} `} />
             <div className="w-px h-12 bg-slate-100" />
           </div>
           <div>
@@ -286,11 +286,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         <TabButton active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} icon={<QrCode className="w-4 h-4" />} label="Identity" />
       </div>
 
-      <div className="p-8 overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
+      <div className="p-8 overflow-y-auto flex-1 bg-slate-50 custom-scrollbar">
         {activeTab === 'overview' && (
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 max-w-7xl mx-auto">
               <div className="xl:col-span-8 space-y-8">
-                <div className="hardware-card p-10 rounded-[2.5rem] space-y-8">
+                <div className="hardware-card p-10 rounded-2xl space-y-8">
                    <div className="flex items-center gap-4 mb-2">
                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Info className="w-6 h-6" /></div>
                       <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Master Asset Card</h3>
@@ -356,7 +356,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       {isEditing ? (
                         <textarea name="notes" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium min-h-[100px] outline-none focus:border-blue-500 transition-colors" value={editForm.notes} onChange={handleEditChange} />
                       ) : (
-                        <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-6 rounded-2xl border border-slate-100 italic">
+                        <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">
                           {device.notes || 'No operational exceptions logged.'}
                         </p>
                       )}
@@ -365,7 +365,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               </div>
 
               <div className="xl:col-span-4">
-                <div className="hardware-card p-8 rounded-[2.5rem] overflow-hidden group">
+                <div className="hardware-card p-8 rounded-2xl overflow-hidden group">
                    <div className="aspect-square bg-white rounded-3xl border border-slate-100 flex items-center justify-center overflow-hidden relative shadow-inner">
                       {device.image ? <img src={device.image} alt="Visual" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" /> : <Box className="w-16 h-16 text-slate-200 opacity-50" />}
                    </div>
@@ -376,7 +376,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'docs' && (
           <div className="max-w-6xl mx-auto py-6 space-y-8">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col lg:flex-row justify-between items-center gap-8 relative overflow-hidden">
+             <div className="hardware-card p-10 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-8 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20" />
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl">
@@ -405,7 +405,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <button 
                          onClick={() => fileInputRef.current?.click()}
                          disabled={isUploading}
-                         className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
+                         className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition  active:scale-95 disabled:opacity-50"
                       >
                          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                          {isUploading ? "Processing..." : "Register Archive"}
@@ -439,7 +439,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                          <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
                        ))
                      ) : (
-                       <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
+                       <div className="py-12 hardware-card rounded-xl border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
                           <BookOpen className="w-10 h-10 text-slate-300 mb-3" />
                           <p className="tech-label">No Manuals Found</p>
                        </div>
@@ -463,7 +463,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                          <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
                        ))
                      ) : (
-                       <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
+                       <div className="py-12 hardware-card rounded-xl border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
                           <FileText className="w-10 h-10 text-slate-300 mb-3" />
                           <p className="tech-label">No Reports Found</p>
                        </div>
@@ -476,7 +476,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'tasks' && (
           <div className="max-w-5xl mx-auto py-6 space-y-8 animate-fade-in">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
+             <div className="hardware-card p-10 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                       <CheckSquare className="w-8 h-8" />
@@ -501,7 +501,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      };
                      onAddTask(newTask);
                    }}
-                   className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                   className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-sm active:scale-95"
                 >
                    <Plus className="w-5 h-5" /> Initialize Task
                 </button>
@@ -509,7 +509,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
              <div className="grid grid-cols-1 gap-4">
                 {tasks.length > 0 ? tasks.map(task => (
-                  <div key={task.id} className="hardware-card p-6 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 hover:shadow-xl transition-colors group">
+                  <div key={task.id} className="hardware-card p-6 rounded-xl flex flex-col md:flex-row items-center gap-6 hover:shadow-xl transition-colors group">
                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${
                         task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                         task.status === 'in-progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'
@@ -541,7 +541,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       </div>
                   </div>
                 )) : (
-                  <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
+                  <div className="py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center">
                      <CheckSquare className="w-16 h-16 text-slate-100 mb-4" />
                      <p className="tech-label">No active operations</p>
                   </div>
@@ -552,7 +552,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'maintenance' && (
           <div className="max-w-5xl mx-auto py-6 space-y-8">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
+             <div className="hardware-card p-10 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                       <Wrench className="w-8 h-8" />
@@ -579,7 +579,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      };
                      onUpdate(updatedDevice);
                    }}
-                   className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                   className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-sm active:scale-95"
                 >
                    <Plus className="w-5 h-5" /> Log Intervention
                 </button>
@@ -587,7 +587,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
              <div className="space-y-6">
                 {(device.maintenanceHistory || []).length > 0 ? device.maintenanceHistory.map(record => (
-                  <div key={record.id} className="hardware-card p-8 rounded-[2.5rem] space-y-6 hover:shadow-xl transition-colors group">
+                  <div key={record.id} className="hardware-card p-8 rounded-2xl space-y-6 hover:shadow-xl transition-colors group">
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-4">
                            <div className="p-3 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
@@ -606,12 +606,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            )}
                         </div>
                      </div>
-                     <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
+                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
                         <p className="text-sm text-slate-600 font-medium leading-relaxed italic">"{record.description}"</p>
                      </div>
                   </div>
                 )) : (
-                  <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
+                  <div className="py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center">
                      <Wrench className="w-16 h-16 text-slate-100 mb-4" />
                      <p className="tech-label">No service history recorded</p>
                   </div>
@@ -622,14 +622,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'qr' && (
           <div className="max-w-xl mx-auto py-12">
-             <div className="hardware-card p-12 rounded-[3rem] text-center space-y-10">
+             <div className="hardware-card p-12 rounded-2xl text-center space-y-10">
                 <div className="space-y-2">
                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Asset Identity Matrix</h3>
                    <p className="tech-label">Unique QR Identification</p>
                 </div>
                 
-                <div className="bg-white p-10 rounded-[2.5rem] shadow-inner border border-slate-100 inline-block mx-auto relative group">
-                   <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
+                <div className="bg-white p-10 rounded-2xl shadow-inner border border-slate-100 inline-block mx-auto relative group">
+                   <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
                    <QRCodeCanvas 
                       id="device-qr-code"
                       value={`${window.location.origin}?view=DEVICE_DETAIL&id=${device.id}&standalone=true`}
@@ -665,7 +665,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             link.click();
                           }
                         }}
-                        className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                        className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-sm active:scale-95"
                       >
                         <Download className="w-5 h-5" /> Export Matrix
                       </button>

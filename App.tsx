@@ -342,7 +342,7 @@ const App: React.FC = () => {
           <div className="h-full flex flex-col relative">
             <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
             <div className="p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
-              <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20">
+              <div className="bg-slate-900 p-2.5 rounded-xl  ring-1 ring-white/20">
                 <Stethoscope className="w-6 h-6 text-blue-400" />
               </div>
               <div>
@@ -366,12 +366,12 @@ const App: React.FC = () => {
               <NavItem active={view === 'SETTINGS'} onClick={() => { navigate('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
             </nav>
             
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+            <div className="p-6 border-t border-slate-100 bg-slate-50">
                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cloud Sync</p>
-                    <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
+                    <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 ' : 'bg-amber-500'}`} />
                   </div>
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -408,7 +408,7 @@ const App: React.FC = () => {
               )}
               <div className="h-8 w-px bg-slate-200" />
               {view === 'INVENTORY' && (
-                <button onClick={() => navigate('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-colors hover:bg-blue-700">
+                <button onClick={() => navigate('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest  active:scale-95 transition-colors hover:bg-blue-700">
                   + Register New Asset
                 </button>
               )}
@@ -450,7 +450,7 @@ const App: React.FC = () => {
 };
 
 const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-4 w-full px-4 py-3.5 text-sm font-bold rounded-xl transition-colors duration-200 group ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
+  <button onClick={onClick} className={`flex items-center gap-4 w-full px-4 py-3.5 text-sm font-bold rounded-xl transition-colors duration-200 group ${active ? 'bg-slate-900 text-white ' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
     <div className={`transition-transform duration-200 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
     <span className="flex-1 text-left tracking-tight">{label}</span>
     {active && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}

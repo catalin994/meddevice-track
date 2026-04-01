@@ -99,7 +99,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
@@ -111,7 +111,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl active:scale-95 flex items-center gap-2"
+          className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-sm active:scale-95 flex items-center gap-2"
         >
           <Plus className="w-5 h-5" /> Register Agreement
         </button>
@@ -119,7 +119,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {globalContracts.map(contract => (
-          <div key={contract.contractNumber} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-colors group relative overflow-hidden">
+          <div key={contract.contractNumber} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-colors group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
@@ -164,7 +164,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
           </div>
         ))}
         {globalContracts.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+          <div className="col-span-full py-20 text-center bg-white rounded-2xl border-4 border-dashed border-slate-50 flex flex-col items-center">
             <FileText className="w-16 h-16 text-slate-100 mb-4" />
             <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">No active master agreements found</p>
           </div>
@@ -173,7 +173,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
       {isAdding && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in border border-white">
+          <div className="bg-white rounded-2xl shadow w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in border border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Register Master Agreement</h3>
@@ -186,7 +186,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                   <div className="lg:col-span-7 space-y-10">
                      <div className="space-y-6">
-                        <div className="bg-violet-900 p-8 rounded-[2rem] text-white shadow-xl">
+                        <div className="bg-violet-900 p-8 rounded-xl text-white shadow-xl">
                            <div className="flex items-center gap-3 mb-6">
                               <Wand2 className="w-6 h-6 text-violet-400" />
                               <h4 className="text-sm font-black uppercase tracking-widest">Smart AI Extraction</h4>
@@ -230,7 +230,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                   </div>
 
                   <div className="lg:col-span-5 space-y-6">
-                     <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 h-full flex flex-col">
+                     <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 h-full flex flex-col">
                         <div className="mb-6">
                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                               <Plus className="w-5 h-5 text-indigo-600" /> Associate Fleet Assets
@@ -256,7 +256,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                                  onClick={() => toggleDevice(device.id)}
                                  className={`p-4 rounded-2xl border transition-colors cursor-pointer flex items-center gap-4 ${
                                     selectedDevices.includes(device.id) 
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 ' 
                                     : 'bg-white border-slate-100 hover:border-indigo-200'
                                  }`}
                               >
@@ -279,7 +279,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                <button onClick={() => setIsAdding(false)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Cancel</button>
                <button 
                   onClick={() => document.getElementById('main-submit-btn')?.click()}
-                  className="px-12 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-indigo-700 transition active:scale-95 flex items-center gap-3"
+                  className="px-12 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow hover:bg-indigo-700 transition active:scale-95 flex items-center gap-3"
                >
                   <ShieldCheck className="w-5 h-5" /> Execute Agreement
                </button>
