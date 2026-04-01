@@ -18,15 +18,14 @@ const MaintenancePlanner = lazy(importMaintenancePlanner);
 const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
 
-const prefetchModules = () => {
-  importDashboard();
-  importDeviceList();
-  importDeviceDetail();
-  importAddDeviceForm();
-  importMaintenancePlanner();
-  importSettings();
-  importTaskTracker();
-};
+// Start loading all chunks immediately at module parse time — before any React rendering
+importDashboard();
+importDeviceList();
+importDeviceDetail();
+importAddDeviceForm();
+importMaintenancePlanner();
+importSettings();
+importTaskTracker();
 
 import { MedicalDevice, MedicalTask, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority } from './types';
 import { supabase, isSupabaseConfigured, checkConnection } from './services/supabase';
@@ -81,8 +80,6 @@ const App: React.FC = () => {
       setView('DEVICE_DETAIL');
     }
 
-    // Prefetch other modules after initial load
-    prefetchModules();
   }, []);
 
   const devicesMap = useMemo(() => {
