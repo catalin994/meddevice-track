@@ -19,11 +19,8 @@ const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('meditrac
 const storedKey = typeof window !== 'undefined' ? localStorage.getItem('meditrack_supabase_key') : null;
 const isDisabled = typeof window !== 'undefined' ? localStorage.getItem('meditrack_supabase_disabled') === 'true' : false;
 
-const DEFAULT_URL = "https://cevixwidnxpjnctljfzs.supabase.co";
-const DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNldml4d2lkbnhwam5jdGxqZnpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MzU1NTUsImV4cCI6MjA4MTMxMTU1NX0.22qlURNa9Hmwq68BPvWdihZ8KWgEDlLmuP_j_EXibp8";
-
-const finalUrl = envUrl || storedUrl || DEFAULT_URL;
-const finalKey = envKey || storedKey || DEFAULT_KEY;
+const finalUrl = envUrl || storedUrl || null;
+const finalKey = envKey || storedKey || null;
 
 export const supabase = (!isDisabled && finalUrl && finalKey) 
   ? createClient(finalUrl, finalKey) 
