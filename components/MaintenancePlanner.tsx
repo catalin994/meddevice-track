@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus } from '../types';
 import { 
   Calendar, Check, Clock, Save, CalendarDays, 
@@ -79,8 +78,9 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
     (Object.values(drafts) as ScheduleDraft[]).filter(d => d.isModified).length
   , [drafts]);
 
-  const handleExportSchedule = useCallback(() => {
+  const handleExportSchedule = useCallback(async () => {
     if (devices.length === 0) return alert("No devices available to export.");
+    const XLSX = await import('xlsx');
 
     const now = new Date();
     const dateStr = now.toLocaleDateString();

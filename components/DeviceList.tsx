@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceCategory } from '../types';
 import { Search, Eye, Trash2, Box, FileSpreadsheet, Download, Edit2, X, Check, ChevronDown, Calendar, Info, Filter, PlusCircle, ShieldAlert, Hash, Fingerprint, AlertCircle, ShieldOff, RotateCcw, Layers, Loader2, FileText, Save, Building2, Tag, Plus } from 'lucide-react';
 
