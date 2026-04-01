@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Contract, MedicalDevice, MaintenanceType } from '../types';
 
@@ -6,7 +7,8 @@ import { Contract, MedicalDevice, MaintenanceType } from '../types';
  */
 export const analyzeContractText = async (text: string): Promise<Partial<Contract>> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    // Correctly initialize GoogleGenAI with named parameter apiKey from process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Extract contract details from the following text: "${text}"`,
@@ -41,11 +43,13 @@ export const analyzeContractText = async (text: string): Promise<Partial<Contrac
  */
 export const generateBulkMaintenancePlan = async (devices: MedicalDevice[]): Promise<any[]> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    // Correctly initialize GoogleGenAI with named parameter apiKey from process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const deviceSummary = devices.map(d => `${d.name} (${d.model}) in ${d.department}`).join('\n');
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      // Upgraded to gemini-3-pro-preview for complex reasoning task (planning for multiple devices)
+      model: "gemini-3-pro-preview",
       contents: `Generate a preventive maintenance plan for these hospital devices. For each device, suggest a 'nextScheduledDate' within the next 6 months and clinical tasks.
       
       Devices:
@@ -85,7 +89,8 @@ export const suggestMaintenanceSchedule = async (deviceName: string, model: stri
   recommendedType: string;
 }> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    // Correctly initialize GoogleGenAI with named parameter apiKey from process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Suggest a maintenance schedule for a medical device. Device Name: ${deviceName}, Model: ${model}.`,

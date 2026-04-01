@@ -1,7 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
+
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { MedicalDevice } from '../types';
-import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, Link, LogOut, QrCode, Globe } from 'lucide-react';
-import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '../services/supabase';
+import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity } from 'lucide-react';
+import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection } from '../services/supabase';
+import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 
 interface SettingsProps {
   devices: MedicalDevice[];
@@ -14,262 +16,261 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport }) => {
   const [inputUrl, setInputUrl] = useState(config.url || '');
   const [inputKey, setInputKey] = useState(config.key || '');
   const [showKey, setShowKey] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; errorType?: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   
-  // QR Settings
-  const [baseUrl, setBaseUrl] = useState('');
+  const [dbCount, setDbCount] = useState<number | null>(null);
+  const [lsCount, setLsCount] = useState<number | null>(null);
+  const [isRepairing, setIsRepairing] = useState(false);
+
+  const SQL_FIX = `-- 1. OPEN SUPABASE DASHBOARD -> SQL EDITOR
+-- 2. PASTE THIS SCRIPT AND CLICK 'RUN'
+-- 3. THIS RESOLVES THE 'PGRST205' ERROR
+
+CREATE TABLE IF NOT EXISTS public.devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT DEFAULT 'Altele',
+    manufacturer TEXT,
+    model TEXT,
+    serialNumber TEXT,
+    department TEXT,
+    purchaseDate TEXT,
+    status TEXT DEFAULT 'Active',
+    isCNCAN BOOLEAN DEFAULT FALSE,
+    image TEXT,
+    notes TEXT,
+    maintenanceHistory JSONB DEFAULT '[]'::jsonb,
+    contracts JSONB DEFAULT '[]'::jsonb,
+    files JSONB DEFAULT '[]'::jsonb,
+    components JSONB DEFAULT '[]'::jsonb,
+    locationHistory JSONB DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    "deviceId" TEXT REFERENCES public.devices(id) ON DELETE SET NULL,
+    "deviceName" TEXT,
+    department TEXT,
+    priority TEXT DEFAULT 'Medium',
+    status TEXT DEFAULT 'Pending',
+    "createdAt" TEXT,
+    "dueDate" TEXT,
+    notes TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Enable RLS
+ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+CREATE POLICY "Allow all public access" ON public.devices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
+`;
 
   useEffect(() => {
-    const currentConfig = getSupabaseConfig();
-    setConfig(currentConfig);
-    setInputUrl(currentConfig.url || '');
-    // Don't auto-fill key if it's from env for security visual, but fine for local storage
-    if (!currentConfig.isEnv) {
-      setInputKey(currentConfig.key || '');
-    }
+    const checkStorage = async () => {
+      const stats = await getStorageStats();
+      setDbCount(stats.count);
+      try {
+        const legacy = localStorage.getItem('meditrack_devices');
+        setLsCount(legacy ? JSON.parse(legacy).length : 0);
+      } catch (e) { setLsCount(0); }
+    };
+    checkStorage();
+  }, [devices]);
 
-    // Load Base URL
-    const storedBaseUrl = localStorage.getItem('meditrack_base_url');
-    setBaseUrl(storedBaseUrl || (window.location.origin + window.location.pathname));
+  const handleRepairData = useCallback(async () => {
+    setIsRepairing(true);
+    try {
+      const legacyRaw = localStorage.getItem('meditrack_devices');
+      if (legacyRaw) {
+        const legacy = JSON.parse(legacyRaw);
+        if (Array.isArray(legacy) && legacy.length > 0) {
+          await onImport(legacy);
+          alert(`Successfully recovered ${legacy.length} legacy devices.`);
+        }
+      } else {
+        alert("No legacy LocalStorage data found to recover.");
+      }
+    } catch (err) {
+      alert("Repair failed: " + (err as Error).message);
+    } finally {
+      setIsRepairing(false);
+    }
+  }, [onImport]);
+
+  const handleCopySql = useCallback(() => {
+    navigator.clipboard.writeText(SQL_FIX);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, []);
 
-  const handleSaveCloudConfig = () => {
-    if (!inputUrl || !inputKey) {
-      alert("Please provide both the Supabase URL and Anon Key.");
-      return;
+  const handleRunIntegrityTest = useCallback(async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const status = await checkConnection();
+      setTestResult({ 
+        success: status.success, 
+        message: status.message,
+        errorType: status.errorType 
+      });
+    } catch (e: any) {
+      setTestResult({ success: false, message: `Failure: ${e.message}` });
+    } finally {
+      setIsTesting(false);
     }
-    saveSupabaseConfig(inputUrl, inputKey);
-  };
+  }, []);
 
-  const handleDisconnectCloud = () => {
-    if (window.confirm("Are you sure you want to disconnect? You will switch back to offline mode.")) {
+  const handleDisconnectCloud = useCallback(() => {
+    if (window.confirm("Confirm disconnection? This will move the app to local-only mode.")) {
       clearSupabaseConfig();
     }
-  };
-
-  const handleSaveBaseUrl = () => {
-      localStorage.setItem('meditrack_base_url', baseUrl);
-      alert("QR Code Base URL updated successfully. Regenerate your QR codes by visiting the device page.");
-  };
-
-  const handleExport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(devices, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `meditrack_backup_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const jsonData = JSON.parse(event.target?.result as string);
-        if (Array.isArray(jsonData)) {
-          const isValid = jsonData.every(d => d.id && d.name && d.status);
-          if (isValid) {
-            if (window.confirm(`Found ${jsonData.length} devices in backup. This will overwrite your current local data state. Continue?`)) {
-              onImport(jsonData);
-              alert('Data imported successfully!');
-            }
-          } else {
-            alert('Invalid backup file format.');
-          }
-        }
-      } catch (error) {
-        alert('Error reading backup file.');
-        console.error(error);
-      }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
       
-      {/* Cloud Connection Card */}
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className={`p-3 rounded-lg ${isSupabaseConfigured ? 'bg-green-100' : 'bg-slate-100'}`}>
-            {isSupabaseConfigured ? <Cloud className="w-6 h-6 text-green-600" /> : <Cloud className="w-6 h-6 text-slate-500" />}
+      {/* CLOUD CONNECTION PANEL */}
+      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-5">
+            <div className={`p-5 rounded-3xl ${isSupabaseConfigured ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+              <Cloud className="w-10 h-10" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
+              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Global Data Backbone</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Cloud Connection</h2>
-            <p className="text-sm text-slate-500">
-              Connect to your Supabase database to sync data across devices.
-            </p>
-          </div>
+          <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
+             {isTesting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Verify Node</span>
+          </button>
         </div>
 
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-          {config.isEnv ? (
-             <div className="flex items-center gap-3 text-green-700 bg-green-50 p-4 rounded-lg border border-green-200">
-               <CheckCircle className="w-5 h-5" />
-               <span className="font-medium">Connected via Environment Variables</span>
-             </div>
-          ) : (
-            <div className="space-y-4">
+        {testResult && (
+          <div className={`mb-8 p-6 rounded-3xl border animate-fade-in ${testResult.success ? 'bg-green-50 border-green-200 text-green-700' : testResult.errorType === 'table' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            <div className="flex gap-4">
+              {testResult.success ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Project URL</label>
-                <input 
-                  type="text" 
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  placeholder="https://your-project.supabase.co"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600 font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">API Key (anon / public)</label>
-                <div className="relative">
-                  <input 
-                    type={showKey ? "text" : "password"}
-                    value={inputKey}
-                    onChange={(e) => setInputKey(e.target.value)}
-                    placeholder="eyJh..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600 font-mono pr-20"
-                  />
-                  <button 
-                    onClick={() => setShowKey(!showKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 px-2"
-                  >
-                    {showKey ? "HIDE" : "SHOW"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                {!isSupabaseConfigured ? (
-                  <button 
-                    onClick={handleSaveCloudConfig}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-2"
-                  >
-                    <Link className="w-4 h-4" /> Connect
-                  </button>
-                ) : (
-                   <>
-                    <button 
-                      onClick={handleSaveCloudConfig}
-                      className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" /> Update Settings
-                    </button>
-                    <button 
-                      onClick={handleDisconnectCloud}
-                      className="px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-200 transition flex items-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" /> Disconnect
-                    </button>
-                   </>
+                <p className="font-black text-xs uppercase tracking-widest mb-1">{testResult.success ? 'Connection Verified' : 'Connection Error'}</p>
+                <p className="text-sm font-bold leading-relaxed">{testResult.message}</p>
+                {testResult.errorType === 'table' && (
+                  <p className="mt-3 text-[10px] font-black uppercase tracking-widest bg-amber-600/10 p-2 rounded-lg">Action Required: Execute SQL Fix Below</p>
                 )}
               </div>
-
-              {!isSupabaseConfigured && (
-                 <p className="text-xs text-slate-500 mt-2">
-                   Don't have a project? <a href="https://supabase.com" target="_blank" className="text-blue-600 hover:underline">Create one for free</a>.
-                 </p>
-              )}
             </div>
-          )}
+          </div>
+        )}
+
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Project Endpoint URL</label>
+                <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Service Anon/Secret Key</label>
+                <div className="relative">
+                  <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{showKey ? "Hide" : "Show"}</button>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Link Cloud Instance</button>
+              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-600 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Disconnect Cloud"><LogOut className="w-6 h-6" /></button>}
+            </div>
         </div>
       </div>
 
-       {/* QR Code Settings */}
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 rounded-lg bg-violet-100">
-            <QrCode className="w-6 h-6 text-violet-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">QR Code Configuration</h2>
-            <p className="text-sm text-slate-500">
-              Customize how QR codes are generated.
-            </p>
-          </div>
+      {/* SQL SCHEMA FIX */}
+      <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/10 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <Terminal className="w-40 h-40 text-blue-400" />
         </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Database Schema Deployment</h2>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Execute this in Supabase SQL Editor</p>
+            </div>
+          </div>
 
-        <div className="p-6 border border-slate-200 rounded-xl bg-slate-50">
-           <div className="mb-4">
-             <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                <Globe className="w-4 h-4" /> Application Public URL
-             </label>
-             <input 
-                type="text" 
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://myapp.com"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600 font-mono"
-              />
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                <strong className="text-slate-700">Why change this?</strong> If you are running the app locally (e.g., localhost), your phone cannot access "localhost". 
-                Change this to your computer's IP address (e.g., <code>http://192.168.1.5:3000</code>) or your public deployment URL so mobile devices can reach the app when scanning.
-              </p>
-           </div>
-           <button 
-              onClick={handleSaveBaseUrl}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition flex items-center gap-2"
+          <div className="bg-black/50 rounded-2xl p-6 mb-6 shadow-inner relative group border border-white/5">
+            <pre className="text-xs font-mono text-blue-100 break-all whitespace-pre-wrap leading-relaxed">
+              {SQL_FIX}
+            </pre>
+            <button 
+              onClick={handleCopySql}
+              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
             >
-              <Save className="w-4 h-4" /> Save URL
-           </button>
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copied' : 'Copy SQL'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Manual Data Management */}
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 rounded-lg bg-blue-100">
-            <Database className="w-6 h-6 text-blue-600" />
+      {/* RECOVERY HUB */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-blue-900 p-8 rounded-[2.5rem] border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
+          <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+            <Wand2 className="w-40 h-40 text-white" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Backup & Restore</h2>
-            <p className="text-sm text-slate-500">
-              Manually export or import your data file (JSON).
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-blue-500 text-white rounded-2xl shadow-lg">
+                <RefreshCw className={`w-5 h-5 ${isRepairing ? 'animate-spin' : ''}`} />
+              </div>
+              <h2 className="text-lg font-black text-white uppercase tracking-tight">Legacy Deep Scan</h2>
+            </div>
+            <p className="text-xs text-blue-100 mb-8 leading-relaxed font-medium">
+              Forces a scan of legacy browser buffers to recover devices from older app versions or alternate data nodes.
             </p>
+            <div className="space-y-4">
+              <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
+                {isRepairing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                Run Recovery
+              </button>
+              <div className="flex items-center justify-between px-4 py-2 bg-blue-800/30 rounded-lg text-[9px] font-black text-blue-300 uppercase">
+                <span>Legacy Records found</span>
+                <span className="text-white">{lsCount ?? '0'}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-6 border border-slate-200 rounded-xl bg-slate-50 hover:border-blue-200 transition">
-            <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              <Download className="w-4 h-4 text-blue-600" /> Export Data
-            </h3>
-            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-              Download a backup of all devices, maintenance history, and contracts. 
-            </p>
-            <button 
-              onClick={handleExport}
-              className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-100 hover:text-slate-900 transition flex items-center justify-center gap-2"
-            >
-              <Save className="w-4 h-4" /> Download Backup
-            </button>
+        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">
+                <Activity className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Sync Diagnostics</h2>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Local Storage Assets</span>
+                 <span className="text-sm font-black text-slate-900">{dbCount ?? '...'}</span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Active UI Fleet</span>
+                 <span className="text-sm font-black text-blue-600">{devices.length}</span>
+              </div>
+            </div>
           </div>
-
-          <div className="p-6 border border-slate-200 rounded-xl bg-slate-50 hover:border-blue-200 transition">
-            <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              <Upload className="w-4 h-4 text-green-600" /> Import Data
-            </h3>
-            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-              Restore data from a JSON backup file.
-            </p>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImport} 
-              accept=".json" 
-              className="hidden" 
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-            >
-              <Upload className="w-4 h-4" /> Select Backup File
-            </button>
-          </div>
+          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Diagnostics auto-refresh on activity</p>
         </div>
       </div>
     </div>
