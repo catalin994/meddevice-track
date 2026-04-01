@@ -367,7 +367,7 @@ const getStatusStyles = (s: TaskStatus) => {
 const getStatusIcon = (s: TaskStatus) => {
   switch(s) {
     case TaskStatus.PENDING: return <Clock className="w-3.5 h-3.5" />;
-    case TaskStatus.IN_PROGRESS: return <AlertCircle className="w-3.5 h-3.5 animate-pulse" />;
+    case TaskStatus.IN_PROGRESS: return <AlertCircle className="w-3.5 h-3.5 " />;
     case TaskStatus.COMPLETED: return <CheckCircle2 className="w-3.5 h-3.5" />;
   }
 };

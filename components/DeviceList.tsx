@@ -37,7 +37,7 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   }
   return (
     <span className={`px-3 py-1.5 rounded-xl tech-label text-[8px] border flex items-center gap-2 w-fit ${styles}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${dot} ${status === DeviceStatus.ACTIVE ? 'animate-pulse' : ''}`} />
+      <div className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {status}
     </span>
   );

@@ -375,7 +375,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4 animate-spin" />}
+                      {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
                     </div>
                     <div className="flex-1">
                       <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Syncing...'}</p>

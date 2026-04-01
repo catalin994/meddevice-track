@@ -374,7 +374,7 @@ const MaintenanceCard = React.memo(({
           </div>
         </div>
         {draft.isModified && (
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg animate-pulse shrink-0 ml-2">
+          <div className="bg-blue-600 text-white p-1.5 rounded-lg  shrink-0 ml-2">
             <Check className="w-4 h-4" />
           </div>
         )}

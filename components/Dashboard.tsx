@@ -69,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
               <p className="tech-label mt-1">Real-time status distribution</p>
             </div>
             <div className="flex items-center gap-2">
-               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+               <div className="w-2 h-2 rounded-full bg-emerald-500" />
                <span className="tech-label text-[10px]">Live Feed</span>
             </div>
           </div>

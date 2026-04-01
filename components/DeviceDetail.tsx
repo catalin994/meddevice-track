@@ -237,7 +237,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600 opacity-20" />
         <div className="flex items-start gap-6">
           <div className="hidden md:flex flex-col items-center gap-2">
-            <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)] ${device.status === DeviceStatus.ACTIVE ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-amber-500 shadow-amber-500/50'} animate-pulse`} />
+            <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)] ${device.status === DeviceStatus.ACTIVE ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-amber-500 shadow-amber-500/50'} `} />
             <div className="w-px h-12 bg-slate-100" />
           </div>
           <div>
