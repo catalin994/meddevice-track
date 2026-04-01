@@ -63,7 +63,7 @@ const App: React.FC = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [mountedViews, setMountedViews] = useState<Set<ViewState>>(new Set());
+  const [mountedViews, setMountedViews] = useState<Set<ViewState>>(new Set<ViewState>(['DASHBOARD']));
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -259,9 +259,10 @@ const App: React.FC = () => {
 
   useEffect(() => { loadAndSync(); }, [loadAndSync]);
 
-  useEffect(() => {
-    setMountedViews(prev => { const next = new Set(prev); next.add(view); return next; });
-  }, [view]);
+  const navigate = useCallback((newView: ViewState) => {
+    setView(newView);
+    setMountedViews(prev => { const next = new Set(prev); next.add(newView); return next; });
+  }, []);
 
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
@@ -374,15 +375,15 @@ const App: React.FC = () => {
               <div className="px-3 mb-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operations</p>
               </div>
-              <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
-              <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
-              <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
-              <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
-              
+              <NavItem active={view === 'DASHBOARD'} onClick={() => { navigate('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
+              <NavItem active={view === 'INVENTORY'} onClick={() => { navigate('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
+              <NavItem active={view === 'TASKS'} onClick={() => { navigate('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
+              <NavItem active={view === 'PLANNER'} onClick={() => { navigate('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
+
               <div className="px-3 mt-8 mb-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p>
               </div>
-              <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
+              <NavItem active={view === 'SETTINGS'} onClick={() => { navigate('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
             </nav>
             
             <div className="p-6 border-t border-slate-100 bg-slate-50/50">
@@ -427,7 +428,7 @@ const App: React.FC = () => {
               )}
               <div className="h-8 w-px bg-slate-200" />
               {view === 'INVENTORY' && (
-                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-colors hover:bg-blue-700 hover:-translate-y-0.5">
+                <button onClick={() => navigate('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-colors hover:bg-blue-700">
                   + Register New Asset
                 </button>
               )}
@@ -456,10 +457,10 @@ const App: React.FC = () => {
                 </div>
               }>
                 {mountedViews.has('DASHBOARD') && <div className={view === 'DASHBOARD' ? 'block' : 'hidden'}><Dashboard devices={devices} tasks={tasks} /></div>}
-                {mountedViews.has('INVENTORY') && <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} /></div>}
-                {mountedViews.has('DEVICE_DETAIL') && selectedDevice && <div className={view === 'DEVICE_DETAIL' ? 'block' : 'hidden'}><DeviceDetail device={selectedDevice} allDevices={devices} tasks={selectedDeviceTasks} onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} onUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddTask={handleUpsertTasks} isStandalone={isStandalone} /></div>}
+                {mountedViews.has('INVENTORY') && <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); navigate('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => navigate('ADD_DEVICE')} /></div>}
+                {mountedViews.has('DEVICE_DETAIL') && selectedDevice && <div className={view === 'DEVICE_DETAIL' ? 'block' : 'hidden'}><DeviceDetail device={selectedDevice} allDevices={devices} tasks={selectedDeviceTasks} onBack={() => { navigate('INVENTORY'); setSelectedDeviceId(null); }} onUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddTask={handleUpsertTasks} isStandalone={isStandalone} /></div>}
                 {mountedViews.has('TASKS') && <div className={view === 'TASKS' ? 'block' : 'hidden'}><TaskTracker tasks={tasks} devices={devices} onAddTask={handleUpsertTasks} onUpdateTask={handleUpsertTasks} onDeleteTask={handleDeleteTask} /></div>}
-                {mountedViews.has('ADD_DEVICE') && <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} /></div>}
+                {mountedViews.has('ADD_DEVICE') && <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); navigate('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); navigate('INVENTORY'); }} onCancel={() => navigate('INVENTORY')} /></div>}
                 {mountedViews.has('PLANNER') && <div className={view === 'PLANNER' ? 'block' : 'hidden'}><MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} /></div>}
                 {mountedViews.has('SETTINGS') && <div className={view === 'SETTINGS' ? 'block' : 'hidden'}><Settings devices={devices} onImport={handleUpsertDevices} /></div>}
               </Suspense>
