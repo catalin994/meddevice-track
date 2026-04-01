@@ -457,32 +457,34 @@ const App: React.FC = () => {
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Module...</p>
                 </div>
               }>
-                {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} />}
-                {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} />}
-                {view === 'DEVICE_DETAIL' && selectedDevice && (
-                  <DeviceDetail 
-                    device={selectedDevice} 
-                    allDevices={devices} 
-                    tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())} 
-                    onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} 
-                    onUpdate={handleUpsertDevices} 
-                    onDelete={handleDeleteDevice} 
-                    onAddTask={handleUpsertTasks} 
-                    isStandalone={isStandalone}
+                <div className={view === 'DASHBOARD' ? 'block' : 'hidden'}><Dashboard devices={devices} tasks={tasks} /></div>
+                <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} /></div>
+                <div className={view === 'DEVICE_DETAIL' && selectedDevice ? 'block' : 'hidden'}>
+                  {selectedDevice && (
+                    <DeviceDetail
+                      device={selectedDevice}
+                      allDevices={devices}
+                      tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())}
+                      onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }}
+                      onUpdate={handleUpsertDevices}
+                      onDelete={handleDeleteDevice}
+                      onAddTask={handleUpsertTasks}
+                      isStandalone={isStandalone}
+                    />
+                  )}
+                </div>
+                <div className={view === 'TASKS' ? 'block' : 'hidden'}>
+                  <TaskTracker
+                    tasks={tasks}
+                    devices={devices}
+                    onAddTask={handleUpsertTasks}
+                    onUpdateTask={handleUpsertTasks}
+                    onDeleteTask={handleDeleteTask}
                   />
-                )}
-                {view === 'TASKS' && (
-                  <TaskTracker 
-                    tasks={tasks} 
-                    devices={devices} 
-                    onAddTask={handleUpsertTasks} 
-                    onUpdateTask={handleUpsertTasks} 
-                    onDeleteTask={handleDeleteTask} 
-                  />
-                )}
-                {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} />}
-                {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} />}
-                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} />}
+                </div>
+                <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} /></div>
+                <div className={view === 'PLANNER' ? 'block' : 'hidden'}><MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} /></div>
+                <div className={view === 'SETTINGS' ? 'block' : 'hidden'}><Settings devices={devices} onImport={handleUpsertDevices} /></div>
               </Suspense>
             </div>
           )}
