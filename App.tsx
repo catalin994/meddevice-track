@@ -75,6 +75,7 @@ const App: React.FC = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [mountedViews, setMountedViews] = useState<Set<ViewState>>(new Set());
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -265,6 +266,10 @@ const App: React.FC = () => {
 
   useEffect(() => { loadAndSync(); }, [loadAndSync]);
 
+  useEffect(() => {
+    setMountedViews(prev => { const next = new Set(prev); next.add(view); return next; });
+  }, [view]);
+
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
     const safeId = String(id).trim();
@@ -450,41 +455,20 @@ const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="max-w-7xl mx-auto animate-slide-up">
+            <div className="max-w-7xl mx-auto">
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Module...</p>
                 </div>
               }>
-                <div className={view === 'DASHBOARD' ? 'block' : 'hidden'}><Dashboard devices={devices} tasks={tasks} /></div>
-                <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} /></div>
-                <div className={view === 'DEVICE_DETAIL' && selectedDevice ? 'block' : 'hidden'}>
-                  {selectedDevice && (
-                    <DeviceDetail
-                      device={selectedDevice}
-                      allDevices={devices}
-                      tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())}
-                      onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }}
-                      onUpdate={handleUpsertDevices}
-                      onDelete={handleDeleteDevice}
-                      onAddTask={handleUpsertTasks}
-                      isStandalone={isStandalone}
-                    />
-                  )}
-                </div>
-                <div className={view === 'TASKS' ? 'block' : 'hidden'}>
-                  <TaskTracker
-                    tasks={tasks}
-                    devices={devices}
-                    onAddTask={handleUpsertTasks}
-                    onUpdateTask={handleUpsertTasks}
-                    onDeleteTask={handleDeleteTask}
-                  />
-                </div>
-                <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} /></div>
-                <div className={view === 'PLANNER' ? 'block' : 'hidden'}><MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} /></div>
-                <div className={view === 'SETTINGS' ? 'block' : 'hidden'}><Settings devices={devices} onImport={handleUpsertDevices} /></div>
+                {mountedViews.has('DASHBOARD') && <div className={view === 'DASHBOARD' ? 'block' : 'hidden'}><Dashboard devices={devices} tasks={tasks} /></div>}
+                {mountedViews.has('INVENTORY') && <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} /></div>}
+                {mountedViews.has('DEVICE_DETAIL') && selectedDevice && <div className={view === 'DEVICE_DETAIL' ? 'block' : 'hidden'}><DeviceDetail device={selectedDevice} allDevices={devices} tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())} onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} onUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddTask={handleUpsertTasks} isStandalone={isStandalone} /></div>}
+                {mountedViews.has('TASKS') && <div className={view === 'TASKS' ? 'block' : 'hidden'}><TaskTracker tasks={tasks} devices={devices} onAddTask={handleUpsertTasks} onUpdateTask={handleUpsertTasks} onDeleteTask={handleDeleteTask} /></div>}
+                {mountedViews.has('ADD_DEVICE') && <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} /></div>}
+                {mountedViews.has('PLANNER') && <div className={view === 'PLANNER' ? 'block' : 'hidden'}><MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} /></div>}
+                {mountedViews.has('SETTINGS') && <div className={view === 'SETTINGS' ? 'block' : 'hidden'}><Settings devices={devices} onImport={handleUpsertDevices} /></div>}
               </Suspense>
             </div>
           )}

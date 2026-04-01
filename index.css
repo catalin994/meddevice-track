@@ -37,8 +37,6 @@
   
   .hardware-card {
     @apply bg-white border border-slate-200 shadow-sm relative overflow-hidden;
-    background-image: radial-gradient(#f1f5f9 0.5px, transparent 0.5px);
-    background-size: 24px 24px;
   }
 
   .tech-label {

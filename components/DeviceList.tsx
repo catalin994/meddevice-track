@@ -252,7 +252,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
   }, []);
 
   return (
-    <div className="space-y-8 pb-24 relative animate-slide-up">
+    <div className="space-y-8 pb-24 relative">
       {/* QUICK EDIT OVERLAY */}
       {editingDevice && (
         <div className="fixed inset-0 z-[500] bg-slate-900/40 flex items-center justify-center p-4">

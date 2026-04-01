@@ -52,7 +52,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
   }, [devices]);
 
   return (
-    <div className="space-y-8 animate-slide-up">
+    <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         <StatCard title="Total Assets" value={devices.length} icon={<Activity className="w-5 h-5" />} trend="+2.4%" color="text-blue-600" bgColor="bg-blue-50" />
         <StatCard title="Critical Failures" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="High Risk" color="text-red-600" bgColor="bg-red-50" />
@@ -112,7 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
           </div>
           <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {dispatchTasks.map(task => (
-              <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-all duration-300">
+              <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-shadow duration-200">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{task.title}</p>
@@ -151,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {upcomingMaintenance.map(device => (
-            <div key={device.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center gap-5 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
+            <div key={device.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center gap-5 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-shadow duration-200">
               <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : device.daysRemaining < 7 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
                 <Clock className="w-6 h-6" />
               </div>
