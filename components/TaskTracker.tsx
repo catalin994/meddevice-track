@@ -121,7 +121,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             <input 
               type="text"
               placeholder="Search tasks, departments..."
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold shadow-inner focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold shadow-inner focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -182,7 +182,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Task Title / Fault Type</label>
-                <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g., Ultrasound probe failure" />
+                <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-colors" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g., Ultrasound probe failure" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -216,7 +216,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Problem Description</label>
-                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the issue reported by the unit..." />
+                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-colors resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the issue reported by the unit..." />
               </div>
 
               {/* ADDITIONAL DATA FIELD */}
@@ -225,7 +225,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   <StickyNote className="w-4 h-4" /> Technical Notes & Follow-up Data
                 </label>
                 <textarea 
-                  className="w-full bg-white border border-blue-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[120px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none placeholder:text-blue-300" 
+                  className="w-full bg-white border border-blue-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[120px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-colors resize-none placeholder:text-blue-300" 
                   value={formData.notes} 
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
                   placeholder="Append diagnostic results, parts needed, or technical progress..."
@@ -263,8 +263,8 @@ const TaskCard = React.memo(({
   const device = useMemo(() => devices.find(d => d.id === task.deviceId), [devices, task.deviceId]);
   
   return (
-    <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex items-stretch group">
-      <div className={`w-2 ${getPriorityColor(task.priority)} transition-all group-hover:w-3`} />
+    <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-colors overflow-hidden flex items-stretch group">
+      <div className={`w-2 ${getPriorityColor(task.priority)} transition-colors group-hover:w-3`} />
       <div className="p-6 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -309,7 +309,7 @@ const TaskCard = React.memo(({
           <div className="flex items-center gap-2">
             <button 
               onClick={() => onToggleStatus(task)}
-              className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border transition-all flex items-center gap-2 shadow-sm active:scale-95 ${getStatusStyles(task.status)}`}
+              className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border transition-colors flex items-center gap-2 shadow-sm active:scale-95 ${getStatusStyles(task.status)}`}
             >
               {getStatusIcon(task.status)}
               {task.status}
@@ -318,14 +318,14 @@ const TaskCard = React.memo(({
             <div className="flex gap-1 border-l border-slate-100 pl-4 ml-2">
               <button 
                 onClick={() => onEdit(task)} 
-                className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Add Data / Edit Task"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button 
                 onClick={() => onDelete(task.id)} 
-                className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 title="Delete Ticket"
               >
                 <Trash2 className="w-4 h-4" />

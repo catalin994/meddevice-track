@@ -119,7 +119,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {globalContracts.map(contract => (
-          <div key={contract.contractNumber} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+          <div key={contract.contractNumber} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-colors group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
@@ -192,7 +192,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                               <h4 className="text-sm font-black uppercase tracking-widest">Smart AI Extraction</h4>
                            </div>
                            <textarea 
-                              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-sm font-medium outline-none focus:bg-white/20 transition-all placeholder:text-violet-300/50 min-h-[120px]" 
+                              className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-sm font-medium outline-none focus:bg-white/20 transition-colors placeholder:text-violet-300/50 min-h-[120px]" 
                               placeholder="Paste raw contract text, OCR data, or PDF summary here..."
                               value={aiText}
                               onChange={(e) => setAiText(e.target.value)}
@@ -219,7 +219,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                                  name="coverageDetails"
                                  value={formData.coverageDetails}
                                  onChange={handleInputChange}
-                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold min-h-[100px] outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold min-h-[100px] outline-none focus:ring-4 focus:ring-indigo-500/10 transition-colors"
                                  placeholder="Full parts, labor, software updates, 4h response time..."
                                  required
                               />
@@ -254,7 +254,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                               <div 
                                  key={device.id}
                                  onClick={() => toggleDevice(device.id)}
-                                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 ${
+                                 className={`p-4 rounded-2xl border transition-colors cursor-pointer flex items-center gap-4 ${
                                     selectedDevices.includes(device.id) 
                                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' 
                                     : 'bg-white border-slate-100 hover:border-indigo-200'
@@ -301,7 +301,7 @@ const FormInput = ({ label, name, value, onChange, placeholder, type = "text", r
       value={value} 
       onChange={onChange} 
       placeholder={placeholder} 
-      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-colors"
     />
   </div>
 );

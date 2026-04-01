@@ -211,10 +211,10 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   }, []);
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-slide-up">
+    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative">
       {showPurgeConfirm && (
         <div className="fixed inset-0 z-[600] bg-slate-900/40 flex items-center justify-center p-4">
-           <div className="hardware-card p-12 max-w-lg w-full text-center rounded-[3rem] shadow-2xl animate-slide-up">
+           <div className="hardware-card p-12 max-w-lg w-full text-center rounded-[3rem] shadow-2xl">
               <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
                  <Trash2 className="w-10 h-10" />
               </div>
@@ -289,7 +289,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       <div className="p-8 overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
         {activeTab === 'overview' && (
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 max-w-7xl mx-auto">
-              <div className="xl:col-span-8 space-y-8 animate-slide-up">
+              <div className="xl:col-span-8 space-y-8">
                 <div className="hardware-card p-10 rounded-[2.5rem] space-y-8">
                    <div className="flex items-center gap-4 mb-2">
                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Info className="w-6 h-6" /></div>
@@ -375,7 +375,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         )}
 
         {activeTab === 'docs' && (
-          <div className="max-w-6xl mx-auto py-6 space-y-8 animate-slide-up">
+          <div className="max-w-6xl mx-auto py-6 space-y-8">
              <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col lg:flex-row justify-between items-center gap-8 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20" />
                 <div className="flex items-center gap-6">
@@ -391,7 +391,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1">Document Type</label>
                       <select 
-                         className="bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm min-w-[180px]"
+                         className="bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-colors shadow-sm min-w-[180px]"
                          value={uploadType}
                          onChange={(e) => setUploadType(e.target.value as any)}
                       >
@@ -509,7 +509,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
              <div className="grid grid-cols-1 gap-4">
                 {tasks.length > 0 ? tasks.map(task => (
-                  <div key={task.id} className="hardware-card p-6 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 hover:shadow-xl transition-all group">
+                  <div key={task.id} className="hardware-card p-6 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 hover:shadow-xl transition-colors group">
                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${
                         task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
                         task.status === 'in-progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'
@@ -551,7 +551,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         )}
 
         {activeTab === 'maintenance' && (
-          <div className="max-w-5xl mx-auto py-6 space-y-8 animate-slide-up">
+          <div className="max-w-5xl mx-auto py-6 space-y-8">
              <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
@@ -587,7 +587,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
              <div className="space-y-6">
                 {(device.maintenanceHistory || []).length > 0 ? device.maintenanceHistory.map(record => (
-                  <div key={record.id} className="hardware-card p-8 rounded-[2.5rem] space-y-6 hover:shadow-xl transition-all group">
+                  <div key={record.id} className="hardware-card p-8 rounded-[2.5rem] space-y-6 hover:shadow-xl transition-colors group">
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-4">
                            <div className="p-3 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
@@ -621,7 +621,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         )}
 
         {activeTab === 'qr' && (
-          <div className="max-w-xl mx-auto py-12 animate-slide-up">
+          <div className="max-w-xl mx-auto py-12">
              <div className="hardware-card p-12 rounded-[3rem] text-center space-y-10">
                 <div className="space-y-2">
                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Asset Identity Matrix</h3>
@@ -699,7 +699,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
            </p>
            <a 
               href={window.location.origin}
-              className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10"
+              className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors border border-white/10"
            >
               Open Full Application
            </a>
@@ -710,7 +710,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 };
 
 const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete }: any) => (
-  <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
+  <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-colors group relative overflow-hidden">
     <div className={`absolute top-0 left-0 w-1 h-full bg-${color}-600`} />
     <div className="flex items-center gap-4">
        <div className={`p-3 rounded-xl bg-${color}-50 text-${color}-600 shadow-sm`}>
@@ -737,7 +737,7 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
 const TabButton = React.memo(({ active, onClick, icon, label }: any) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-3 px-8 py-6 text-xs font-black uppercase tracking-widest transition-all relative whitespace-nowrap ${
+    className={`flex items-center gap-3 px-8 py-6 text-xs font-black uppercase tracking-widest transition-colors relative whitespace-nowrap ${
       active ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
     }`}
   >
@@ -750,7 +750,7 @@ const TabButton = React.memo(({ active, onClick, icon, label }: any) => (
 const InfoRow = React.memo(({ label, value, badge }: any) => (
   <div className="space-y-1.5 group">
     <span className="tech-label ml-1 group-hover:text-blue-600 transition-colors">{label}</span>
-    <div className={`p-4 rounded-2xl font-bold text-sm transition-all ${
+    <div className={`p-4 rounded-2xl font-bold text-sm transition-colors ${
       badge ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-700 border border-slate-100'
     }`}>
       {value}

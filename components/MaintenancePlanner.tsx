@@ -259,7 +259,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <button 
               onClick={commitAllSchedules}
               disabled={modifiedCount === 0}
-              className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 ${
+              className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-3 shadow-2xl active:scale-95 ${
                 modifiedCount > 0 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
@@ -353,7 +353,7 @@ const MaintenanceCard = React.memo(({
 
   return (
     <div 
-      className={`bg-white p-6 rounded-[2.5rem] border-2 transition-all relative overflow-hidden group flex flex-col ${
+      className={`bg-white p-6 rounded-[2.5rem] border-2 transition-colors relative overflow-hidden group flex flex-col ${
         draft.isModified 
           ? 'border-blue-400 shadow-2xl shadow-blue-500/10 bg-blue-50/10' 
           : 'border-slate-100 shadow-sm hover:border-slate-200'
@@ -388,7 +388,7 @@ const MaintenanceCard = React.memo(({
               <select 
                 value={selectedMonth}
                 onChange={(e) => handleDatePartChange('month', parseInt(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-colors"
               >
                 {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
               </select>
@@ -398,7 +398,7 @@ const MaintenanceCard = React.memo(({
               <select 
                 value={selectedYear}
                 onChange={(e) => handleDatePartChange('year', parseInt(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-colors"
               >
                 {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -413,7 +413,7 @@ const MaintenanceCard = React.memo(({
             <select 
               value={draft.frequency}
               onChange={(e) => onUpdateDraft(device.id, { frequency: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-colors"
             >
               {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
@@ -427,7 +427,7 @@ const MaintenanceCard = React.memo(({
             value={draft.tasks}
             onChange={(e) => onUpdateDraft(device.id, { tasks: e.target.value })}
             placeholder="Describe calibration, cleaning, or parts replacement..."
-            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-medium text-slate-600 min-h-[80px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none placeholder:text-slate-300"
+            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-medium text-slate-600 min-h-[80px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-colors resize-none placeholder:text-slate-300"
           />
         </div>
       </div>

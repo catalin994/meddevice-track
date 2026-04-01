@@ -241,7 +241,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
 };
 
 const TabButton = React.memo(({ active, onClick, label, icon }: any) => (
-  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-400'}`}>{icon}{label}</button>
+  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-400'}`}>{icon}{label}</button>
 ));
 
 const FormField = React.memo(({ label, name, value, onChange, type = "text", required = false }: any) => (

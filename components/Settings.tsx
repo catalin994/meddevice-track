@@ -213,7 +213,7 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
             </pre>
             <button 
               onClick={handleCopySql}
-              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copied' : 'Copy SQL'}

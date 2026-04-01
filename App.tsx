@@ -352,7 +352,7 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
       {!isStandalone && (
-        <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
           <div className="h-full flex flex-col relative">
             <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
             <div className="p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
@@ -422,7 +422,7 @@ const App: React.FC = () => {
               )}
               <div className="h-8 w-px bg-slate-200" />
               {view === 'INVENTORY' && (
-                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
+                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-colors hover:bg-blue-700 hover:-translate-y-0.5">
                   + Register New Asset
                 </button>
               )}
@@ -464,14 +464,14 @@ const App: React.FC = () => {
       </main>
 
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 z-[90] lg:hidden transition-opacity duration-300" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 z-[90] lg:hidden transition-opacity duration-150" onClick={() => setSidebarOpen(false)} />
       )}
     </div>
   );
 };
 
 const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-4 w-full px-4 py-3.5 text-sm font-bold rounded-xl transition-all duration-200 group ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
+  <button onClick={onClick} className={`flex items-center gap-4 w-full px-4 py-3.5 text-sm font-bold rounded-xl transition-colors duration-200 group ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
     <div className={`transition-transform duration-200 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
     <span className="flex-1 text-left tracking-tight">{label}</span>
     {active && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}

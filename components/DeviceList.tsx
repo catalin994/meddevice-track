@@ -66,7 +66,7 @@ const DeviceCard = React.memo(({
       <div className="absolute top-6 left-6 md:static">
         <input 
           type="checkbox" 
-          className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all" 
+          className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-colors" 
           checked={isSelected} 
           onChange={() => onToggleSelection(device.id)} 
         />
@@ -131,7 +131,7 @@ const DeviceCard = React.memo(({
       {/* Actions */}
       <div className="flex md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 w-full md:w-auto justify-center z-[100]">
         <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-slate-200 rounded-2xl transition-colors active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onQuickEdit(e, device)}
           title="Quick Edit"
         >
@@ -139,7 +139,7 @@ const DeviceCard = React.memo(({
           <span className="md:hidden tech-label text-[10px]">Edit</span>
         </button>
         <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 shadow-sm border border-slate-200 rounded-2xl transition-colors active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onDelete(e, device.id)}
           title="Purge Asset"
         >
@@ -311,14 +311,14 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
             <input 
               type="text"
               placeholder="Search registry by name, category, serial, or unit..."
-              className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
+              className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl text-sm font-bold focus:outline-none transition-colors shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
             />
           </div>
           <button 
             onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); resetPage(); }}
-            className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
+            className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-colors shadow-inner flex items-center justify-center"
             title="Reset Filters"
           >
             <RotateCcw className="w-5 h-5" />
