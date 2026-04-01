@@ -251,4 +251,4 @@ const FormField = React.memo(({ label, name, value, onChange, type = "text", req
   </div>
 ));
 
-export default AddDeviceForm;
+export default React.memo(AddDeviceForm);

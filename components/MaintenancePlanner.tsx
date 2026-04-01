@@ -445,4 +445,4 @@ const MaintenanceCard = React.memo(({
   );
 });
 
-export default MaintenancePlanner;
+export default React.memo(MaintenancePlanner);

@@ -758,4 +758,4 @@ const InfoRow = React.memo(({ label, value, badge }: any) => (
   </div>
 ));
 
-export default DeviceDetail;
+export default React.memo(DeviceDetail);

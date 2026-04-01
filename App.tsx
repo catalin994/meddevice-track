@@ -94,6 +94,11 @@ const App: React.FC = () => {
     return devicesMap.get(String(selectedDeviceId).trim()) || null;
   }, [devicesMap, selectedDeviceId]);
 
+  const selectedDeviceTasks = useMemo(() => {
+    if (!selectedDeviceId) return [];
+    return tasks.filter(t => String(t.deviceId).trim() === String(selectedDeviceId).trim());
+  }, [tasks, selectedDeviceId]);
+
   const normalizeDevice = useCallback((d: any): MedicalDevice => {
     const safeId = String(d.id || d.ID || crypto.randomUUID()).trim();
     const files = Array.isArray(d.files) ? d.files : [];
@@ -452,7 +457,7 @@ const App: React.FC = () => {
               }>
                 {mountedViews.has('DASHBOARD') && <div className={view === 'DASHBOARD' ? 'block' : 'hidden'}><Dashboard devices={devices} tasks={tasks} /></div>}
                 {mountedViews.has('INVENTORY') && <div className={view === 'INVENTORY' ? 'block' : 'hidden'}><DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} /></div>}
-                {mountedViews.has('DEVICE_DETAIL') && selectedDevice && <div className={view === 'DEVICE_DETAIL' ? 'block' : 'hidden'}><DeviceDetail device={selectedDevice} allDevices={devices} tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())} onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} onUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddTask={handleUpsertTasks} isStandalone={isStandalone} /></div>}
+                {mountedViews.has('DEVICE_DETAIL') && selectedDevice && <div className={view === 'DEVICE_DETAIL' ? 'block' : 'hidden'}><DeviceDetail device={selectedDevice} allDevices={devices} tasks={selectedDeviceTasks} onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} onUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddTask={handleUpsertTasks} isStandalone={isStandalone} /></div>}
                 {mountedViews.has('TASKS') && <div className={view === 'TASKS' ? 'block' : 'hidden'}><TaskTracker tasks={tasks} devices={devices} onAddTask={handleUpsertTasks} onUpdateTask={handleUpsertTasks} onDeleteTask={handleDeleteTask} /></div>}
                 {mountedViews.has('ADD_DEVICE') && <div className={view === 'ADD_DEVICE' ? 'block' : 'hidden'}><AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} /></div>}
                 {mountedViews.has('PLANNER') && <div className={view === 'PLANNER' ? 'block' : 'hidden'}><MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} /></div>}

@@ -277,4 +277,4 @@ CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WIT
   );
 };
 
-export default Settings;
+export default React.memo(Settings);

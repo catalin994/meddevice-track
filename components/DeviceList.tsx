@@ -407,4 +407,4 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
   );
 };
 
-export default DeviceList;
+export default React.memo(DeviceList);
