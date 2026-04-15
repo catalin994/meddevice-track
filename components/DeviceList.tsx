@@ -4,6 +4,172 @@ import * as XLSX from 'xlsx';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceCategory } from '../types';
 import { Search, Eye, Trash2, Box, FileSpreadsheet, Download, Edit2, X, Check, ChevronDown, Calendar, Info, Filter, PlusCircle, ShieldAlert, Hash, Fingerprint, AlertCircle, ShieldOff, RotateCcw, Layers, Loader2, FileText, Save, Building2, Tag, Plus } from 'lucide-react';
 
+const exportToExcel = (devices: MedicalDevice[]) => {
+  const rows = devices.map((d, i) => ({
+    '#': i + 1,
+    'Device Name': d.name || 'N/A',
+    'Category': d.category || 'N/A',
+    'Manufacturer': d.manufacturer || 'N/A',
+    'Model': d.model || 'N/A',
+    'Serial Number': d.serialNumber || 'N/A',
+    'Department': d.department || 'N/A',
+    'Status': d.status || 'N/A',
+    'Purchase Date': d.purchaseDate || 'N/A',
+    'Warranty Expiration': d.warrantyExpiration || 'N/A',
+    'Next Maintenance': d.nextMaintenanceDate || 'N/A',
+    'CNCAN': d.isCNCAN ? 'Yes' : 'No',
+    'Notes': d.notes || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 4 }, { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 },
+    { wch: 18 }, { wch: 22 }, { wch: 15 }, { wch: 14 }, { wch: 18 },
+    { wch: 18 }, { wch: 8 }, { wch: 40 },
+  ];
+
+  // Bold header row
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  for (let col = range.s.c; col <= range.e.c; col++) {
+    const cellAddr = XLSX.utils.encode_cell({ r: 0, c: col });
+    if (ws[cellAddr]) ws[cellAddr].s = { font: { bold: true } };
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Device Inventory');
+
+  // Summary sheet
+  const statusCounts: Record<string, number> = {};
+  devices.forEach(d => { statusCounts[d.status] = (statusCounts[d.status] || 0) + 1; });
+  const summaryRows = [
+    { 'Report': 'MediTrack Device Inventory Report' },
+    { 'Report': `Generated: ${new Date().toLocaleString()}` },
+    { 'Report': `Total Devices: ${devices.length}` },
+    { 'Report': '' },
+    ...Object.entries(statusCounts).map(([status, count]) => ({ 'Report': `${status}: ${count}` })),
+  ];
+  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{ wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  XLSX.writeFile(wb, `MediTrack_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+const exportToPDF = (devices: MedicalDevice[]) => {
+  const date = new Date().toLocaleString();
+  const statusCounts: Record<string, number> = {};
+  devices.forEach(d => { statusCounts[d.status] = (statusCounts[d.status] || 0) + 1; });
+
+  const statusBadgeColor = (status: string) => {
+    if (status === 'Active') return '#059669';
+    if (status === 'In Maintenance') return '#d97706';
+    if (status === 'Broken') return '#dc2626';
+    return '#64748b';
+  };
+
+  const rows = devices.map((d, i) => `
+    <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+      <td>${i + 1}</td>
+      <td><strong>${d.name || 'N/A'}</strong>${d.isCNCAN ? ' <span class="cncan">CNCAN</span>' : ''}</td>
+      <td>${d.category || 'N/A'}</td>
+      <td>${d.manufacturer || 'N/A'}</td>
+      <td>${d.model || 'N/A'}</td>
+      <td class="mono">${d.serialNumber || 'N/A'}</td>
+      <td>${d.department || 'N/A'}</td>
+      <td><span class="badge" style="background:${statusBadgeColor(d.status)}20;color:${statusBadgeColor(d.status)};border:1px solid ${statusBadgeColor(d.status)}40">${d.status}</span></td>
+      <td>${d.purchaseDate || 'N/A'}</td>
+      <td>${d.nextMaintenanceDate || '—'}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MediTrack Device Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #1e293b; }
+    .header-left h1 { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+    .header-left p { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+    .header-right { text-align: right; font-size: 10px; color: #64748b; }
+    .header-right strong { display: block; font-size: 13px; color: #1e293b; margin-bottom: 2px; }
+    .summary { display: flex; gap: 12px; margin-bottom: 20px; }
+    .stat { flex: 1; padding: 10px 14px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .stat .val { font-size: 20px; font-weight: 900; color: #1e293b; font-family: monospace; }
+    .stat .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    thead tr { background: #1e293b; color: #fff; }
+    thead th { padding: 8px 10px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; white-space: nowrap; }
+    tbody tr.even { background: #f8fafc; }
+    tbody tr.odd { background: #fff; }
+    tbody tr:hover { background: #eff6ff; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .mono { font-family: monospace; font-size: 9px; }
+    .badge { padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    .cncan { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 1px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; text-transform: uppercase; margin-left: 4px; }
+    .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #94a3b8; display: flex; justify-content: space-between; }
+    @media print {
+      body { padding: 0; }
+      @page { margin: 15mm; size: A4 landscape; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>MediTrack &mdash; Device Inventory Report</h1>
+      <p>Fleet Management System &bull; Biomedical Engineering</p>
+    </div>
+    <div class="header-right">
+      <strong>${devices.length} Devices</strong>
+      Generated: ${date}
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><div class="val">${devices.length}</div><div class="lbl">Total Devices</div></div>
+    ${Object.entries(statusCounts).map(([s, c]) => `<div class="stat"><div class="val" style="color:${statusBadgeColor(s)}">${c}</div><div class="lbl">${s}</div></div>`).join('')}
+    <div class="stat"><div class="val">${devices.filter(d => d.isCNCAN).length}</div><div class="lbl">CNCAN Devices</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Device Name</th>
+        <th>Category</th>
+        <th>Manufacturer</th>
+        <th>Model</th>
+        <th>Serial No.</th>
+        <th>Department</th>
+        <th>Status</th>
+        <th>Purchase Date</th>
+        <th>Next PM</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="footer">
+    <span>MediTrack Fleet Registry &mdash; Confidential</span>
+    <span>Page <span class="pageNumber"></span></span>
+  </div>
+
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+};
+
 interface DeviceListProps {
   devices: MedicalDevice[];
   onSelectDevice: (device: MedicalDevice) => void;
@@ -342,19 +508,39 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-8 py-2">
+        <div className="flex items-center justify-between px-8 py-2 flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
               {filteredDevices.length}
             </div>
             <span className="tech-label">Assets Identified</span>
           </div>
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-4">
-               <span className="tech-label text-blue-600 font-black">{selectedIds.size} Selected</span>
-               <button className="px-4 py-2 bg-red-50 text-red-600 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Bulk Purge</button>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <>
+                <span className="tech-label text-blue-600 font-black">{selectedIds.size} Selected</span>
+                <button className="px-4 py-2 bg-red-50 text-red-600 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Bulk Purge</button>
+              </>
+            )}
+            <button
+              onClick={() => exportToExcel(filteredDevices)}
+              disabled={filteredDevices.length === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition active:scale-95 shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Export to Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Excel
+            </button>
+            <button
+              onClick={() => exportToPDF(filteredDevices)}
+              disabled={filteredDevices.length === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition active:scale-95 shadow-lg shadow-red-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Export to PDF"
+            >
+              <FileText className="w-4 h-4" />
+              PDF
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
