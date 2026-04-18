@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceCategory } from '../types';
-import { Search, Eye, Trash2, Box, FileSpreadsheet, Download, Edit2, X, Check, ChevronDown, Calendar, Info, Filter, PlusCircle, ShieldAlert, Hash, Fingerprint, AlertCircle, ShieldOff, RotateCcw, Layers, Loader2, FileText, Save, Building2, Tag, Plus } from 'lucide-react';
+import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const exportToExcel = async (devices: MedicalDevice[]) => {
   const ExcelJS = (await import('exceljs')).default;
@@ -10,7 +10,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   wb.creator = 'MediTrack';
   wb.created = new Date();
 
-  const TOTAL_COLS = 13;
+  const TOTAL_COLS = 14;
   const statusColor = (status: string) => {
     if (status === 'Active') return 'FF059669';
     if (status === 'In Maintenance') return 'FFD97706';
@@ -41,6 +41,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
     { key: 'nextpm',      width: 16 },
     { key: 'cncan',       width: 8  },
     { key: 'notes',       width: 32 },
+    { key: 'id',          width: 28 },
   ];
 
   // Title row
@@ -111,7 +112,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ws.addRow([]).height = 8;
 
   // Header row
-  const headers = ['#', 'Device Name', 'Category', 'Manufacturer', 'Model', 'Serial No.', 'Department', 'Status', 'Purchase Date', 'Warranty Exp.', 'Next PM', 'CNCAN', 'Notes'];
+  const headers = ['#', 'Device Name', 'Category', 'Manufacturer', 'Model', 'Serial No.', 'Department', 'Status', 'Purchase Date', 'Warranty Exp.', 'Next PM', 'CNCAN', 'Notes', 'ID (do not edit)'];
   const headerRow = ws.addRow(headers);
   headerRow.height = 30;
   headerRow.eachCell(cell => {
@@ -151,6 +152,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
       device.nextMaintenanceDate || '—',
       device.isCNCAN ? 'YES' : 'NO',
       device.notes || '',
+      device.id,
     ]);
     row.height = 20;
 
@@ -168,6 +170,8 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
         cell.style = { font: { bold: true, size: 8, color: { argb: device.isCNCAN ? 'FFF59E0B' : 'FF94A3B8' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else if (col >= 9 && col <= 11) {
         cell.style = { font: { size: 8, color: { argb: 'FF64748B' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
+      } else if (col === 14) {
+        cell.style = { font: { size: 7, name: 'Courier New', color: { argb: 'FFCBD5E1' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } }, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else {
         cell.style = { font: { size: 9 }, fill, border, alignment: { vertical: 'middle' } };
       }
@@ -243,6 +247,104 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   a.download = `MediTrack_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
+};
+
+type ImportResult = { added: number; updated: number; skipped: number; errors: string[] };
+
+const importFromExcel = (
+  file: File,
+  existingDevices: MedicalDevice[],
+  onDone: (devices: MedicalDevice[], result: ImportResult) => void
+) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer);
+      const wb = XLSX.read(data, { type: 'array' });
+
+      // Find "Device Inventory" sheet, fall back to first sheet
+      const sheetName = wb.SheetNames.includes('Device Inventory') ? 'Device Inventory' : wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Find the header row: look for a row containing "Device Name"
+      const headerRowIdx = rows.findIndex(r => r.some((c: any) => String(c).trim() === 'Device Name'));
+      if (headerRowIdx === -1) {
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Could not find the header row. Make sure you are importing a MediTrack Excel export.'] });
+        return;
+      }
+
+      const headers: string[] = rows[headerRowIdx].map((c: any) => String(c).trim());
+      const col = (name: string) => headers.findIndex(h => h === name);
+
+      const idCol        = col('ID (do not edit)');
+      const nameCol      = col('Device Name');
+      const catCol       = col('Category');
+      const mfrCol       = col('Manufacturer');
+      const modelCol     = col('Model');
+      const snCol        = col('Serial No.');
+      const deptCol      = col('Department');
+      const statusCol    = col('Status');
+      const purchaseCol  = col('Purchase Date');
+      const warrantyCol  = col('Warranty Exp.');
+      const nextPMCol    = col('Next PM');
+      const cncanCol     = col('CNCAN');
+      const notesCol     = col('Notes');
+
+      if (nameCol === -1) {
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Column "Device Name" not found in the file.'] });
+        return;
+      }
+
+      const existingMap = new Map(existingDevices.map(d => [d.id, d]));
+      const result: ImportResult = { added: 0, updated: 0, skipped: 0, errors: [] };
+      const upserted: MedicalDevice[] = [];
+
+      const dataRows = rows.slice(headerRowIdx + 1);
+      for (const row of dataRows) {
+        const name = String(row[nameCol] ?? '').trim();
+        if (!name || name === 'N/A') { result.skipped++; continue; }
+
+        const rawId    = idCol !== -1 ? String(row[idCol] ?? '').trim() : '';
+        const status   = String(row[statusCol] ?? 'Active').trim() as DeviceStatus;
+        const category = String(row[catCol]     ?? 'Altele').trim();
+        const purchase = String(row[purchaseCol] ?? '').trim();
+
+        const existing = rawId ? existingMap.get(rawId) : undefined;
+
+        const device: MedicalDevice = {
+          ...(existing ?? {
+            id: rawId || `DEV-IMP-${crypto.randomUUID()}`,
+            maintenanceHistory: [],
+            contracts: [],
+            files: [],
+            components: [],
+          }),
+          name,
+          category,
+          manufacturer:        String(row[mfrCol]      ?? '').trim() || existing?.manufacturer || '',
+          model:               String(row[modelCol]    ?? '').trim() || existing?.model || '',
+          serialNumber:        String(row[snCol]       ?? '').trim() || existing?.serialNumber || '',
+          department:          String(row[deptCol]     ?? 'Unassigned').trim(),
+          status:              Object.values(DeviceStatus).includes(status) ? status : DeviceStatus.ACTIVE,
+          purchaseDate:        purchase || existing?.purchaseDate || new Date().toISOString().split('T')[0],
+          warrantyExpiration:  String(row[warrantyCol] ?? '').trim().replace('—', '') || existing?.warrantyExpiration,
+          nextMaintenanceDate: String(row[nextPMCol]   ?? '').trim().replace('—', '') || (purchase ? calculateNextMaintenanceDate(purchase, category) : existing?.nextMaintenanceDate),
+          isCNCAN:             cncanCol !== -1 ? String(row[cncanCol]).trim().toUpperCase() === 'YES' : (existing?.isCNCAN ?? false),
+          notes:               notesCol !== -1 ? String(row[notesCol] ?? '').trim() : (existing?.notes ?? ''),
+          updated_at:          new Date().toISOString(),
+        } as MedicalDevice;
+
+        upserted.push(device);
+        if (existing) result.updated++; else result.added++;
+      }
+
+      onDone(upserted, result);
+    } catch (err: any) {
+      onDone([], { added: 0, updated: 0, skipped: 0, errors: [`Parse error: ${err.message}`] });
+    }
+  };
+  reader.readAsArrayBuffer(file);
 };
 
 const exportToPDF = (devices: MedicalDevice[]) => {
@@ -513,6 +615,8 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingDevice, setEditingDevice] = useState<MedicalDevice | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   
   const [quickEditForm, setQuickEditForm] = useState({
     name: '',
@@ -595,6 +699,17 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       return next;
     });
   }, []);
+
+  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    importFromExcel(file, devices, (upserted, result) => {
+      if (upserted.length > 0) onBulkUpdate(upserted);
+      setImportResult(result);
+      setTimeout(() => setImportResult(null), 6000);
+    });
+    e.target.value = '';
+  }, [devices, onBulkUpdate]);
 
   return (
     <div className="space-y-8 pb-24 relative animate-slide-up">
@@ -728,8 +843,35 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
               <FileText className="w-4 h-4" />
               PDF
             </button>
+            <button
+              onClick={() => importInputRef.current?.click()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-600/20"
+              title="Import from Excel"
+            >
+              <Upload className="w-4 h-4" />
+              Import
+            </button>
+            <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
           </div>
         </div>
+
+        {importResult && (
+          <div className={`mx-2 p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${importResult.errors.length > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            {importResult.errors.length > 0
+              ? <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              : <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            }
+            <div className="flex-1">
+              {importResult.errors.length > 0
+                ? <p className="text-xs font-bold text-red-700">{importResult.errors[0]}</p>
+                : <p className="text-xs font-bold text-emerald-700">
+                    Import complete — <span className="text-emerald-600">{importResult.added} added</span>, <span className="text-blue-600">{importResult.updated} updated</span>{importResult.skipped > 0 ? `, ${importResult.skipped} skipped` : ''}
+                  </p>
+              }
+            </div>
+            <button onClick={() => setImportResult(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4">
           {filteredDevices.map((device) => (
