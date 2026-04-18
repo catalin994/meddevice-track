@@ -607,7 +607,7 @@ const DeviceCard = React.memo(({
   );
 });
 
-const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '' }) => {
+const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '' }) => {
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>('ALL');
   const [filterDept, setFilterDept] = useState<string | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
@@ -617,6 +617,7 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
   const [editingDevice, setEditingDevice] = useState<MedicalDevice | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const importTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [quickEditForm, setQuickEditForm] = useState({
     name: '',
@@ -706,7 +707,8 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
     importFromExcel(file, devices, (upserted, result) => {
       if (upserted.length > 0) onBulkUpdate(upserted);
       setImportResult(result);
-      setTimeout(() => setImportResult(null), 6000);
+      if (importTimeoutRef.current) clearTimeout(importTimeoutRef.current);
+      importTimeoutRef.current = setTimeout(() => setImportResult(null), 6000);
     });
     e.target.value = '';
   }, [devices, onBulkUpdate]);
@@ -904,6 +906,6 @@ const DeviceList: React.FC<DeviceListProps> = ({ devices, onSelectDevice, onUpda
       </div>
     </div>
   );
-};
+});
 
 export default DeviceList;

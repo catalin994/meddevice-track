@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         modulePreload: {
-          resolveDependencies: (_url, deps) => deps.filter(d => !d.includes('exceljs')),
+          resolveDependencies: (_url, deps) => deps.filter(d => !d.includes('exceljs') && !d.includes('recharts')),
         },
         rollupOptions: {
           output: {

@@ -41,19 +41,25 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
 
-  // Initialize drafts with existing data or defaults
+  // Only add drafts for newly added devices; preserve existing user edits
   useEffect(() => {
-    const initialDrafts: Record<string, ScheduleDraft> = {};
-    devices.forEach(device => {
-      initialDrafts[device.id] = {
-        deviceId: device.id,
-        nextScheduledDate: device.nextMaintenanceDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        frequency: 'Annually', // Default
-        tasks: 'Standard preventive maintenance inspection.',
-        isModified: false
-      };
+    setDrafts(prev => {
+      let changed = false;
+      const next = { ...prev };
+      devices.forEach(device => {
+        if (!next[device.id]) {
+          next[device.id] = {
+            deviceId: device.id,
+            nextScheduledDate: device.nextMaintenanceDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            frequency: 'Annually',
+            tasks: 'Standard preventive maintenance inspection.',
+            isModified: false
+          };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
     });
-    setDrafts(initialDrafts);
   }, [devices]);
 
   const handleUpdateDraft = useCallback((deviceId: string, updates: Partial<ScheduleDraft>) => {

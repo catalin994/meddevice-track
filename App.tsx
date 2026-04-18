@@ -338,6 +338,13 @@ const App: React.FC = () => {
     }
   }, [isSupabaseConfigured]);
 
+  const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
+    setSelectedDeviceId(d.id);
+    setView('DEVICE_DETAIL');
+  }, []);
+
+  const handleAddDevice = useCallback(() => setView('ADD_DEVICE'), []);
+
   const handleDeleteTask = useCallback(async (id: string) => {
     if (!id) return;
     const safeId = String(id).trim();
@@ -458,7 +465,7 @@ const App: React.FC = () => {
                 </div>
               }>
                 {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} />}
-                {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={(d) => { setSelectedDeviceId(d.id); setView('DEVICE_DETAIL'); }} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={() => setView('ADD_DEVICE')} />}
+                {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={handleSelectDevice} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={handleAddDevice} />}
                 {view === 'DEVICE_DETAIL' && selectedDevice && (
                   <DeviceDetail 
                     device={selectedDevice} 
