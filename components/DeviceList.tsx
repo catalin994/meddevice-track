@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
 import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 
@@ -257,8 +256,9 @@ const importFromExcel = (
   onDone: (devices: MedicalDevice[], result: ImportResult) => void
 ) => {
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
+      const XLSX = await import('xlsx');
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
       const wb = XLSX.read(data, { type: 'array' });
 
