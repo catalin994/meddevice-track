@@ -74,6 +74,7 @@ const App: React.FC = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('--:--');
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -107,14 +108,6 @@ const App: React.FC = () => {
   const normalizeDevice = useCallback((d: any): MedicalDevice => {
     const safeId = String(d.id || d.ID || crypto.randomUUID()).trim();
     const files = Array.isArray(d.files) ? d.files : [];
-    
-    // Debug large files
-    if (files.length > 0) {
-      const totalSize = files.reduce((acc: number, f: any) => acc + (f.url?.length || 0), 0);
-      if (totalSize > 1024 * 1024) {
-        console.log(`[App] Device ${safeId} has large file payload: ~${Math.round(totalSize / 1024)}KB`);
-      }
-    }
 
     return {
       ...d,
@@ -250,6 +243,7 @@ const App: React.FC = () => {
           }
 
           setSyncStatus('cloud');
+          setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         } catch (e) {
           console.error("[App] Cloud sync error:", e);
           setSyncStatus('error');
@@ -298,12 +292,10 @@ const App: React.FC = () => {
 
     setIsSyncing(true);
     try {
-      console.log(`[Registry] Committing ${payload.length} items to local and cloud storage...`);
       await saveDevicesToDB(payload);
       if (isSupabaseConfigured && supabase) {
         const { error } = await supabase.from('devices').upsert(payload, { onConflict: 'id' });
         if (error) throw error;
-        console.log(`[Registry] Cloud sync successful.`);
       }
     } catch (err) {
       console.error("[Registry] Sync deferred:", err);
@@ -406,7 +398,7 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Syncing...'}</p>
-                      <p className="text-[10px] font-medium text-slate-500">Last: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-[10px] font-medium text-slate-500">Last: {lastSyncTime}</p>
                     </div>
                   </div>
                   <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-Sync Engine</button>

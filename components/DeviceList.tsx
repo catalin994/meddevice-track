@@ -612,7 +612,14 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterDept, setFilterDept] = useState<string | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
-  
+  const [isFullyRendered, setIsFullyRendered] = useState(false);
+
+  // Render first 20 cards immediately; remaining after first paint so the view opens fast
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsFullyRendered(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingDevice, setEditingDevice] = useState<MedicalDevice | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -882,8 +889,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {filteredDevices.map((device) => (
-            <DeviceCard 
+          {(isFullyRendered ? filteredDevices : filteredDevices.slice(0, 20)).map((device) => (
+            <DeviceCard
               key={device.id}
               device={device}
               isSelected={selectedIds.has(device.id)}
