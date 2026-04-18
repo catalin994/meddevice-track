@@ -19,11 +19,13 @@ const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
 
 const prefetchModules = () => {
-  // Use requestIdleCallback if available, otherwise setTimeout
-  const schedule = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 1000));
-  
+  // In dev mode Vite serves unminified deps — prefetching causes the browser to
+  // parse 3-4 MB of JS (recharts, xlsx, exceljs…) right after load, causing jank.
+  // In production chunks are minified and cached; prefetch is safe there.
+  if (import.meta.env.DEV) return;
+
+  const schedule = (window as any).requestIdleCallback || ((cb: any) => setTimeout(cb, 2000));
   schedule(() => {
-    // Stagger imports to avoid network congestion
     const imports = [
       importDashboard,
       importDeviceList,
@@ -33,10 +35,7 @@ const prefetchModules = () => {
       importSettings,
       importTaskTracker
     ];
-    
-    imports.forEach((imp, index) => {
-      setTimeout(() => imp(), index * 200);
-    });
+    imports.forEach((imp, index) => setTimeout(() => imp(), index * 300));
   });
 };
 

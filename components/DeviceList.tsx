@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
 import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -633,7 +633,13 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     return combined;
   }, [devices]);
 
-  const effectiveSearch = (localSearch || externalSearch).toLowerCase().trim();
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(localSearch), 200);
+    return () => clearTimeout(t);
+  }, [localSearch]);
+
+  const effectiveSearch = (debouncedSearch || externalSearch).toLowerCase().trim();
 
   const filteredDevices = useMemo(() => {
     if (!devices) return [];
