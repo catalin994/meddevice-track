@@ -11,7 +11,13 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react(), tailwindcss()],
+      optimizeDeps: {
+        include: ['exceljs'],
+      },
       build: {
+        modulePreload: {
+          resolveDependencies: (_url, deps) => deps.filter(d => !d.includes('exceljs')),
+        },
         rollupOptions: {
           output: {
             manualChunks: {
@@ -21,6 +27,7 @@ export default defineConfig(({ mode }) => {
               'vendor-icons': ['lucide-react'],
               'vendor-db': ['@supabase/supabase-js'],
               'vendor-ai': ['@google/genai'],
+              'vendor-exceljs': ['exceljs'],
             }
           }
         },
