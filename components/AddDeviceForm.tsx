@@ -1,9 +1,7 @@
 
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
 import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 
 interface AddDeviceFormProps {
   devices: MedicalDevice[];
@@ -151,6 +149,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     setIsProcessing(true);
     const reader = new FileReader();
     reader.onload = async (evt) => {
+      const [XLSX, { GoogleGenAI }] = await Promise.all([import('xlsx'), import('@google/genai')]);
       const wb = XLSX.read(evt.target?.result, { type: 'binary' });
       const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });

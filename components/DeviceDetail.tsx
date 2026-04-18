@@ -6,7 +6,7 @@ import {
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock, 
   ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer
 } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
+const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 
 interface DeviceDetailProps {
   device: MedicalDevice;
@@ -630,21 +630,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-inner border border-slate-100 inline-block mx-auto relative group">
                    <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
-                   <QRCodeCanvas 
-                      id="device-qr-code"
-                      value={`${window.location.origin}?view=DEVICE_DETAIL&id=${device.id}&standalone=true`}
-                      size={240}
-                      level="H"
-                      includeMargin={true}
-                      imageSettings={{
-                        src: "https://picsum.photos/seed/med/64/64",
-                        x: undefined,
-                        y: undefined,
-                        height: 40,
-                        width: 40,
-                        excavate: true,
-                      }}
-                   />
+                   <React.Suspense fallback={<div className="w-60 h-60 animate-pulse bg-slate-100 rounded-2xl" />}>
+                     <LazyQRCode
+                        id="device-qr-code"
+                        value={`${window.location.origin}?view=DEVICE_DETAIL&id=${device.id}&standalone=true`}
+                        size={240}
+                        level="H"
+                        includeMargin={true}
+                        imageSettings={{ src: "https://picsum.photos/seed/med/64/64", x: undefined, y: undefined, height: 40, width: 40, excavate: true }}
+                     />
+                   </React.Suspense>
                 </div>
 
                 <div className="space-y-6">
