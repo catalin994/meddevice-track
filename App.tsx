@@ -357,55 +357,15 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
       {!isStandalone && (
-        <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-          <div className="h-full flex flex-col relative">
-            <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
-            <div className="p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
-              <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20">
-                <Stethoscope className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">MediTrack</h1>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Fleet Registry v3.1</p>
-              </div>
-            </div>
-            
-            <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar bg-white">
-              <div className="px-3 mb-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operations</p>
-              </div>
-              <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
-              <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
-              <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
-              <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
-              
-              <div className="px-3 mt-8 mb-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p>
-              </div>
-              <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
-            </nav>
-            
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50">
-               <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cloud Sync</p>
-                    <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4 animate-spin" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Syncing...'}</p>
-                      <p className="text-[10px] font-medium text-slate-500">Last: {lastSyncTime}</p>
-                    </div>
-                  </div>
-                  <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-Sync Engine</button>
-               </div>
-            </div>
-          </div>
-        </aside>
+        <AppSidebar
+          isSidebarOpen={isSidebarOpen}
+          view={view}
+          setView={setView}
+          setSidebarOpen={setSidebarOpen}
+          syncStatus={syncStatus}
+          lastSyncTime={lastSyncTime}
+          loadAndSync={loadAndSync}
+        />
       )}
 
       <main className={`flex-1 flex flex-col overflow-hidden relative ${isStandalone ? 'bg-white' : ''}`}>
@@ -500,6 +460,55 @@ const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
     <span className="flex-1 text-left tracking-tight">{label}</span>
     {active && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}
   </button>
+));
+
+const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync }: {
+  isSidebarOpen: boolean; view: string; setView: (v: any) => void;
+  setSidebarOpen: (v: boolean) => void; syncStatus: string;
+  lastSyncTime: string; loadAndSync: () => void;
+}) => (
+  <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+    <div className="h-full flex flex-col relative">
+      <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
+      <div className="p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
+        <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20">
+          <Stethoscope className="w-6 h-6 text-blue-400" />
+        </div>
+        <div>
+          <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">MediTrack</h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Fleet Registry v3.1</p>
+        </div>
+      </div>
+      <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar bg-white">
+        <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operations</p></div>
+        <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
+        <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
+        <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
+        <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
+        <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p></div>
+        <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
+      </nav>
+      <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cloud Sync</p>
+            <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4 animate-spin" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Syncing...'}</p>
+              <p className="text-[10px] font-medium text-slate-500">Last: {lastSyncTime}</p>
+            </div>
+          </div>
+          <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-Sync Engine</button>
+        </div>
+      </div>
+    </div>
+  </aside>
 ));
 
 export default App;

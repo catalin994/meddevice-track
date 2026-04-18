@@ -9,6 +9,14 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        warmup: {
+          clientFiles: [
+            './App.tsx',
+            './components/DeviceList.tsx',
+            './components/Dashboard.tsx',
+            './components/DeviceDetail.tsx',
+          ],
+        },
       },
       plugins: [react(), tailwindcss()],
       optimizeDeps: {

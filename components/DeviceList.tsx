@@ -515,8 +515,9 @@ const DeviceCard = React.memo(({
   onDelete: (e: React.MouseEvent, id: string) => void 
 }) => {
   return (
-    <div 
-      className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
+    <div
+      className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 160px' } as React.CSSProperties}
     >
       {/* Selection Checkbox */}
       <div className="absolute top-6 left-6 md:static">
