@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -9,8 +9,10 @@ const importAddDeviceForm = () => import('./components/AddDeviceForm');
 const importMaintenancePlanner = () => import('./components/MaintenancePlanner');
 const importSettings = () => import('./components/Settings');
 const importTaskTracker = () => import('./components/TaskTracker');
+const importQRScanner = () => import('./components/QRScanner');
 
 const Dashboard = lazy(importDashboard);
+const QRScanner = lazy(importQRScanner);
 const DeviceList = lazy(importDeviceList);
 const DeviceDetail = lazy(importDeviceDetail);
 const AddDeviceForm = lazy(importAddDeviceForm);
@@ -75,6 +77,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('--:--');
+  const [showScanner, setShowScanner] = useState(false);
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -329,6 +332,12 @@ const App: React.FC = () => {
     }
   }, [isSupabaseConfigured]);
 
+  const handleQRScan = useCallback((deviceId: string) => {
+    setShowScanner(false);
+    setSelectedDeviceId(deviceId);
+    setView('DEVICE_DETAIL');
+  }, []);
+
   const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
     setSelectedDeviceId(d.id);
     setView('DEVICE_DETAIL');
@@ -386,6 +395,13 @@ const App: React.FC = () => {
                 </div>
               )}
               <div className="h-8 w-px bg-slate-200" />
+              <button
+                onClick={() => setShowScanner(true)}
+                className="p-3 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
+                title="Scan device QR code"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
               {view === 'INVENTORY' && (
                 <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
                   + Register New Asset
@@ -449,6 +465,12 @@ const App: React.FC = () => {
 
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-slate-900/40 z-[90] lg:hidden transition-opacity duration-300" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {showScanner && (
+        <Suspense fallback={null}>
+          <QRScanner onScan={handleQRScan} onClose={() => setShowScanner(false)} />
+        </Suspense>
       )}
     </div>
   );
