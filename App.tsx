@@ -397,10 +397,10 @@ const App: React.FC = () => {
               <div className="h-8 w-px bg-slate-200" />
               <button
                 onClick={() => setShowScanner(true)}
-                className="p-3 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
+                className="p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
                 title="Scan device QR code"
               >
-                <QrCode className="w-5 h-5" />
+                <QrCode className="w-7 h-7" />
               </button>
               {view === 'INVENTORY' && (
                 <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
