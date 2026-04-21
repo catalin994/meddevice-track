@@ -26,6 +26,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
 
     const start = async () => {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw Object.assign(new Error(), { name: 'NotSupportedError' });
+        }
         // Try back camera first (mobile), fall back to any camera
         let stream: MediaStream;
         try {
@@ -40,9 +43,20 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
           await videoRef.current.play();
           setStatus('scanning');
         }
-      } catch {
+      } catch (err: any) {
         if (active) {
-          setErrorMsg('Camera access was denied. Please allow camera permission and try again.');
+          const name = err?.name || '';
+          if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+            setErrorMsg('Camera permission denied. Click the camera icon in your browser address bar, set it to Allow, then try again.');
+          } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+            setErrorMsg('No camera found on this device.');
+          } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+            setErrorMsg('Camera is in use by another app. Close other apps using the camera and try again.');
+          } else if (name === 'NotSupportedError') {
+            setErrorMsg('Your browser does not support camera access. Use Chrome or Safari, and make sure the page is on HTTPS or localhost.');
+          } else {
+            setErrorMsg(`Camera error (${name || err?.message || 'unknown'}). Make sure camera permission is allowed and the page is on HTTPS or localhost.`);
+          }
           setStatus('error');
         }
       }
