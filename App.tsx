@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -10,9 +10,11 @@ const importMaintenancePlanner = () => import('./components/MaintenancePlanner')
 const importSettings = () => import('./components/Settings');
 const importTaskTracker = () => import('./components/TaskTracker');
 const importQRScanner = () => import('./components/QRScanner');
+const importDocumentScanner = () => import('./components/DocumentScanner');
 
 const Dashboard = lazy(importDashboard);
 const QRScanner = lazy(importQRScanner);
+const DocumentScanner = lazy(importDocumentScanner);
 const DeviceList = lazy(importDeviceList);
 const DeviceDetail = lazy(importDeviceDetail);
 const AddDeviceForm = lazy(importAddDeviceForm);
@@ -78,6 +80,7 @@ const App: React.FC = () => {
   const [isStandalone, setIsStandalone] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('--:--');
   const [showScanner, setShowScanner] = useState(false);
+  const [showDocScanner, setShowDocScanner] = useState(false);
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -338,6 +341,13 @@ const App: React.FC = () => {
     setView('DEVICE_DETAIL');
   }, []);
 
+  const handleDocScanSave = useCallback(async (deviceId: string, file: import('./types').DeviceFile) => {
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) return;
+    const updated = { ...device, files: [...(device.files || []), file] };
+    await handleUpsertDevices(updated);
+  }, [devices, handleUpsertDevices]);
+
   const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
     setSelectedDeviceId(d.id);
     setView('DEVICE_DETAIL');
@@ -395,6 +405,13 @@ const App: React.FC = () => {
                 </div>
               )}
               <div className="h-8 w-px bg-slate-200" />
+              <button
+                onClick={() => setShowDocScanner(true)}
+                className="p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
+                title="Scan document"
+              >
+                <ScanLine className="w-7 h-7" />
+              </button>
               <button
                 onClick={() => setShowScanner(true)}
                 className="p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
@@ -470,6 +487,12 @@ const App: React.FC = () => {
       {showScanner && (
         <Suspense fallback={null}>
           <QRScanner onScan={handleQRScan} onClose={() => setShowScanner(false)} />
+        </Suspense>
+      )}
+
+      {showDocScanner && (
+        <Suspense fallback={null}>
+          <DocumentScanner devices={devices} onSave={handleDocScanSave} onClose={() => setShowDocScanner(false)} />
         </Suspense>
       )}
     </div>
