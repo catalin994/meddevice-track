@@ -21,18 +21,24 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const [status, setStatus] = useState<ScanStatus>('camera');
   const [inputMode, setInputMode] = useState<InputMode>('camera');
   const [capturedImage, setCapturedImage] = useState('');
-  const [pdfData, setPdfData] = useState('');       // base64 PDF
+  const [pdfData, setPdfData] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatusText, setOcrStatusText] = useState('');
-  const [matchedDevice, setMatchedDevice] = useState<MedicalDevice | null>(null);
+
+  // Multi-device support
+  const [matchedDevices, setMatchedDevices] = useState<MedicalDevice[]>([]);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set());
+
+  // Single-device fallback (manual search)
   const [selectedDevice, setSelectedDevice] = useState<MedicalDevice | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MedicalDevice[]>([]);
+
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState<DeviceFile['type']>('report');
   const [errorMsg, setErrorMsg] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
   const [cameraError, setCameraError] = useState('');
 
   const stopCamera = useCallback(() => {
@@ -67,26 +73,35 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     return () => { active = false; stopCamera(); };
   }, [startCamera, stopCamera]);
 
-  // Match serial numbers from text against device list
-  const matchDevice = useCallback((text: string): MedicalDevice | null => {
+  // Find ALL matching devices in extracted text
+  const matchAllDevices = useCallback((text: string): MedicalDevice[] => {
+    const lower = text.toLowerCase();
     const sorted = [...devices]
       .filter(d => d.serialNumber && d.serialNumber !== 'N/A' && d.serialNumber.length >= 3)
       .sort((a, b) => b.serialNumber.length - a.serialNumber.length);
-    return sorted.find(d => text.toLowerCase().includes(d.serialNumber.toLowerCase().trim())) || null;
+
+    const seen = new Set<string>();
+    const found: MedicalDevice[] = [];
+    for (const d of sorted) {
+      if (!seen.has(d.id) && lower.includes(d.serialNumber.toLowerCase().trim())) {
+        found.push(d);
+        seen.add(d.id);
+      }
+    }
+    return found;
   }, [devices]);
 
   const finishProcessing = useCallback((text: string, fileLabel: string) => {
-    const found = matchDevice(text);
-    if (found) {
-      setMatchedDevice(found);
-      setSelectedDevice(found);
-      setDocName(`${fileLabel}_${found.serialNumber}_${new Date().toISOString().split('T')[0]}`);
+    const found = matchAllDevices(text);
+    setDocName(fileLabel + '_' + new Date().toISOString().split('T')[0]);
+    if (found.length > 0) {
+      setMatchedDevices(found);
+      setSelectedDeviceIds(new Set(found.map(d => d.id)));
       setStatus('review');
     } else {
-      setDocName(`${fileLabel}_${new Date().toISOString().split('T')[0]}`);
       setStatus('manual');
     }
-  }, [matchDevice]);
+  }, [matchAllDevices]);
 
   // Camera capture + Tesseract OCR
   const captureAndProcess = useCallback(async () => {
@@ -120,7 +135,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     }
   }, [stopCamera, finishProcessing]);
 
-  // PDF upload + PDF.js text extraction
+  // PDF upload + PDF.js text extraction (all pages, no early exit)
   const handlePdfUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || file.type !== 'application/pdf') return;
@@ -135,7 +150,6 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     try {
       const arrayBuffer = await file.arrayBuffer();
 
-      // Store as base64 for saving
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -143,7 +157,6 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       });
       setPdfData(base64);
 
-      // Extract text with PDF.js
       setOcrStatusText('Extracting text from PDF...');
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
@@ -152,27 +165,31 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       const totalPages = pdf.numPages;
       let fullText = '';
 
+      // Extract ALL pages — no early exit, so multi-report PDFs are fully scanned
       for (let i = 1; i <= totalPages; i++) {
         setOcrStatusText(`Extracting page ${i} of ${totalPages}...`);
         setOcrProgress(Math.round((i / totalPages) * 100));
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const pageText = content.items.map((item: any) => item.str).join(' ');
-        fullText += pageText + '\n';
-
-        // Early exit if we already found a match
-        if (matchDevice(fullText)) break;
+        fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
       }
 
       finishProcessing(fullText, file.name.replace('.pdf', ''));
-    } catch (err) {
+    } catch {
       setDocName(`PDF_${new Date().toISOString().split('T')[0]}`);
       setStatus('manual');
     }
 
-    // Reset input so same file can be re-uploaded
     if (pdfInputRef.current) pdfInputRef.current.value = '';
-  }, [stopCamera, matchDevice, finishProcessing]);
+  }, [stopCamera, finishProcessing]);
+
+  const toggleDeviceSelection = useCallback((id: string) => {
+    setSelectedDeviceIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleSearch = useCallback((q: string) => {
     setSearchQuery(q);
@@ -188,20 +205,31 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   }, [devices]);
 
   const handleSave = useCallback(async () => {
-    if (!selectedDevice) return;
     const fileUrl = inputMode === 'pdf' ? pdfData : capturedImage;
     if (!fileUrl) return;
+
+    // Devices to save to: from multi-match or manual single selection
+    const targetDevices = matchedDevices.length > 0
+      ? matchedDevices.filter(d => selectedDeviceIds.has(d.id))
+      : selectedDevice ? [selectedDevice] : [];
+
+    if (targetDevices.length === 0) return;
     setStatus('saving');
-    const file: DeviceFile = {
-      id: crypto.randomUUID(),
-      name: docName || `Doc_${selectedDevice.serialNumber}_${new Date().toISOString().split('T')[0]}`,
-      type: docType,
-      url: fileUrl,
-      dateAdded: new Date().toISOString().split('T')[0],
-    };
-    await onSave(selectedDevice.id, file);
+
+    for (const device of targetDevices) {
+      const file: DeviceFile = {
+        id: crypto.randomUUID(),
+        name: docName || `Doc_${device.serialNumber}_${new Date().toISOString().split('T')[0]}`,
+        type: docType,
+        url: fileUrl,
+        dateAdded: new Date().toISOString().split('T')[0],
+      };
+      await onSave(device.id, file);
+    }
+
+    setSavedCount(targetDevices.length);
     setStatus('done');
-  }, [selectedDevice, inputMode, pdfData, capturedImage, docName, docType, onSave]);
+  }, [inputMode, pdfData, capturedImage, matchedDevices, selectedDeviceIds, selectedDevice, docName, docType, onSave]);
 
   const handleDownload = useCallback(() => {
     const url = inputMode === 'pdf' ? pdfData : capturedImage;
@@ -213,33 +241,31 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   }, [inputMode, pdfData, capturedImage, docName]);
 
   const handleEmail = useCallback(() => {
-    if (!selectedDevice) return;
+    const targets = matchedDevices.filter(d => selectedDeviceIds.has(d.id));
     handleDownload();
-    const subject = encodeURIComponent(`Document — ${selectedDevice.name} (SN: ${selectedDevice.serialNumber})`);
-    const body = encodeURIComponent(
-      `Document details:\n\nDevice: ${selectedDevice.name}\nSerial Number: ${selectedDevice.serialNumber}\nDepartment: ${selectedDevice.department}\nDate: ${new Date().toLocaleDateString()}\n\nThe file has been downloaded to your device — please attach it to this email.`
-    );
+    const deviceList = targets.map(d => `• ${d.name} (SN: ${d.serialNumber})`).join('\n');
+    const subject = encodeURIComponent(`Document — ${targets.length} device(s)`);
+    const body = encodeURIComponent(`Document saved for the following device(s):\n\n${deviceList || 'See file'}\n\nDate: ${new Date().toLocaleDateString()}\n\nThe file has been downloaded — please attach it to this email.`);
     window.open(`mailto:?subject=${subject}&body=${body}`);
-    setEmailSent(true);
-  }, [selectedDevice, handleDownload]);
+  }, [matchedDevices, selectedDeviceIds, handleDownload]);
 
   const handleRetry = useCallback(() => {
     setCapturedImage('');
     setPdfData('');
     setPdfFileName('');
-    setMatchedDevice(null);
+    setMatchedDevices([]);
+    setSelectedDeviceIds(new Set());
     setSelectedDevice(null);
     setSearchQuery('');
     setSearchResults([]);
     setDocName('');
-    setEmailSent(false);
+    setSavedCount(0);
     setOcrProgress(0);
     setCameraError('');
     setStatus('camera');
     startCamera();
   }, [startCamera]);
 
-  // Shared device selection snippet
   const DeviceFields = () => (
     <div className="space-y-3">
       <div>
@@ -256,6 +282,17 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
         </select>
       </div>
     </div>
+  );
+
+  const FilePreview = () => (
+    inputMode === 'pdf' ? (
+      <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl">
+        <FileText className="w-8 h-8 text-blue-400 shrink-0" />
+        <p className="text-white/60 text-sm font-mono truncate">{pdfFileName}</p>
+      </div>
+    ) : capturedImage ? (
+      <img src={capturedImage} alt="Scanned" className="w-full rounded-xl object-contain max-h-40" />
+    ) : null
   );
 
   return (
@@ -289,7 +326,6 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             ) : (
               <>
                 <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-                {/* Document frame guide */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-[85%] max-w-xl aspect-[1.414/1] border-2 border-white/40 rounded-lg relative">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
@@ -299,7 +335,6 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                     <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">Align document within frame</p>
                   </div>
                 </div>
-                {/* Capture button */}
                 <div className="absolute bottom-24 left-0 right-0 flex justify-center">
                   <button onClick={captureAndProcess} className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center">
                     <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center">
@@ -310,14 +345,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               </>
             )}
             <canvas ref={canvasRef} className="hidden" />
-
-            {/* PDF Upload button — always visible */}
             <div className="absolute bottom-6 left-0 right-0 flex justify-center">
               <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" />
-              <button
-                onClick={() => pdfInputRef.current?.click()}
-                className="flex items-center gap-2.5 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest backdrop-blur-sm transition active:scale-95"
-              >
+              <button onClick={() => pdfInputRef.current?.click()} className="flex items-center gap-2.5 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest backdrop-blur-sm transition active:scale-95">
                 <Upload className="w-4 h-4" />
                 Upload PDF
               </button>
@@ -351,27 +381,45 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
           </div>
         )}
 
-        {/* REVIEW — device found automatically */}
-        {status === 'review' && matchedDevice && (
+        {/* REVIEW — one or more devices found */}
+        {status === 'review' && matchedDevices.length > 0 && (
           <div className="p-6 space-y-5 max-w-lg mx-auto">
-            {inputMode === 'camera' && capturedImage && (
-              <img src={capturedImage} alt="Scanned" className="w-full rounded-xl object-contain max-h-48" />
-            )}
-            {inputMode === 'pdf' && (
-              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl">
-                <FileText className="w-8 h-8 text-blue-400 shrink-0" />
-                <p className="text-white/60 text-sm font-mono truncate">{pdfFileName}</p>
-              </div>
-            )}
+            <FilePreview />
 
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-emerald-400 font-black text-sm uppercase tracking-tight">Device Matched</p>
-                <p className="text-white/70 text-xs mt-1">{matchedDevice.name}</p>
-                <p className="text-white/40 text-[10px] font-mono mt-0.5">SN: {matchedDevice.serialNumber}</p>
-                <p className="text-white/40 text-[10px] mt-0.5">{matchedDevice.department}</p>
+                <p className="text-emerald-400 font-black text-sm uppercase tracking-tight">
+                  {matchedDevices.length === 1 ? 'Device Matched' : `${matchedDevices.length} Devices Found`}
+                </p>
+                <p className="text-white/50 text-xs mt-1">
+                  {matchedDevices.length === 1
+                    ? 'Select the device to attach this file to.'
+                    : 'This PDF contains reports for multiple devices. Select which ones to attach the file to.'}
+                </p>
               </div>
+            </div>
+
+            {/* Device checklist */}
+            <div className="space-y-2">
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+                {matchedDevices.length === 1 ? 'Matched Device' : `Matched Devices (${selectedDeviceIds.size} selected)`}
+              </p>
+              {matchedDevices.map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => toggleDeviceSelection(d.id)}
+                  className={`w-full text-left p-3 rounded-xl border transition flex items-center gap-3 ${selectedDeviceIds.has(d.id) ? 'bg-blue-600/20 border-blue-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${selectedDeviceIds.has(d.id) ? 'bg-blue-500 border-blue-500' : 'border-white/30'}`}>
+                    {selectedDeviceIds.has(d.id) && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-bold truncate">{d.name}</p>
+                    <p className="text-white/50 text-[10px] font-mono">SN: {d.serialNumber} · {d.department}</p>
+                  </div>
+                </button>
+              ))}
             </div>
 
             <DeviceFields />
@@ -381,35 +429,34 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 <RotateCcw className="w-5 h-5" />
               </button>
               <button onClick={() => setStatus('manual')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
-                Change Device
+                Add More
               </button>
-              <button onClick={handleSave} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
-                Save File
+              <button onClick={handleSave} disabled={selectedDeviceIds.size === 0} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+                Save to {selectedDeviceIds.size > 1 ? `${selectedDeviceIds.size} Devices` : 'Device'}
               </button>
             </div>
           </div>
         )}
 
-        {/* MANUAL — no match found */}
+        {/* MANUAL — no match, or user wants to add more devices */}
         {status === 'manual' && (
           <div className="p-6 space-y-5 max-w-lg mx-auto">
-            {inputMode === 'camera' && capturedImage && (
-              <img src={capturedImage} alt="Scanned" className="w-full rounded-xl object-contain max-h-40" />
-            )}
-            {inputMode === 'pdf' && (
-              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl">
-                <FileText className="w-8 h-8 text-blue-400 shrink-0" />
-                <p className="text-white/60 text-sm font-mono truncate">{pdfFileName}</p>
-              </div>
-            )}
+            <FilePreview />
 
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-amber-400 font-black text-sm uppercase tracking-tight">No Device Detected</p>
-                <p className="text-white/60 text-xs mt-1">Serial number not found. Search for the device manually.</p>
+            {matchedDevices.length > 0 ? (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
+                <Search className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-blue-300 text-xs">Add more devices to associate with this document.</p>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-amber-400 font-black text-sm uppercase tracking-tight">No Device Detected</p>
+                  <p className="text-white/60 text-xs mt-1">No serial numbers found. Search manually.</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
@@ -426,10 +473,17 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               </div>
 
               {searchResults.length > 0 && (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {searchResults.map(d => (
-                    <button key={d.id} onClick={() => { setSelectedDevice(d); setSearchResults([]); setSearchQuery(d.serialNumber); setDocName(`${inputMode === 'pdf' ? pdfFileName.replace('.pdf','') : 'Scan'}_${d.serialNumber}_${new Date().toISOString().split('T')[0]}`); }}
-                      className={`w-full text-left p-3 rounded-xl border transition ${selectedDevice?.id === d.id ? 'bg-blue-600/20 border-blue-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                    <button key={d.id} onClick={() => {
+                      setSelectedDevice(d);
+                      // Also add to matchedDevices + selectedIds if not already there
+                      setMatchedDevices(prev => prev.find(x => x.id === d.id) ? prev : [...prev, d]);
+                      setSelectedDeviceIds(prev => new Set([...prev, d.id]));
+                      setSearchResults([]);
+                      setSearchQuery('');
+                    }}
+                      className="w-full text-left p-3 rounded-xl border bg-white/5 border-white/10 hover:bg-white/10 transition">
                       <p className="text-white text-sm font-bold">{d.name}</p>
                       <p className="text-white/50 text-[10px] font-mono">SN: {d.serialNumber} · {d.department}</p>
                     </button>
@@ -437,10 +491,17 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 </div>
               )}
 
-              {selectedDevice && (
-                <div className="p-3 bg-blue-600/10 border border-blue-500/30 rounded-xl">
-                  <p className="text-blue-400 text-xs font-black uppercase tracking-tight">Selected: {selectedDevice.name}</p>
-                  <p className="text-white/40 text-[10px] font-mono mt-0.5">SN: {selectedDevice.serialNumber}</p>
+              {/* Show selected devices so far */}
+              {matchedDevices.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Selected ({matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length})</p>
+                  {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).map(d => (
+                    <div key={d.id} className="flex items-center gap-2 p-2.5 bg-blue-600/10 border border-blue-500/20 rounded-xl">
+                      <CheckCircle className="w-4 h-4 text-blue-400 shrink-0" />
+                      <p className="text-white/70 text-xs flex-1 truncate">{d.name} <span className="font-mono text-white/40">· {d.serialNumber}</span></p>
+                      <button onClick={() => { setMatchedDevices(prev => prev.filter(x => x.id !== d.id)); setSelectedDeviceIds(prev => { const n = new Set(prev); n.delete(d.id); return n; }); }} className="text-white/30 hover:text-red-400 transition text-xs">✕</button>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -451,7 +512,12 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <button onClick={handleRetry} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">
                 <RotateCcw className="w-5 h-5" />
               </button>
-              <button onClick={handleSave} disabled={!selectedDevice} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+              {matchedDevices.length > 0 && (
+                <button onClick={() => setStatus('review')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+                  Back
+                </button>
+              )}
+              <button onClick={handleSave} disabled={matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length === 0} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
                 Save File
               </button>
             </div>
@@ -467,7 +533,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
         )}
 
         {/* DONE */}
-        {status === 'done' && selectedDevice && (
+        {status === 'done' && (
           <div className="flex flex-col items-center justify-center min-h-[400px] p-8 space-y-6">
             <div className="p-6 bg-emerald-500/20 rounded-full">
               <CheckCircle className="w-16 h-16 text-emerald-400" />
@@ -475,16 +541,19 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="text-center space-y-1">
               <p className="text-white font-black text-xl uppercase tracking-tight">File Saved!</p>
               <p className="text-white/50 text-sm">{docName}</p>
-              <p className="text-white/30 text-xs font-mono">→ {selectedDevice.name} · SN: {selectedDevice.serialNumber}</p>
+              <p className="text-white/40 text-xs mt-1">
+                Saved to {savedCount} device{savedCount !== 1 ? 's' : ''}
+              </p>
             </div>
 
-            {inputMode === 'camera' && capturedImage && (
-              <img src={capturedImage} alt="Saved doc" className="w-full max-w-xs rounded-xl object-contain max-h-40 opacity-80" />
-            )}
-            {inputMode === 'pdf' && (
-              <div className="flex items-center gap-3 px-6 py-4 bg-white/5 border border-white/10 rounded-xl">
-                <FileText className="w-8 h-8 text-blue-400 shrink-0" />
-                <p className="text-white/60 text-sm font-mono truncate">{pdfFileName}</p>
+            {savedCount > 1 && (
+              <div className="w-full max-w-xs space-y-1.5">
+                {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).map(d => (
+                  <div key={d.id} className="flex items-center gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <p className="text-white/60 text-xs truncate">{d.name} <span className="font-mono text-white/30">· {d.serialNumber}</span></p>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -495,12 +564,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               </button>
               <button onClick={handleEmail} className="flex-1 py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
                 <Mail className="w-4 h-4" />
-                {emailSent ? 'Sent!' : 'Email'}
+                Email
               </button>
             </div>
-            {emailSent && (
-              <p className="text-white/40 text-[10px] text-center max-w-xs">File downloaded. Attach it to the email that just opened in your mail client.</p>
-            )}
 
             <div className="flex gap-3 w-full max-w-xs">
               <button onClick={handleRetry} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
@@ -519,13 +585,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="p-6 bg-red-500/10 rounded-full">
               <AlertCircle className="w-16 h-16 text-red-400" />
             </div>
-            <div className="text-center space-y-2">
-              <p className="text-white font-black text-lg uppercase tracking-tight">Error</p>
-              <p className="text-white/60 text-sm max-w-xs leading-relaxed">{errorMsg}</p>
-            </div>
-            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">
-              Close
-            </button>
+            <p className="text-white/60 text-sm max-w-xs text-center">{errorMsg}</p>
+            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">Close</button>
           </div>
         )}
       </div>
