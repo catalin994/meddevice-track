@@ -1,0 +1,7 @@
+{
+  "name": "MediTrack - Hospital Device Manager",
+  "description": "Comprehensive medical device management system featuring inventory tracking, maintenance scheduling, contract supervision, AI-powered contract analysis, and QR code generation for device identification.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
