@@ -15,6 +15,14 @@ export const initDB = (): Promise<IDBDatabase> => {
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+    // If an old tab holds the DB at a previous version, the upgrade blocks
+    // forever and the whole app would hang on the loading screen.
+    // Fail after 5s instead so the UI can start with empty data and retry later.
+    const timeout = setTimeout(() => {
+      dbPromise = null;
+      reject(new Error('IndexedDB open timed out — close other tabs running this app and reload.'));
+    }, 5000);
+
     request.onupgradeneeded = (event: any) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(STORE_DEVICES)) {
@@ -28,8 +36,20 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
     };
 
-    request.onsuccess = (event: any) => resolve(event.target.result);
+    request.onblocked = () => {
+      console.warn('[Storage] DB upgrade blocked — another tab has the app open with an older version.');
+    };
+
+    request.onsuccess = (event: any) => {
+      clearTimeout(timeout);
+      const db = event.target.result;
+      // When a future version wants to upgrade, release our connection
+      // so THIS tab never blocks other tabs.
+      db.onversionchange = () => db.close();
+      resolve(db);
+    };
     request.onerror = (event: any) => {
+      clearTimeout(timeout);
       dbPromise = null; // Reset on error so next call can retry
       reject(event.target.error);
     };
