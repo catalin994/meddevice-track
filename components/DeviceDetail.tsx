@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType } from '../types';
-import { 
+import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice } from '../types';
+import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
-  Info, CheckSquare, Loader2, Check, ChevronDown, Clock, 
-  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer
+  Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
+  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer, Wallet, ShieldCheck, Receipt
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 
@@ -17,9 +17,10 @@ interface DeviceDetailProps {
   onBack: () => void;
   onAddTask: (task: MedicalTask) => void;
   isStandalone?: boolean;
+  invoices?: Invoice[];
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false }) => {
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [] }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
@@ -364,12 +365,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 </div>
               </div>
 
-              <div className="xl:col-span-4">
+              <div className="xl:col-span-4 space-y-8">
                 <div className="hardware-card p-8 rounded-[2.5rem] overflow-hidden group">
                    <div className="aspect-square bg-white rounded-3xl border border-slate-100 flex items-center justify-center overflow-hidden relative shadow-inner">
                       {device.image ? <img src={device.image} alt="Visual" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" /> : <Box className="w-16 h-16 text-slate-200 opacity-50" />}
                    </div>
                 </div>
+
+                {/* Cost of ownership */}
+                <DeviceCostCard device={device} invoices={invoices} />
               </div>
            </div>
         )}
@@ -752,5 +756,52 @@ const InfoRow = React.memo(({ label, value, badge }: any) => (
     </div>
   </div>
 ));
+
+const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice; invoices: Invoice[] }) => {
+  const deviceInvoices = invoices.filter(inv => (inv.deviceIds || []).includes(device.id));
+  const contracts = device.contracts || [];
+
+  // Sum invoice costs grouped by currency; each invoice's cost is split across its devices
+  const byCurrency = new Map<string, number>();
+  deviceInvoices.forEach(inv => {
+    const share = inv.deviceIds.length > 0 ? inv.amount / inv.deviceIds.length : inv.amount;
+    byCurrency.set(inv.currency, (byCurrency.get(inv.currency) || 0) + share);
+  });
+  const contractsAnnual = contracts.reduce((s, c) => s + (c.annualCost || 0), 0);
+  const fmt = (n: number) => n.toLocaleString('ro-RO', { maximumFractionDigits: 2 });
+
+  return (
+    <div className="hardware-card p-8 rounded-[2.5rem]">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Costuri Asociate</h3>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+          <div className="flex items-center gap-3">
+            <Receipt className="w-4 h-4 text-slate-300" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Facturi ({deviceInvoices.length})</span>
+          </div>
+          <div className="text-right">
+            {byCurrency.size === 0 ? (
+              <span className="text-sm font-black text-slate-300">—</span>
+            ) : (
+              Array.from(byCurrency.entries()).map(([cur, total]) => (
+                <p key={cur} className="text-sm font-black text-slate-900">{fmt(total)} <span className="text-[10px] text-slate-400">{cur}</span></p>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="w-4 h-4 text-slate-300" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contracte / an ({contracts.length})</span>
+          </div>
+          <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default DeviceDetail;

@@ -157,7 +157,30 @@ export const calculateNextMaintenanceDate = (baseDate: string, category: string)
   return date.toISOString().split('T')[0];
 };
 
-export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS';
+export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS' | 'FINANCE';
+
+export enum InvoiceStatus {
+  PAID = 'Paid',
+  UNPAID = 'Unpaid',
+  OVERDUE = 'Overdue',
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  supplier: string;
+  issueDate: string;
+  dueDate?: string;
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  contractNumber?: string;   // optional link to a service contract
+  deviceIds: string[];       // devices this cost is associated with
+  description?: string;
+  fileUrl?: string;          // attached invoice PDF (data URL)
+  fileName?: string;
+  updated_at?: string;
+}
 
 export const getUniqueDepartments = (devices: MedicalDevice[], tasks: MedicalTask[] = []): string[] => {
   const depts = new Set<string>(HOSPITAL_DEPARTMENTS);

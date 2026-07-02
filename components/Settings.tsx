@@ -64,13 +64,32 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+CREATE TABLE IF NOT EXISTS public.invoices (
+    id TEXT PRIMARY KEY,
+    "invoiceNumber" TEXT NOT NULL,
+    supplier TEXT,
+    "issueDate" TEXT,
+    "dueDate" TEXT,
+    amount NUMERIC DEFAULT 0,
+    currency TEXT DEFAULT 'RON',
+    status TEXT DEFAULT 'Unpaid',
+    "contractNumber" TEXT,
+    "deviceIds" JSONB DEFAULT '[]'::jsonb,
+    description TEXT,
+    "fileUrl" TEXT,
+    "fileName" TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 -- Enable RLS
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
 CREATE POLICY "Allow all public access" ON public.devices FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
 `;
 
   useEffect(() => {

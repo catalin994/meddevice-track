@@ -1,10 +1,11 @@
 
-import { MedicalDevice, MedicalTask } from '../types';
+import { MedicalDevice, MedicalTask, Invoice } from '../types';
 
 const DB_NAME = 'MediTrackDB';
 const STORE_DEVICES = 'devices';
 const STORE_TASKS = 'tasks';
-const DB_VERSION = 3;
+const STORE_INVOICES = 'invoices';
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -21,6 +22,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_TASKS)) {
         db.createObjectStore(STORE_TASKS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_INVOICES)) {
+        db.createObjectStore(STORE_INVOICES, { keyPath: 'id' });
       }
     };
 
@@ -118,6 +122,41 @@ export const getAllTasksFromDB = async (): Promise<MedicalTask[]> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_TASKS, 'readonly');
     const store = transaction.objectStore(STORE_TASKS);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const saveInvoicesToDB = async (invoices: Invoice[]): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_INVOICES, 'readwrite');
+    const store = transaction.objectStore(STORE_INVOICES);
+    for (const invoice of invoices) {
+      store.put(invoice);
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const deleteInvoiceFromDB = async (id: string): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_INVOICES, 'readwrite');
+    const store = transaction.objectStore(STORE_INVOICES);
+    store.delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const getAllInvoicesFromDB = async (): Promise<Invoice[]> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_INVOICES, 'readonly');
+    const store = transaction.objectStore(STORE_INVOICES);
     const request = store.getAll();
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = (event: any) => reject(event.target.error);

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -11,6 +11,7 @@ const importSettings = () => import('./components/Settings');
 const importTaskTracker = () => import('./components/TaskTracker');
 const importQRScanner = () => import('./components/QRScanner');
 const importDocumentScanner = () => import('./components/DocumentScanner');
+const importFinanceManager = () => import('./components/FinanceManager');
 
 const Dashboard = lazy(importDashboard);
 const QRScanner = lazy(importQRScanner);
@@ -21,6 +22,7 @@ const AddDeviceForm = lazy(importAddDeviceForm);
 const MaintenancePlanner = lazy(importMaintenancePlanner);
 const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
+const FinanceManager = lazy(importFinanceManager);
 
 const prefetchModules = () => {
   // In dev mode Vite serves unminified deps — prefetching causes the browser to
@@ -43,9 +45,9 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority } from './types';
 import { supabase, isSupabaseConfigured, checkConnection } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB } from './services/storageService';
 
 const MOCK_DEVICES: MedicalDevice[] = [
   {
@@ -75,6 +77,7 @@ const App: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'cloud' | 'local' | 'error' | 'table-missing' | 'paused'>('local');
   const [devices, setDevices] = useState<MedicalDevice[]>([]);
   const [tasks, setTasks] = useState<MedicalTask[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -138,9 +141,10 @@ const App: React.FC = () => {
     setSyncStatus('local');
     try {
       // 1. Immediate UI from Local Storage
-      const [localDevices, localTasks] = await Promise.all([
+      const [localDevices, localTasks, localInvoices] = await Promise.all([
         getAllDevicesFromDB(),
-        getAllTasksFromDB()
+        getAllTasksFromDB(),
+        getAllInvoicesFromDB().catch(() => [] as Invoice[])
       ]);
       
       const deviceMap = new Map<string, MedicalDevice>();
@@ -152,6 +156,7 @@ const App: React.FC = () => {
 
       setDevices(cleanedDevices);
       setTasks(cleanedTasks);
+      setInvoices(localInvoices);
 
       // UI is ready with local data - hide loader immediately for faster perceived performance
       setIsLoading(false);
@@ -248,6 +253,42 @@ const App: React.FC = () => {
              await supabase.from('tasks').upsert(localTasks);
           }
 
+          // Sync Invoices (tolerant — table may not exist yet)
+          try {
+            const invoiceRes = await supabase.from('invoices').select('*').order('id', { ascending: true });
+            if (!invoiceRes.error && invoiceRes.data) {
+              const cloudInvoices: Invoice[] = invoiceRes.data;
+              const invoiceMap = new Map<string, Invoice>(localInvoices.map(i => [i.id, i]));
+
+              cloudInvoices.forEach(ci => {
+                const local = invoiceMap.get(ci.id);
+                const cloudTime = ci.updated_at ? new Date(ci.updated_at).getTime() : 0;
+                const localTime = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
+                if (!local || !local.updated_at || cloudTime > localTime) {
+                  invoiceMap.set(ci.id, ci);
+                }
+              });
+
+              const finalInvoices = Array.from(invoiceMap.values());
+              setInvoices(finalInvoices);
+              await saveInvoicesToDB(finalInvoices);
+
+              const newerLocalInvoices = finalInvoices.filter(i => {
+                const cloud = cloudInvoices.find(ci => ci.id === i.id);
+                const cloudTime = cloud?.updated_at ? new Date(cloud.updated_at).getTime() : 0;
+                const localTime = i.updated_at ? new Date(i.updated_at).getTime() : 0;
+                return !cloud || localTime > cloudTime;
+              });
+              if (newerLocalInvoices.length > 0) {
+                await supabase.from('invoices').upsert(newerLocalInvoices);
+              }
+            } else if (invoiceRes.error) {
+              console.warn("[App] Invoices sync skipped (table might be missing)");
+            }
+          } catch {
+            console.warn("[App] Invoices sync skipped");
+          }
+
           setSyncStatus('cloud');
           setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         } catch (e) {
@@ -334,6 +375,55 @@ const App: React.FC = () => {
       setIsSyncing(false); 
     }
   }, [isSupabaseConfigured]);
+
+  const handleUpsertInvoice = useCallback(async (invoice: Invoice) => {
+    const payload: Invoice = { ...invoice, updated_at: new Date().toISOString() };
+
+    setInvoices(prev => {
+      const map = new Map(prev.map(i => [i.id, i]));
+      map.set(payload.id, payload);
+      return Array.from(map.values());
+    });
+
+    setIsSyncing(true);
+    try {
+      await saveInvoicesToDB([payload]);
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('invoices').upsert([payload], { onConflict: 'id' });
+        if (error) console.warn("[Invoices] Cloud sync deferred:", error.message);
+      }
+    } catch (err) {
+      console.error("[Invoices] Sync deferred:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSupabaseConfigured]);
+
+  const handleDeleteInvoice = useCallback(async (id: string) => {
+    if (!id) return;
+    setInvoices(prev => prev.filter(i => i.id !== id));
+
+    setIsSyncing(true);
+    try {
+      await deleteInvoiceFromDB(id);
+      if (isSupabaseConfigured && supabase) {
+        await supabase.from('invoices').delete().eq('id', id);
+      }
+    } catch (err) {
+      console.error("[Invoices] Purge failed:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSupabaseConfigured]);
+
+  const handleSaveContract = useCallback(async (contract: Contract, deviceIds: string[]) => {
+    const targets = devices.filter(d => deviceIds.includes(d.id));
+    const updated = targets.map(d => ({
+      ...d,
+      contracts: [...(d.contracts || []).filter(c => c.contractNumber !== contract.contractNumber), contract]
+    }));
+    await handleUpsertDevices(updated);
+  }, [devices, handleUpsertDevices]);
 
   const handleQRScan = useCallback((deviceId: string) => {
     setShowScanner(false);
@@ -458,8 +548,9 @@ const App: React.FC = () => {
                     onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} 
                     onUpdate={handleUpsertDevices} 
                     onDelete={handleDeleteDevice} 
-                    onAddTask={handleUpsertTasks} 
+                    onAddTask={handleUpsertTasks}
                     isStandalone={isStandalone}
+                    invoices={invoices}
                   />
                 )}
                 {view === 'TASKS' && (
@@ -473,6 +564,15 @@ const App: React.FC = () => {
                 )}
                 {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} />}
                 {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} />}
+                {view === 'FINANCE' && (
+                  <FinanceManager
+                    devices={devices}
+                    invoices={invoices}
+                    onUpsertInvoice={handleUpsertInvoice}
+                    onDeleteInvoice={handleDeleteInvoice}
+                    onSaveContract={handleSaveContract}
+                  />
+                )}
                 {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} />}
               </Suspense>
             </div>
@@ -530,6 +630,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
         <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
         <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
         <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
+        <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />
         <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p></div>
         <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
       </nav>
