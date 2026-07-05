@@ -32,7 +32,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState<'manual' | 'report'>('report');
+  const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
 
   const [editForm, setEditForm] = useState({
     name: device.name,
@@ -443,6 +443,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       >
                          <option value="report">Service Report</option>
                          <option value="manual">Technical Manual</option>
+                         <option value="service">Document Service</option>
+                         <option value="achizitie">Document Achizitie</option>
                          <option value="other">Other Document</option>
                       </select>
                    </div>
@@ -516,6 +518,70 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      )}
                   </div>
                 </div>
+
+                {/* Service Documents Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between px-2">
+                     <div className="flex items-center gap-3">
+                        <div className="w-2 h-6 bg-amber-500 rounded-full" />
+                        <h4 className="tech-label text-slate-900">Documente Service</h4>
+                     </div>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'service').length} Units</span>
+                  </div>
+                  <div className="space-y-4">
+                     {editForm.files.filter(f => f.type === 'service').length > 0 ? (
+                       editForm.files.filter(f => f.type === 'service').map(file => (
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                       ))
+                     ) : (
+                       <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
+                          <Wrench className="w-10 h-10 text-slate-300 mb-3" />
+                          <p className="tech-label">Niciun document de service</p>
+                       </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* Acquisition Documents Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between px-2">
+                     <div className="flex items-center gap-3">
+                        <div className="w-2 h-6 bg-indigo-500 rounded-full" />
+                        <h4 className="tech-label text-slate-900">Documente Achizitie</h4>
+                     </div>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'achizitie').length} Units</span>
+                  </div>
+                  <div className="space-y-4">
+                     {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
+                       editForm.files.filter(f => f.type === 'achizitie').map(file => (
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                       ))
+                     ) : (
+                       <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
+                          <Box className="w-10 h-10 text-slate-300 mb-3" />
+                          <p className="tech-label">Niciun document de achizitie</p>
+                       </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* Other documents (image/other) — only shown when present */}
+                {editForm.files.filter(f => f.type === 'image' || f.type === 'other').length > 0 && (
+                  <div className="space-y-6 lg:col-span-2">
+                    <div className="flex items-center justify-between px-2">
+                       <div className="flex items-center gap-3">
+                          <div className="w-2 h-6 bg-slate-400 rounded-full" />
+                          <h4 className="tech-label text-slate-900">Alte Documente</h4>
+                       </div>
+                       <span className="tech-label text-slate-400">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} Units</span>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                       {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                       ))}
+                    </div>
+                  </div>
+                )}
              </div>
           </div>
         )}

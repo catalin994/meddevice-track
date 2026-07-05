@@ -46,6 +46,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
       } catch (err: any) {
         if (active) {
           const name = err?.name || '';
+          // AbortError = play() interrupted by a re-render — camera is fine, ignore
+          if (name === 'AbortError') return;
           if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
             setErrorMsg('Camera permission denied. Click the camera icon in your browser address bar, set it to Allow, then try again.');
           } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {

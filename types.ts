@@ -97,8 +97,8 @@ export interface Contract {
 export interface DeviceFile {
   id: string;
   name: string;
-  type: 'manual' | 'report' | 'image' | 'other';
-  url: string; 
+  type: 'manual' | 'report' | 'image' | 'other' | 'service' | 'achizitie';
+  url: string;
   dateAdded: string;
 }
 

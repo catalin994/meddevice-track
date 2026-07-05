@@ -29,6 +29,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const [capturedImage, setCapturedImage] = useState('');
   const [pdfData, setPdfData] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
+  // Multi-page scanning: captured pages accumulate here until the user finishes
+  const [pages, setPages] = useState<string[]>([]);
+  const [instantSaved, setInstantSaved] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatusText, setOcrStatusText] = useState('');
   const [saveMode, setSaveMode] = useState<SaveMode>('full');
@@ -45,7 +48,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const [searchResults, setSearchResults] = useState<MedicalDevice[]>([]);
 
   const [docName, setDocName] = useState('');
-  const [docType, setDocType] = useState<DeviceFile['type']>('report');
+  const [docType, setDocType] = useState<DeviceFile['type']>('service');
   const [savedCount, setSavedCount] = useState(0);
   const [cameraError, setCameraError] = useState('');
 
@@ -67,6 +70,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
     } catch (err: any) {
       const name = err?.name || '';
+      // AbortError = play() interrupted by a re-render — camera is fine, ignore
+      if (name === 'AbortError') return;
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') setCameraError('Camera permission denied.');
       else if (name === 'NotFoundError') setCameraError('No camera found on this device.');
       else if (name === 'NotReadableError') setCameraError('Camera is in use by another app.');
@@ -129,8 +134,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     }
   }, [matchAllDevices, matchFirstDevice]);
 
-  // Camera capture + Tesseract OCR
-  const captureAndProcess = useCallback(async () => {
+  // Capture one page — stays in camera so more pages can follow
+  const capturePage = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -138,26 +143,84 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     canvas.height = video.videoHeight;
     canvas.getContext('2d')!.drawImage(video, 0, 0);
     const imageData = canvas.toDataURL('image/jpeg', 0.92);
-    setCapturedImage(imageData);
+    setPages(prev => [...prev, imageData]);
+  }, []);
+
+  const CATEGORY_LABELS: Record<string, string> = { service: 'Doc_Service', achizitie: 'Doc_Achizitie', report: 'Raport', manual: 'Manual', other: 'Document', image: 'Imagine' };
+
+  // Finish scanning: merge pages into one PDF, OCR for device match,
+  // and if a device is found — save INSTANTLY without extra steps.
+  const finishScan = useCallback(async () => {
+    if (pages.length === 0) return;
     setInputMode('camera');
     stopCamera();
     setStatus('processing');
     setOcrProgress(0);
-    setOcrStatusText('Loading OCR engine...');
+    setOcrStatusText('Se construieste PDF-ul...');
+
     try {
+      // 1. Merge captured pages into a single PDF
+      const { PDFDocument } = await import('pdf-lib');
+      const doc = await PDFDocument.create();
+      for (const dataUrl of pages) {
+        const jpg = await doc.embedJpg(dataUrl);
+        const page = doc.addPage([jpg.width, jpg.height]);
+        page.drawImage(jpg, { x: 0, y: 0, width: jpg.width, height: jpg.height });
+      }
+      const pdfBytes = await doc.save();
+      const base64 = btoa(Array.from(new Uint8Array(pdfBytes)).map(b => String.fromCharCode(b)).join(''));
+      const pdfUrl = `data:application/pdf;base64,${base64}`;
+      setPdfData(pdfUrl);
+      setCapturedImage(pages[0]);
+
+      // 2. OCR pages (stop at first device match to stay fast)
       const Tesseract = (await import('tesseract.js')).default;
-      const result = await Tesseract.recognize(imageData, 'eng', {
-        logger: (m: any) => {
-          setOcrStatusText(m.status || '');
-          if (m.status === 'recognizing text') setOcrProgress(Math.round(m.progress * 100));
+      let found: MedicalDevice[] = [];
+      for (let i = 0; i < pages.length && found.length === 0; i++) {
+        setOcrStatusText(`OCR pagina ${i + 1} din ${pages.length}...`);
+        const result = await Tesseract.recognize(pages[i], 'eng', {
+          logger: (m: any) => {
+            if (m.status === 'recognizing text') setOcrProgress(Math.round(m.progress * 100));
+          }
+        });
+        found = matchAllDevices(result.data.text);
+      }
+
+      const label = CATEGORY_LABELS[docType] || 'Scan';
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      if (found.length > 0) {
+        // 3a. INSTANT SAVE — device identified, no confirmation needed
+        setStatus('saving');
+        const name = `${label}_${found[0].serialNumber}_${dateStr}`;
+        setDocName(name);
+        setPdfFileName(`${name}.pdf`);
+        for (const device of found) {
+          await onSave(device.id, {
+            id: crypto.randomUUID(),
+            name,
+            type: docType,
+            url: pdfUrl,
+            dateAdded: dateStr,
+          });
         }
-      });
-      finishProcessing(result.data.text, [result.data.text], 'Scan');
+        setMatchedDevices(found);
+        setSelectedDeviceIds(new Set(found.map(d => d.id)));
+        setSavedCount(found.length);
+        setInstantSaved(true);
+        setStatus('done');
+      } else {
+        // 3b. No match — fall back to manual device selection
+        setDocName(`${label}_${dateStr}`);
+        setPdfFileName(`${label}_${dateStr}.pdf`);
+        setInputMode('pdf');
+        setStatus('manual');
+      }
     } catch {
       setDocName(`Scan_${new Date().toISOString().split('T')[0]}`);
       setStatus('manual');
     }
-  }, [stopCamera, finishProcessing]);
+  }, [pages, stopCamera, matchAllDevices, docType, onSave]);
 
   // PDF upload — extract text per page
   const handlePdfUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,6 +404,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     setSelectedDevice(null); setSearchQuery(''); setSearchResults([]);
     setDocName(''); setSavedCount(0); setOcrProgress(0);
     setCameraError(''); setPageDeviceMap({}); setSaveMode('full');
+    setPages([]); setInstantSaved(false);
     pdfBytesRef.current = null;
     setStatus('camera');
     startCamera();
@@ -361,10 +425,12 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       <div>
         <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Document Type</label>
         <select value={docType} onChange={e => setDocType(e.target.value as DeviceFile['type'])} className="w-full bg-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10">
-          <option value="report" className="bg-slate-900">Report</option>
+          <option value="service" className="bg-slate-900">Document Service</option>
+          <option value="achizitie" className="bg-slate-900">Document Achizitie</option>
+          <option value="report" className="bg-slate-900">Raport</option>
           <option value="manual" className="bg-slate-900">Manual</option>
-          <option value="image" className="bg-slate-900">Image</option>
-          <option value="other" className="bg-slate-900">Other</option>
+          <option value="image" className="bg-slate-900">Imagine</option>
+          <option value="other" className="bg-slate-900">Altele</option>
         </select>
       </div>
     </div>
@@ -408,21 +474,63 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             ) : (
               <>
                 <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+
+                {/* Document type quick-select — pick before scanning */}
+                <div className="absolute top-4 left-0 right-0 flex justify-center px-4">
+                  <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl overflow-x-auto no-scrollbar">
+                    {([['service', 'Service'], ['achizitie', 'Achizitie'], ['report', 'Raport'], ['other', 'Altele']] as [DeviceFile['type'], string][]).map(([val, label]) => (
+                      <button key={val} onClick={() => setDocType(val)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition ${docType === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-[85%] max-w-xl aspect-[1.414/1] border-2 border-white/40 rounded-lg relative">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
                     <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                    <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">Align document within frame</p>
+                    <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">
+                      {pages.length === 0 ? 'Aliniaza documentul in cadru' : `Pagina ${pages.length + 1} — sau finalizeaza`}
+                    </p>
                   </div>
                 </div>
-                <div className="absolute bottom-24 left-0 right-0 flex justify-center">
-                  <button onClick={captureAndProcess} className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center">
-                    <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center">
+
+                {/* Captured page thumbnails */}
+                {pages.length > 0 && (
+                  <div className="absolute left-4 bottom-24 flex flex-col gap-2 max-h-[50%] overflow-y-auto no-scrollbar">
+                    {pages.map((p, i) => (
+                      <div key={i} className="relative group">
+                        <img src={p} alt={`Pagina ${i + 1}`} className="w-14 h-18 object-cover rounded-lg border-2 border-white/40 shadow-lg" />
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center">{i + 1}</span>
+                        <button onClick={() => setPages(prev => prev.filter((_, x) => x !== i))}
+                          className="absolute inset-0 bg-red-600/70 rounded-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <X className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="absolute bottom-24 left-0 right-0 flex justify-center items-center gap-5">
+                  <button onClick={capturePage} className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center" title="Captureaza pagina">
+                    <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center relative">
                       <ScanLine className="w-7 h-7 text-white" />
+                      {pages.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">{pages.length}</span>
+                      )}
                     </div>
                   </button>
+                  {pages.length > 0 && (
+                    <button onClick={finishScan}
+                      className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl active:scale-95 transition flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5" />
+                      Finalizeaza & Salveaza ({pages.length} pag.)
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -627,10 +735,14 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             </div>
             <div className="text-center space-y-1">
               <p className="text-white font-black text-xl uppercase tracking-tight">
-                {saveMode === 'split' ? 'PDF Split & Saved!' : 'File Saved!'}
+                {instantSaved ? 'Salvat Instant!' : saveMode === 'split' ? 'PDF Split & Saved!' : 'File Saved!'}
               </p>
               <p className="text-white/50 text-sm">{docName}</p>
-              <p className="text-white/40 text-xs mt-1">Saved to {savedCount} device{savedCount !== 1 ? 's' : ''}</p>
+              <p className="text-white/40 text-xs mt-1">
+                {instantSaved
+                  ? `Dispozitiv identificat automat — document atasat la ${matchedDevices[0]?.name || ''}`
+                  : `Saved to ${savedCount} device${savedCount !== 1 ? 's' : ''}`}
+              </p>
             </div>
             {savedCount > 1 && (
               <div className="w-full max-w-xs space-y-1.5">
