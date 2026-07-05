@@ -631,4 +631,4 @@ const Field = ({ label, required, children }: { label: string; required?: boolea
   </div>
 );
 
-export default FinanceManager;
+export default React.memo(FinanceManager);

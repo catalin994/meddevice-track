@@ -372,4 +372,4 @@ const getStatusIcon = (s: TaskStatus) => {
   }
 };
 
-export default TaskTracker;
+export default React.memo(TaskTracker);

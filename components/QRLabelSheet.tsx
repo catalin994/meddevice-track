@@ -13,7 +13,13 @@ interface QRLabelSheetProps {
 const deviceUrl = (id: string) =>
   `${window.location.origin}${window.location.pathname}?view=DEVICE_DETAIL&id=${encodeURIComponent(id)}&standalone=true`;
 
-const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices, onClose }) => {
+// Rendering thousands of QR canvases at once would freeze the page —
+// cap one sheet and let the user filter the inventory into batches.
+const MAX_LABELS = 150;
+
+const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClose }) => {
+  const devices = allDevices.slice(0, MAX_LABELS);
+  const truncated = allDevices.length - devices.length;
   const gridRef = useRef<HTMLDivElement>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -62,7 +68,10 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices, onClose }) => {
             <div className="p-3 bg-slate-900 text-white rounded-2xl"><QrCode className="w-6 h-6" /></div>
             <div>
               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Etichete QR</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">{devices.length} dispozitive · gata de printat si lipit pe echipamente</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">
+                {devices.length} dispozitive · gata de printat si lipit pe echipamente
+                {truncated > 0 && <span className="text-amber-500"> · inca {truncated} nefiltrate — filtreaza inventarul pe transe</span>}
+              </p>
             </div>
           </div>
           <div className="flex gap-3">

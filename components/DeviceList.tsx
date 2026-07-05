@@ -621,13 +621,24 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
   const [filterTag, setFilterTag] = useState<string | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
-  const [isFullyRendered, setIsFullyRendered] = useState(false);
   const [showQRSheet, setShowQRSheet] = useState(false);
 
-  // Render first 20 cards immediately; remaining after first paint so the view opens fast
+  // Incremental rendering: keep the DOM small by mounting cards in batches
+  // as the user scrolls, instead of mounting the whole fleet at once.
+  const BATCH_SIZE = 48;
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const id = requestAnimationFrame(() => setIsFullyRendered(true));
-    return () => cancelAnimationFrame(id);
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting) {
+        setVisibleCount(c => c + BATCH_SIZE);
+      }
+    }, { rootMargin: '600px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, []);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -684,6 +695,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       return matchSearch && matchStatus && matchDept && matchCategory && matchTag;
     });
   }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
+
+  // Restart batching whenever the visible set changes (filters/search)
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
 
   // All tags used across the fleet, for the filter dropdown
   const allTags = useMemo(() => {
@@ -925,7 +941,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {(isFullyRendered ? filteredDevices : filteredDevices.slice(0, 20)).map((device) => (
+          {filteredDevices.slice(0, visibleCount).map((device) => (
             <DeviceCard
               key={device.id}
               device={device}
@@ -936,6 +952,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onDelete={handleDeleteClick}
             />
           ))}
+
+          {/* Sentinel — mounts the next batch when scrolled near */}
+          <div ref={sentinelRef} className="h-1" />
+          {visibleCount < filteredDevices.length && (
+            <div className="py-6 flex items-center justify-center gap-3 text-slate-400">
+              <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+              <span className="tech-label">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
+            </div>
+          )}
 
           {filteredDevices.length === 0 && (
             <div className="hardware-card py-32 text-center rounded-[2.5rem]">

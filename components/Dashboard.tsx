@@ -166,4 +166,4 @@ const StatCard = React.memo(({ title, value, icon, trend, color, bgColor }: { ti
   </div>
 ));
 
-export default Dashboard;
+export default React.memo(Dashboard);
