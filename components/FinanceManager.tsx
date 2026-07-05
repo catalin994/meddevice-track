@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
 import {
   Receipt, ShieldCheck, TrendingUp, Plus, X, Search, Loader2, Upload, FileText,
-  CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark
+  CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark,
+  FolderOpen, FileSpreadsheet
 } from 'lucide-react';
 import { MedicalDevice, Invoice, InvoiceStatus, Contract } from '../types';
 import ContractManager from './ContractManager';
@@ -53,6 +54,67 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
   [InvoiceStatus.OVERDUE]: 'Restanta',
 };
 
+// Shared PDF field extraction — used by both single upload and bulk folder import
+const extractInvoiceFields = (text: string, fileName: string, devices: MedicalDevice[], contracts: Contract[]) => {
+  const lower = text.toLowerCase();
+
+  const deviceIds = devices
+    .filter(d => d.serialNumber && d.serialNumber !== 'N/A' && d.serialNumber.length >= 3)
+    .filter(d => lower.includes(d.serialNumber.toLowerCase().trim()))
+    .map(d => d.id);
+
+  const invMatch = text.match(/(?:factur[aă]|invoice)[\s#:nr.]*([A-Z0-9][A-Z0-9\-\/]{1,20})/i);
+
+  // "Total de plata: 1.250,50" / "Total: 890.00" / "total general 12.500,00"
+  const amountMatch = text.match(/total(?:\s+(?:de\s+plat[aă]|general))?\s*:?\s*([\d][\d.,]{2,14})/i);
+  let amount = 0;
+  if (amountMatch) {
+    const raw = amountMatch[1].trim().replace(/\.(?=\d{3})/g, '').replace(/,(?=\d{3})/g, '').replace(',', '.');
+    amount = parseFloat(raw) || 0;
+  }
+
+  const currencyMatch = text.match(/\b(RON|LEI|EUR|USD|€|\$)\b/i);
+  const currency = currencyMatch
+    ? currencyMatch[1].toUpperCase().replace('LEI', 'RON').replace('€', 'EUR').replace('$', 'USD')
+    : 'RON';
+
+  // Issue date: dd.mm.yyyy / dd/mm/yyyy / dd-mm-yyyy or ISO yyyy-mm-dd
+  let issueDate = '';
+  const dmyMatch = text.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+  const isoMatch = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (dmyMatch) {
+    issueDate = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+  } else if (isoMatch) {
+    issueDate = isoMatch[0];
+  }
+
+  const foundContract = contracts.find(c => c.contractNumber && lower.includes(c.contractNumber.toLowerCase()));
+
+  // Supplier: matched contract provider → "Furnizor: X" (stops before the next field keyword) → file name
+  let supplier = foundContract?.provider || '';
+  if (!supplier) {
+    const supMatch = text.match(/furnizor\s*:?\s*(.{2,60}?)(?=\s+(?:data|cui|cif|reg\.?|nr\.?|adresa|total|emis)\b|$)/i);
+    if (supMatch) supplier = supMatch[1].trim();
+  }
+  if (!supplier) supplier = fileName.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim();
+
+  return { invoiceNumber: invMatch?.[1] || '', amount, currency, issueDate, supplier, contractNumber: foundContract?.contractNumber || '', deviceIds };
+};
+
+interface BulkDraft {
+  include: boolean;
+  isDuplicate: boolean;
+  invoiceNumber: string;
+  supplier: string;
+  issueDate: string;
+  amount: number;
+  currency: string;
+  contractNumber: string;
+  deviceIds: string[];
+  fileUrl: string;
+  fileName: string;
+}
+
 const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUpsertInvoice, onDeleteInvoice, onSaveContract }) => {
   const [tab, setTab] = useState<FinanceTab>('OVERVIEW');
   const [isEditing, setIsEditing] = useState(false);
@@ -65,6 +127,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractNote, setExtractNote] = useState('');
   const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Bulk folder import
+  const bulkInputRef = useRef<HTMLInputElement>(null);
+  const [bulkDrafts, setBulkDrafts] = useState<BulkDraft[] | null>(null);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const devicesMap = useMemo(() => new Map(devices.map(d => [d.id, d])), [devices]);
 
@@ -165,47 +234,24 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         const content = await page.getTextContent();
         text += content.items.map((it: any) => it.str).join(' ') + '\n';
       }
-      const lower = text.toLowerCase();
-
-      // Detect devices by serial number
-      const matched = devices
-        .filter(d => d.serialNumber && d.serialNumber !== 'N/A' && d.serialNumber.length >= 3)
-        .filter(d => lower.includes(d.serialNumber.toLowerCase().trim()))
-        .map(d => d.id);
-
-      // Detect invoice number (e.g. "Factura nr. 12345", "Invoice #INV-2024-001")
-      const invMatch = text.match(/(?:factur[aă]|invoice)[\s#:nr.]*([A-Z0-9][A-Z0-9\-\/]{2,20})/i);
-      // Detect total amount ("Total: 1.234,56" / "Total 1,234.56")
-      const amountMatch = text.match(/total[\s:de plat[aă]]*([\d.,]{3,15})/i);
-      let amount = 0;
-      if (amountMatch) {
-        const raw = amountMatch[1].trim().replace(/\.(?=\d{3})/g, '').replace(',', '.');
-        amount = parseFloat(raw) || 0;
-      }
-      const currencyMatch = text.match(/\b(RON|LEI|EUR|USD|€|\$)\b/i);
-      const currency = currencyMatch
-        ? currencyMatch[1].toUpperCase().replace('LEI', 'RON').replace('€', 'EUR').replace('$', 'USD')
-        : 'RON';
-
-      // Detect linked contract by contract number appearing in text
-      const foundContract = globalContracts.find(c =>
-        c.contractNumber && lower.includes(c.contractNumber.toLowerCase()));
+      const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
 
       setForm(prev => ({
         ...prev,
-        invoiceNumber: invMatch?.[1] || prev.invoiceNumber,
-        amount: amount || prev.amount,
-        currency,
-        contractNumber: foundContract?.contractNumber || prev.contractNumber,
-        supplier: foundContract?.provider || prev.supplier,
+        invoiceNumber: fields.invoiceNumber || prev.invoiceNumber,
+        amount: fields.amount || prev.amount,
+        currency: fields.currency,
+        issueDate: fields.issueDate || prev.issueDate,
+        contractNumber: fields.contractNumber || prev.contractNumber,
+        supplier: fields.supplier || prev.supplier,
         fileUrl: base64,
         fileName: file.name,
       }));
-      if (matched.length > 0) {
-        setSelectedDeviceIds(prev => Array.from(new Set([...prev, ...matched])));
+      if (fields.deviceIds.length > 0) {
+        setSelectedDeviceIds(prev => Array.from(new Set([...prev, ...fields.deviceIds])));
       }
       setExtractNote(
-        `Detectat: ${invMatch ? 'nr. factura' : ''}${amount ? (invMatch ? ', ' : '') + 'suma' : ''}${matched.length ? `, ${matched.length} dispozitiv(e)` : ''}${foundContract ? ', contract' : ''}` || 'PDF atasat'
+        `Detectat: ${fields.invoiceNumber ? 'nr. factura' : ''}${fields.amount ? (fields.invoiceNumber ? ', ' : '') + 'suma' : ''}${fields.deviceIds.length ? `, ${fields.deviceIds.length} dispozitiv(e)` : ''}${fields.contractNumber ? ', contract' : ''}` || 'PDF atasat'
       );
     } catch {
       setExtractNote('PDF atasat (extragerea automata a esuat)');
@@ -214,6 +260,129 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       if (pdfInputRef.current) pdfInputRef.current.value = '';
     }
   }, [devices, globalContracts]);
+
+  // ---- Bulk folder import ----
+  const handleBulkImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+    if (files.length === 0) return;
+
+    setIsBulkProcessing(true);
+    setBulkProgress({ done: 0, total: files.length });
+    setBulkDrafts(null);
+
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
+
+    const existingNumbers = new Set(invoices.map(i => i.invoiceNumber.toLowerCase().trim()).filter(Boolean));
+    const seenInBatch = new Set<string>();
+    const drafts: BulkDraft[] = [];
+
+    for (let fi = 0; fi < files.length; fi++) {
+      const file = files[fi];
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
+        });
+
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let text = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          text += content.items.map((it: any) => it.str).join(' ') + '\n';
+        }
+
+        const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
+        const numKey = fields.invoiceNumber.toLowerCase().trim();
+        const isDuplicate = !!numKey && (existingNumbers.has(numKey) || seenInBatch.has(numKey));
+        if (numKey) seenInBatch.add(numKey);
+
+        drafts.push({
+          include: !isDuplicate,
+          isDuplicate,
+          invoiceNumber: fields.invoiceNumber || file.name.replace(/\.pdf$/i, ''),
+          supplier: fields.supplier,
+          issueDate: fields.issueDate || new Date().toISOString().split('T')[0],
+          amount: fields.amount,
+          currency: fields.currency,
+          contractNumber: fields.contractNumber,
+          deviceIds: fields.deviceIds,
+          fileUrl: base64,
+          fileName: file.name,
+        });
+      } catch {
+        drafts.push({
+          include: false, isDuplicate: false,
+          invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
+          issueDate: new Date().toISOString().split('T')[0],
+          contractNumber: '', deviceIds: [], fileUrl: '', fileName: `${file.name} (eroare la citire)`,
+        });
+      }
+      setBulkProgress({ done: fi + 1, total: files.length });
+    }
+
+    setIsBulkProcessing(false);
+    setBulkDrafts(drafts);
+    if (bulkInputRef.current) bulkInputRef.current.value = '';
+  }, [devices, globalContracts, invoices]);
+
+  const updateBulkDraft = useCallback((index: number, updates: Partial<BulkDraft>) => {
+    setBulkDrafts(prev => prev ? prev.map((d, i) => i === index ? { ...d, ...updates } : d) : prev);
+  }, []);
+
+  const handleBulkSave = useCallback(async () => {
+    if (!bulkDrafts) return;
+    const toSave = bulkDrafts.filter(d => d.include && d.invoiceNumber.trim());
+    if (toSave.length === 0) return;
+    setIsBulkSaving(true);
+    for (const d of toSave) {
+      await onUpsertInvoice({
+        id: crypto.randomUUID(),
+        invoiceNumber: d.invoiceNumber.trim(),
+        supplier: d.supplier.trim() || 'Necunoscut',
+        issueDate: d.issueDate,
+        amount: d.amount,
+        currency: d.currency,
+        status: InvoiceStatus.UNPAID,
+        contractNumber: d.contractNumber || undefined,
+        deviceIds: d.deviceIds,
+        fileUrl: d.fileUrl || undefined,
+        fileName: d.fileName || undefined,
+      });
+    }
+    setIsBulkSaving(false);
+    setBulkDrafts(null);
+    setTab('INVOICES');
+  }, [bulkDrafts, onUpsertInvoice]);
+
+  // ---- Centralizator Excel export ----
+  const handleExportExcel = useCallback(async () => {
+    if (invoices.length === 0) return;
+    const XLSX = await import('xlsx');
+    const rows = [...invoices]
+      .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''))
+      .map(inv => ({
+        'NR. FACTURA': inv.invoiceNumber,
+        'FURNIZOR': inv.supplier,
+        'DATA EMITERII': inv.issueDate,
+        'SCADENTA': inv.dueDate || '',
+        'SUMA': inv.amount,
+        'MONEDA': inv.currency,
+        'STATUS': STATUS_LABELS[effectiveStatus(inv)],
+        'CONTRACT': inv.contractNumber || '',
+        'DISPOZITIVE': inv.deviceIds.map(id => devicesMap.get(id)?.name || id).join(', '),
+        'SERII': inv.deviceIds.map(id => devicesMap.get(id)?.serialNumber || '').filter(Boolean).join(', '),
+        'DESCRIERE': inv.description || '',
+      }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 30 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Centralizator Facturi');
+    XLSX.writeFile(wb, `Centralizator_Facturi_${new Date().toISOString().split('T')[0]}.xlsx`);
+  }, [invoices, devicesMap]);
 
   // ---- Form handlers ----
   const openNew = useCallback(() => {
@@ -295,9 +464,17 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
               <p className="text-sm text-slate-400 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
             </div>
           </div>
-          <button onClick={openNew} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2">
-            <Plus className="w-5 h-5" /> Adauga Factura
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input ref={bulkInputRef} type="file" accept="application/pdf" multiple onChange={handleBulkImport} className="hidden" />
+            <button onClick={() => bulkInputRef.current?.click()} disabled={isBulkProcessing}
+              className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center gap-2 disabled:opacity-50">
+              {isBulkProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <FolderOpen className="w-5 h-5" />}
+              {isBulkProcessing ? `Procesare ${bulkProgress.done}/${bulkProgress.total}...` : 'Import Folder PDF'}
+            </button>
+            <button onClick={openNew} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2">
+              <Plus className="w-5 h-5" /> Adauga Factura
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2 mt-8">
@@ -399,13 +576,18 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {(['ALL', InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE] as const).map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-900'}`}>
                   {s === 'ALL' ? 'Toate' : STATUS_LABELS[s]}
                 </button>
               ))}
+              <button onClick={handleExportExcel} disabled={invoices.length === 0}
+                className="px-4 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-40 shadow-lg shadow-emerald-600/20"
+                title="Exporta centralizatorul facturilor in Excel">
+                <FileSpreadsheet className="w-4 h-4" /> Centralizator
+              </button>
             </div>
           </div>
 
@@ -469,6 +651,77 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       {/* ============ CONTRACTS ============ */}
       {tab === 'CONTRACTS' && (
         <ContractManager devices={devices} onSaveContract={onSaveContract} />
+      )}
+
+      {/* ============ BULK IMPORT REVIEW MODAL ============ */}
+      {bulkDrafts && (
+        <div className="fixed inset-0 z-[500] bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in">
+            <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Centralizare Facturi PDF</h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">
+                  {bulkDrafts.length} fisiere procesate · {bulkDrafts.filter(d => d.include).length} selectate pentru salvare
+                  {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} duplicate detectate</span>}
+                </p>
+              </div>
+              <button onClick={() => setBulkDrafts(null)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
+              {/* Column headers */}
+              <div className="hidden lg:grid grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 px-4 pb-1">
+                {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri'].map((h, i) => (
+                  <p key={i} className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{h}</p>
+                ))}
+              </div>
+              {bulkDrafts.map((d, i) => (
+                <div key={i} className={`grid grid-cols-1 lg:grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 items-center p-4 rounded-2xl border transition ${d.isDuplicate ? 'bg-amber-50/60 border-amber-200' : d.include ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                  <button onClick={() => updateBulkDraft(i, { include: !d.include })}
+                    className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${d.include ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
+                    {d.include && <CheckCircle className="w-4 h-4" />}
+                  </button>
+                  <div className="min-w-0">
+                    <input value={d.invoiceNumber} onChange={e => updateBulkDraft(i, { invoiceNumber: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
+                    {d.isDuplicate && <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
+                    <p className="text-[9px] text-slate-300 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
+                  </div>
+                  <input value={d.supplier} onChange={e => updateBulkDraft(i, { supplier: e.target.value })} placeholder="Furnizor"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
+                  <input type="date" value={d.issueDate} onChange={e => updateBulkDraft(i, { issueDate: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none" />
+                  <input type="number" step="0.01" value={d.amount || ''} onChange={e => updateBulkDraft(i, { amount: parseFloat(e.target.value) || 0 })} placeholder="0.00"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none text-right" />
+                  <select value={d.currency} onChange={e => updateBulkDraft(i, { currency: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none">
+                    <option>RON</option><option>EUR</option><option>USD</option>
+                  </select>
+                  <div className="flex flex-col gap-1">
+                    {d.deviceIds.length > 0
+                      ? <span className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-center">{d.deviceIds.length} dispozitiv{d.deviceIds.length > 1 ? 'e' : ''}</span>
+                      : <span className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest text-center">fara disp.</span>}
+                    {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Facturile se salveaza cu status "Neplatita" — le poti actualiza ulterior
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
+                <button onClick={handleBulkSave} disabled={isBulkSaving || bulkDrafts.filter(d => d.include).length === 0}
+                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
+                  {isBulkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Salveaza {bulkDrafts.filter(d => d.include).length} facturi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ============ INVOICE MODAL ============ */}
