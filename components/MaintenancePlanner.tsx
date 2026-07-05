@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus } from '../types';
 import { 
   Calendar, Check, Clock, Save, CalendarDays, 
@@ -40,6 +40,28 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   const [searchQuery, setSearchQuery] = useState('');
   const [drafts, setDrafts] = useState<Record<string, ScheduleDraft>>({});
   const [viewMode, setViewMode] = useState<'LIST' | 'CALENDAR'>('LIST');
+
+  // Incremental rendering — mount planner cards in batches while scrolling,
+  // instead of the entire fleet at once (heavy: each card holds form controls)
+  const BATCH_SIZE = 30;
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting) {
+        setVisibleCount(c => c + BATCH_SIZE);
+      }
+    }, { rootMargin: '600px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [viewMode]);
+
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [searchQuery]);
 
   const handleCalendarReschedule = useCallback((device: MedicalDevice, newDate: string) => {
     onApplyPlan([{ ...device, nextMaintenanceDate: newDate }]);
@@ -307,14 +329,23 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       {/* Planning Grid */}
       {viewMode === 'LIST' && (
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-        {filteredDevices.map(device => (
-          <MaintenanceCard 
-            key={device.id} 
-            device={device} 
-            draft={drafts[device.id]} 
-            onUpdateDraft={handleUpdateDraft} 
+        {filteredDevices.slice(0, visibleCount).map(device => (
+          <MaintenanceCard
+            key={device.id}
+            device={device}
+            draft={drafts[device.id]}
+            onUpdateDraft={handleUpdateDraft}
           />
         ))}
+
+        {/* Sentinel — loads the next batch when scrolled into view */}
+        <div ref={sentinelRef} className="h-1 col-span-full" />
+        {visibleCount < filteredDevices.length && (
+          <div className="col-span-full py-6 flex items-center justify-center gap-3 text-slate-400">
+            <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
+          </div>
+        )}
 
         {filteredDevices.length === 0 && (
           <div className="col-span-full py-32 flex flex-col items-center justify-center text-center">
