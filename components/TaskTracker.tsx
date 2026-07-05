@@ -1,7 +1,23 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, HOSPITAL_DEPARTMENTS, getUniqueDepartments } from '../types';
-import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint } from 'lucide-react';
+import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown } from 'lucide-react';
+
+type TaskViewMode = 'CARDS' | 'TABLE' | 'KANBAN';
+type SortKey = 'title' | 'deviceName' | 'department' | 'priority' | 'status' | 'createdAt' | 'dueDate';
+
+const PRIORITY_ORDER: Record<TaskPriority, number> = {
+  [TaskPriority.CRITICAL]: 0,
+  [TaskPriority.HIGH]: 1,
+  [TaskPriority.MEDIUM]: 2,
+  [TaskPriority.LOW]: 3,
+};
+
+const STATUS_ORDER: Record<TaskStatus, number> = {
+  [TaskStatus.PENDING]: 0,
+  [TaskStatus.IN_PROGRESS]: 1,
+  [TaskStatus.COMPLETED]: 2,
+};
 
 interface TaskTrackerProps {
   tasks: MedicalTask[];
@@ -16,6 +32,10 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<TaskViewMode>('CARDS');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -40,6 +60,50 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
       return matchStatus && matchSearch;
     });
   }, [tasks, filterStatus, searchQuery]);
+
+  // Sorted view for the table
+  const sortedTasks = useMemo(() => {
+    const arr = [...filteredTasks];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'priority') cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+      else if (sortKey === 'status') cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      else cmp = String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''));
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filteredTasks, sortKey, sortDir]);
+
+  const handleSort = useCallback((key: SortKey) => {
+    setSortKey(prev => {
+      if (prev === key) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        return prev;
+      }
+      setSortDir('asc');
+      return key;
+    });
+  }, []);
+
+  // Kanban: group by status
+  const kanbanColumns = useMemo(() => {
+    return Object.values(TaskStatus).map(status => ({
+      status,
+      tasks: filteredTasks
+        .filter(t => t.status === status)
+        .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]),
+    }));
+  }, [filteredTasks]);
+
+  const handleKanbanDrop = useCallback((e: React.DragEvent, status: TaskStatus) => {
+    e.preventDefault();
+    setDragOverCol(null);
+    const taskId = e.dataTransfer.getData('text/task-id');
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.status !== status) {
+      onUpdateTask({ ...task, status });
+    }
+  }, [tasks, onUpdateTask]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -135,35 +199,189 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
           </select>
         </div>
-        <button 
-          onClick={() => { resetForm(); setIsAdding(true); }}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
-        >
-          <Plus className="w-4 h-4" /> New Ticket
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+            {([
+              ['CARDS', 'Carduri', LayoutGrid],
+              ['TABLE', 'Tabel', Table2],
+              ['KANBAN', 'Kanban', Columns],
+            ] as [TaskViewMode, string, any][]).map(([mode, label, Icon]) => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                title={label}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon className="w-4 h-4" />
+                <span className="hidden lg:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { resetForm(); setIsAdding(true); }}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
+          >
+            <Plus className="w-4 h-4" /> New Ticket
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {filteredTasks.map(task => (
-          <TaskCard 
-            key={task.id} 
-            task={task} 
-            devices={devices}
-            onToggleStatus={toggleStatus}
-            onEdit={handleEdit}
-            onDelete={onDeleteTask}
-          />
-        ))}
-        {filteredTasks.length === 0 && (
-          <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50">
-            <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
-              <CheckSquare className="w-16 h-16 text-slate-200" />
-            </div>
-            <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">Task queue is currently clear</p>
-            <p className="text-xs text-slate-300 mt-2 font-bold uppercase">All clinical requests handled</p>
+      {filteredTasks.length === 0 ? (
+        <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50">
+          <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
+            <CheckSquare className="w-16 h-16 text-slate-200" />
           </div>
-        )}
-      </div>
+          <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">Task queue is currently clear</p>
+          <p className="text-xs text-slate-300 mt-2 font-bold uppercase">All clinical requests handled</p>
+        </div>
+      ) : viewMode === 'CARDS' ? (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredTasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              devices={devices}
+              onToggleStatus={toggleStatus}
+              onEdit={handleEdit}
+              onDelete={onDeleteTask}
+            />
+          ))}
+        </div>
+      ) : viewMode === 'TABLE' ? (
+        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/70">
+                  {([
+                    ['title', 'Titlu'],
+                    ['deviceName', 'Dispozitiv'],
+                    ['department', 'Departament'],
+                    ['priority', 'Prioritate'],
+                    ['status', 'Status'],
+                    ['createdAt', 'Creat'],
+                    ['dueDate', 'Scadenta'],
+                  ] as [SortKey, string][]).map(([key, label]) => (
+                    <th key={key} onClick={() => handleSort(key)}
+                      className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest cursor-pointer select-none hover:text-slate-900 transition whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        {sortKey === key && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-600" /> : <ChevronDown className="w-3 h-3 text-blue-600" />)}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Actiuni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTasks.map(task => (
+                  <tr key={task.id} className="border-b border-slate-50 hover:bg-blue-50/30 transition group">
+                    <td className="px-5 py-3.5 max-w-[280px]">
+                      <p className="text-xs font-black text-slate-900 truncate" title={task.title}>{task.title}</p>
+                      {task.notes && (
+                        <p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                          <StickyNote className="w-2.5 h-2.5" /> Note tehnice
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 max-w-[180px]">
+                      {task.deviceName
+                        ? <span className="text-[10px] font-bold text-blue-600 truncate block" title={task.deviceName}>{task.deviceName}</span>
+                        : <span className="text-[10px] text-slate-300 font-bold">—</span>}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{task.priority}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <button onClick={() => toggleStatus(task)}
+                        className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
+                        title="Click pentru a schimba statusul">
+                        {getStatusIcon(task.status)}
+                        {task.status}
+                      </button>
+                    </td>
+                    <td className="px-5 py-3.5 text-[10px] font-mono font-bold text-slate-500 whitespace-nowrap">{task.createdAt}</td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      {task.dueDate
+                        ? <span className={`text-[10px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-500'}`}>{task.dueDate}</span>
+                        : <span className="text-[10px] text-slate-300 font-bold">—</span>}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button onClick={() => handleEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza">
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => onDeleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-100">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{sortedTasks.length} tichete · click pe coloana pentru sortare · click pe status pentru avansare</p>
+          </div>
+        </div>
+      ) : (
+        /* KANBAN */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {kanbanColumns.map(col => (
+            <div
+              key={col.status}
+              onDragOver={e => { e.preventDefault(); setDragOverCol(col.status); }}
+              onDragLeave={() => setDragOverCol(c => c === col.status ? null : c)}
+              onDrop={e => handleKanbanDrop(e, col.status)}
+              className={`rounded-[2rem] border-2 transition p-4 min-h-[300px] ${dragOverCol === col.status ? 'border-blue-400 bg-blue-50/50 ring-4 ring-blue-500/10' : 'border-slate-100 bg-slate-50/50'}`}
+            >
+              <div className="flex items-center justify-between px-2 pb-4">
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(col.status)}
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{col.status}</p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${col.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : col.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {col.tasks.length}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {col.tasks.map(task => (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={e => e.dataTransfer.setData('text/task-id', task.id)}
+                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{task.priority}</span>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                        <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-300 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
+                        <button onClick={() => onDeleteTask(task.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                    <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
+                    {task.deviceName && <p className="text-[10px] font-bold text-blue-600 truncate mt-1">{task.deviceName}</p>}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-50">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <Building className="w-2.5 h-2.5" /> {task.department}
+                      </span>
+                      {task.dueDate && (
+                        <span className={`text-[9px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-400'}`}>
+                          {task.dueDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {col.tasks.length === 0 && (
+                  <p className="py-10 text-center text-[9px] font-black text-slate-300 uppercase tracking-widest">Trage un tichet aici</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(isAdding || editingTask) && (
         <div className="fixed inset-0 z-[100] bg-slate-900/80 flex items-center justify-center p-4">
