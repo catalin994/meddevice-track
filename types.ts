@@ -135,6 +135,7 @@ export interface MedicalDevice {
   components: DeviceComponent[];
   locationHistory?: LocationLog[];
   nextMaintenanceDate?: string;
+  tags?: string[];
   updated_at?: string;
 }
 
@@ -163,6 +164,46 @@ export enum InvoiceStatus {
   PAID = 'Paid',
   UNPAID = 'Unpaid',
   OVERDUE = 'Overdue',
+}
+
+export type UserRole = 'ADMIN' | 'TEHNICIAN' | 'CONTABIL' | 'VIZUALIZARE';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  pin: string;
+}
+
+export type Permission = 'finance' | 'edit' | 'delete' | 'manageUsers';
+
+const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  ADMIN: ['finance', 'edit', 'delete', 'manageUsers'],
+  TEHNICIAN: ['edit'],
+  CONTABIL: ['finance', 'edit'],
+  VIZUALIZARE: [],
+};
+
+export const hasPermission = (user: AppUser | null, perm: Permission): boolean =>
+  !!user && ROLE_PERMISSIONS[user.role]?.includes(perm);
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: 'Administrator',
+  TEHNICIAN: 'Tehnician',
+  CONTABIL: 'Contabil',
+  VIZUALIZARE: 'Doar vizualizare',
+};
+
+export interface AuditEntry {
+  id: string;
+  timestamp: string;
+  userName: string;
+  action: 'create' | 'update' | 'delete';
+  entity: 'device' | 'task' | 'invoice';
+  entityId: string;
+  entityName: string;
+  details?: string;
+  updated_at?: string;
 }
 
 export interface Invoice {

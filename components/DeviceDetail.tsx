@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice } from '../types';
+import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry } from '../types';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -18,10 +18,12 @@ interface DeviceDetailProps {
   onAddTask: (task: MedicalTask) => void;
   isStandalone?: boolean;
   invoices?: Invoice[];
+  auditEntries?: AuditEntry[];
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [] }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr'>('overview');
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [] }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
+  const [tagInput, setTagInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
@@ -45,7 +47,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     image: device.image || '',
     files: device.files || [],
     purchaseDate: device.purchaseDate,
-    nextMaintenanceDate: device.nextMaintenanceDate
+    nextMaintenanceDate: device.nextMaintenanceDate,
+    tags: device.tags || []
   });
 
   // Sync editForm with device prop when it changes (e.g. from background sync)
@@ -65,7 +68,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         image: device.image || '',
         files: device.files || [],
         purchaseDate: device.purchaseDate,
-        nextMaintenanceDate: device.nextMaintenanceDate
+        nextMaintenanceDate: device.nextMaintenanceDate,
+        tags: device.tags || []
       });
     }
   }, [device, isEditing]);
@@ -285,6 +289,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Archives & Docs" />
         <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<CheckSquare className="w-4 h-4" />} label="Operations" />
         <TabButton active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} icon={<QrCode className="w-4 h-4" />} label="Identity" />
+        <TabButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<Clock className="w-4 h-4" />} label="Istoric" />
       </div>
 
       <div className="p-8 overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
@@ -339,6 +344,31 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                               {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s}</option>)}
                            </select>
                         </div>
+                        <div className="space-y-1 md:col-span-2">
+                           <label className="tech-label ml-1">Etichete (Tags)</label>
+                           <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                              {editForm.tags.map(tag => (
+                                <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                  {tag}
+                                  <button type="button" onClick={() => setEditForm(p => ({ ...p, tags: p.tags.filter(t => t !== tag) }))} className="hover:text-red-200 transition"><X className="w-3 h-3" /></button>
+                                </span>
+                              ))}
+                              <input
+                                value={tagInput}
+                                onChange={e => setTagInput(e.target.value)}
+                                onKeyDown={e => {
+                                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                                    e.preventDefault();
+                                    const t = tagInput.trim().toLowerCase();
+                                    if (!editForm.tags.includes(t)) setEditForm(p => ({ ...p, tags: [...p.tags, t] }));
+                                    setTagInput('');
+                                  }
+                                }}
+                                placeholder={editForm.tags.length === 0 ? 'ex. critic, garantie, backup... (Enter pentru adaugare)' : '+ adauga'}
+                                className="flex-1 min-w-[140px] bg-transparent text-xs font-bold outline-none placeholder:text-slate-300"
+                              />
+                           </div>
+                        </div>
                      </div>
                    ) : (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
@@ -349,6 +379,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <InfoRow label="Manufacturer" value={device.manufacturer} />
                         <InfoRow label="Status" value={device.status} />
                         <InfoRow label="Next PM Date" value={device.nextMaintenanceDate || 'Not Scheduled'} badge />
+                        {(device.tags || []).length > 0 && (
+                          <div className="md:col-span-2 space-y-2">
+                            <span className="tech-label">Etichete</span>
+                            <div className="flex flex-wrap gap-2">
+                              {(device.tags || []).map(tag => (
+                                <span key={tag} className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                                  <Tag className="w-3 h-3" />{tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                      </div>
                    )}
                    
@@ -683,6 +725,46 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    </p>
                 </div>
              </div>
+          </div>
+        )}
+
+        {activeTab === 'audit' && (
+          <div className="max-w-4xl mx-auto py-6 animate-slide-up">
+            <div className="hardware-card p-10 rounded-[2.5rem]">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Clock className="w-6 h-6" /></div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Istoric Modificari</h3>
+                  <p className="tech-label mt-1">Cine a modificat acest dispozitiv si cand</p>
+                </div>
+              </div>
+              {(() => {
+                const deviceAudit = auditEntries.filter(e => e.entity === 'device' && e.entityId === device.id);
+                if (deviceAudit.length === 0) {
+                  return <p className="py-12 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Nicio modificare inregistrata pentru acest dispozitiv</p>;
+                }
+                return (
+                  <div className="space-y-3">
+                    {deviceAudit.slice(0, 50).map(e => (
+                      <div key={e.id} className="flex items-start gap-4 p-4 bg-slate-50/70 rounded-2xl border border-slate-100">
+                        <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                          {e.action === 'delete' ? <Trash2 className="w-4 h-4" /> : e.action === 'create' ? <Plus className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-900">
+                            {e.action === 'create' ? 'Creat' : e.action === 'delete' ? 'Sters' : 'Modificat'} de <span className="text-blue-600">{e.userName}</span>
+                          </p>
+                          {e.details && <p className="text-[11px] font-medium text-slate-500 mt-0.5">{e.details}</p>}
+                        </div>
+                        <p className="text-[10px] font-mono font-bold text-slate-400 shrink-0">
+                          {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
       </div>

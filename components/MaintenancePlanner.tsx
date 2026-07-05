@@ -6,9 +6,12 @@ import {
   AlertCircle, ArrowRight, Activity, FileSpreadsheet, Download, Box
 } from 'lucide-react';
 
+import MaintenanceCalendar from './MaintenanceCalendar';
+
 interface MaintenancePlannerProps {
   devices: MedicalDevice[];
   onApplyPlan: (updatedDevices: MedicalDevice[]) => void;
+  onSelectDevice?: (device: MedicalDevice) => void;
 }
 
 const MONTHS = [
@@ -33,9 +36,14 @@ interface ScheduleDraft {
   isModified: boolean;
 }
 
-const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onApplyPlan }) => {
+const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onApplyPlan, onSelectDevice }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [drafts, setDrafts] = useState<Record<string, ScheduleDraft>>({});
+  const [viewMode, setViewMode] = useState<'LIST' | 'CALENDAR'>('LIST');
+
+  const handleCalendarReschedule = useCallback((device: MedicalDevice, newDate: string) => {
+    onApplyPlan([{ ...device, nextMaintenanceDate: newDate }]);
+  }, [onApplyPlan]);
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
@@ -245,6 +253,16 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full xl:w-auto">
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl shrink-0">
+            <button onClick={() => setViewMode('LIST')}
+              className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              Lista
+            </button>
+            <button onClick={() => setViewMode('CALENDAR')}
+              className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              Calendar
+            </button>
+          </div>
           <div className="relative flex-1 sm:min-w-[300px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
             <input 
@@ -277,7 +295,17 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         </div>
       </div>
 
+      {/* Calendar View */}
+      {viewMode === 'CALENDAR' && (
+        <MaintenanceCalendar
+          devices={devices}
+          onReschedule={handleCalendarReschedule}
+          onSelectDevice={onSelectDevice}
+        />
+      )}
+
       {/* Planning Grid */}
+      {viewMode === 'LIST' && (
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
         {filteredDevices.map(device => (
           <MaintenanceCard 
@@ -298,6 +326,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
           </div>
         )}
       </div>
+      )}
 
       {/* Footer Status Bar */}
       {modifiedCount > 0 && (

@@ -1,16 +1,19 @@
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { MedicalDevice } from '../types';
-import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity } from 'lucide-react';
+import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
+import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
+import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
 
 interface SettingsProps {
   devices: MedicalDevice[];
   onImport: (devices: MedicalDevice[]) => void;
+  auditLog?: AuditEntry[];
+  currentUser?: AppUser | null;
 }
 
-const Settings: React.FC<SettingsProps> = ({ devices, onImport }) => {
+const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], currentUser = null }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
   const [inputUrl, setInputUrl] = useState(config.url || '');
@@ -23,6 +26,39 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport }) => {
   const [dbCount, setDbCount] = useState<number | null>(null);
   const [lsCount, setLsCount] = useState<number | null>(null);
   const [isRepairing, setIsRepairing] = useState(false);
+
+  // User management (admin only)
+  const canManageUsers = hasPermission(currentUser, 'manageUsers');
+  const [users, setUsers] = useState<AppUser[]>(() => getUsers());
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('TEHNICIAN');
+  const [newUserPin, setNewUserPin] = useState('');
+
+  const handleAddUser = useCallback(() => {
+    if (!newUserName.trim() || newUserPin.length < 4) {
+      alert('Completeaza numele si un PIN de minim 4 cifre.');
+      return;
+    }
+    addUser(newUserName, newUserRole, newUserPin);
+    setUsers(getUsers());
+    setNewUserName('');
+    setNewUserPin('');
+  }, [newUserName, newUserRole, newUserPin]);
+
+  const handleRemoveUser = useCallback((id: string) => {
+    if (id === currentUser?.id) { alert('Nu iti poti sterge propriul cont.'); return; }
+    if (!window.confirm('Stergi acest utilizator?')) return;
+    if (!removeUser(id)) alert('Nu poti sterge ultimul administrator.');
+    setUsers(getUsers());
+  }, [currentUser]);
+
+  const handleResetPin = useCallback((user: AppUser) => {
+    const pin = window.prompt(`PIN nou pentru ${user.name} (minim 4 cifre):`);
+    if (pin && pin.length >= 4) {
+      updateUser({ ...user, pin });
+      setUsers(getUsers());
+    }
+  }, []);
 
   const SQL_FIX = `-- 1. OPEN SUPABASE DASHBOARD -> SQL EDITOR
 -- 2. PASTE THIS SCRIPT AND CLICK 'RUN'
@@ -64,6 +100,21 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT,
+    "userName" TEXT,
+    action TEXT,
+    entity TEXT,
+    "entityId" TEXT,
+    "entityName" TEXT,
+    details TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Adds the tags column for older installs (safe to re-run)
+ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
+
 CREATE TABLE IF NOT EXISTS public.invoices (
     id TEXT PRIMARY KEY,
     "invoiceNumber" TEXT NOT NULL,
@@ -85,11 +136,13 @@ CREATE TABLE IF NOT EXISTS public.invoices (
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
 CREATE POLICY "Allow all public access" ON public.devices FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
 `;
 
   useEffect(() => {
@@ -239,6 +292,93 @@ CREATE POLICY "Allow all public access" ON public.invoices FOR ALL USING (true) 
             </button>
           </div>
         </div>
+      </div>
+
+      {/* USER MANAGEMENT — admin only */}
+      {canManageUsers && (
+        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+          <div className="flex items-center gap-5 mb-8">
+            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-3xl">
+              <Users className="w-10 h-10" />
+            </div>
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Utilizatori & Roluri</h2>
+              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Controlul accesului in aplicatie</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-8">
+            {users.map(u => (
+              <div key={u.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-2.5 bg-white text-indigo-600 rounded-xl border border-slate-200"><Users className="w-4 h-4" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-slate-900 truncate">{u.name} {u.id === currentUser?.id && <span className="text-[9px] text-blue-600 font-black uppercase">(tu)</span>}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ROLE_LABELS[u.role]}</p>
+                </div>
+                <button onClick={() => handleResetPin(u)} className="p-2.5 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-slate-200 transition" title="Schimba PIN">
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleRemoveUser(u.id)} className="p-2.5 bg-white text-slate-400 hover:text-red-600 rounded-xl border border-slate-200 transition" title="Sterge utilizator">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adauga utilizator nou</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Nume complet"
+                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10" />
+              <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as UserRole)}
+                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none">
+                {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+              <input value={newUserPin} onChange={e => setNewUserPin(e.target.value.replace(/\D/g, ''))} placeholder="PIN (min. 4 cifre)" inputMode="numeric" maxLength={6}
+                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold font-mono outline-none focus:ring-4 focus:ring-indigo-500/10" />
+            </div>
+            <button onClick={handleAddUser} className="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" /> Creeaza cont
+            </button>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+              Roluri: Administrator (tot) · Tehnician (fara Financiar) · Contabil (cu Financiar, fara stergere) · Vizualizare (doar citire)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* AUDIT LOG */}
+      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="flex items-center gap-5 mb-8">
+          <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl">
+            <Clock className="w-10 h-10" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Jurnal Activitate</h2>
+            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Cine a modificat ce si cand · ultimele {Math.min(auditLog.length, 50)} actiuni</p>
+          </div>
+        </div>
+        {auditLog.length === 0 ? (
+          <p className="py-10 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Nicio actiune inregistrata inca</p>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {auditLog.slice(0, 50).map(e => (
+              <div key={e.id} className="flex items-center gap-3 p-3.5 bg-slate-50/70 rounded-xl border border-slate-100">
+                <span className={`shrink-0 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                  {e.action === 'create' ? 'Creat' : e.action === 'delete' ? 'Sters' : 'Modif.'}
+                </span>
+                <span className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-black uppercase tracking-widest text-slate-400">
+                  {e.entity === 'device' ? 'Dispozitiv' : e.entity === 'task' ? 'Tichet' : 'Factura'}
+                </span>
+                <p className="flex-1 min-w-0 text-xs font-bold text-slate-700 truncate">{e.entityName}</p>
+                <p className="shrink-0 text-[10px] font-black text-blue-600">{e.userName}</p>
+                <p className="shrink-0 text-[9px] font-mono font-bold text-slate-400">
+                  {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* RECOVERY HUB */}

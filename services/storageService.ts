@@ -1,11 +1,12 @@
 
-import { MedicalDevice, MedicalTask, Invoice } from '../types';
+import { MedicalDevice, MedicalTask, Invoice, AuditEntry } from '../types';
 
 const DB_NAME = 'MediTrackDB';
 const STORE_DEVICES = 'devices';
 const STORE_TASKS = 'tasks';
 const STORE_INVOICES = 'invoices';
-const DB_VERSION = 4;
+const STORE_AUDIT = 'audit';
+const DB_VERSION = 5;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -33,6 +34,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_INVOICES)) {
         db.createObjectStore(STORE_INVOICES, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_AUDIT)) {
+        db.createObjectStore(STORE_AUDIT, { keyPath: 'id' });
       }
     };
 
@@ -177,6 +181,30 @@ export const getAllInvoicesFromDB = async (): Promise<Invoice[]> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_INVOICES, 'readonly');
     const store = transaction.objectStore(STORE_INVOICES);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const saveAuditToDB = async (entries: AuditEntry[]): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_AUDIT, 'readwrite');
+    const store = transaction.objectStore(STORE_AUDIT);
+    for (const entry of entries) {
+      store.put(entry);
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const getAllAuditFromDB = async (): Promise<AuditEntry[]> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_AUDIT, 'readonly');
+    const store = transaction.objectStore(STORE_AUDIT);
     const request = store.getAll();
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = (event: any) => reject(event.target.error);

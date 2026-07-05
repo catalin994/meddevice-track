@@ -1,7 +1,9 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag } from 'lucide-react';
+
+const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 const exportToExcel = async (devices: MedicalDevice[]) => {
   const ExcelJS = (await import('exceljs')).default;
@@ -577,10 +579,15 @@ const DeviceCard = React.memo(({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-wider">
             <Layers className="w-3 h-3" /> {device.category || 'Altele'}
           </span>
+          {(device.tags || []).slice(0, 4).map(tag => (
+            <span key={tag} className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 uppercase tracking-wider">
+              <Tag className="w-2.5 h-2.5" /> {tag}
+            </span>
+          ))}
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ID: {device.id.slice(0, 12)}...</span>
         </div>
       </div>
@@ -612,8 +619,10 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>('ALL');
   const [filterDept, setFilterDept] = useState<string | 'ALL'>('ALL');
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
+  const [filterTag, setFilterTag] = useState<string | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
   const [isFullyRendered, setIsFullyRendered] = useState(false);
+  const [showQRSheet, setShowQRSheet] = useState(false);
 
   // Render first 20 cards immediately; remaining after first paint so the view opens fast
   useEffect(() => {
@@ -670,10 +679,18 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       const matchStatus = filterStatus === 'ALL' || d.status === filterStatus;
       const matchDept = filterDept === 'ALL' || d.department === filterDept;
       const matchCategory = filterCategory === 'ALL' || d.category === filterCategory;
-      
-      return matchSearch && matchStatus && matchDept && matchCategory;
+      const matchTag = filterTag === 'ALL' || (d.tags || []).includes(filterTag);
+
+      return matchSearch && matchStatus && matchDept && matchCategory && matchTag;
     });
-  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory]);
+  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
+
+  // All tags used across the fleet, for the filter dropdown
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    (devices || []).forEach(d => (d.tags || []).forEach(t => set.add(t)));
+    return Array.from(set).sort();
+  }, [devices]);
 
   const handleOpenQuickEdit = useCallback((e: React.MouseEvent, device: MedicalDevice) => {
     e.preventDefault();
@@ -792,8 +809,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onChange={(e) => setLocalSearch(e.target.value)}
             />
           </div>
-          <button 
-            onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); }}
+          <button
+            onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); setFilterTag('ALL'); }}
             className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
             title="Reset Filters"
           >
@@ -801,7 +818,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
           <div className="space-y-1">
             <label className="tech-label ml-1">Department</label>
             <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
@@ -823,6 +840,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
             </select>
           </div>
+          {allTags.length > 0 && (
+            <div className="space-y-1">
+              <label className="tech-label ml-1">Eticheta</label>
+              <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+                <option value="ALL">TOATE ETICHETELE</option>
+                {allTags.map(tag => <option key={tag} value={tag}>{tag.toUpperCase()}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -867,6 +893,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               <Upload className="w-4 h-4" />
               Import
             </button>
+            <button
+              onClick={() => setShowQRSheet(true)}
+              disabled={filteredDevices.length === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Genereaza etichete QR printabile pentru dispozitivele filtrate"
+            >
+              <QrCode className="w-4 h-4" />
+              Etichete QR
+            </button>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
           </div>
         </div>
@@ -908,7 +943,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 <Box className="w-10 h-10 text-slate-200" />
               </div>
               <p className="tech-label mb-8 text-slate-400">No matching assets found in the registry</p>
-              <button 
+              <button
                 onClick={onAddDevice}
                 className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
               >
@@ -918,6 +953,12 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           )}
         </div>
       </div>
+
+      {showQRSheet && (
+        <React.Suspense fallback={null}>
+          <QRLabelSheet devices={filteredDevices} onClose={() => setShowQRSheet(false)} />
+        </React.Suspense>
+      )}
     </div>
   );
 });

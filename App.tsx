@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -12,6 +12,7 @@ const importTaskTracker = () => import('./components/TaskTracker');
 const importQRScanner = () => import('./components/QRScanner');
 const importDocumentScanner = () => import('./components/DocumentScanner');
 const importFinanceManager = () => import('./components/FinanceManager');
+const importCommandPalette = () => import('./components/CommandPalette');
 
 const Dashboard = lazy(importDashboard);
 const QRScanner = lazy(importQRScanner);
@@ -23,6 +24,7 @@ const MaintenancePlanner = lazy(importMaintenancePlanner);
 const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
 const FinanceManager = lazy(importFinanceManager);
+const CommandPalette = lazy(importCommandPalette);
 
 const prefetchModules = () => {
   // In dev mode Vite serves unminified deps — prefetching causes the browser to
@@ -45,9 +47,11 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
 import { supabase, isSupabaseConfigured, checkConnection } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB } from './services/storageService';
+import { getCurrentUser, logout as authLogout } from './services/authService';
+import LoginScreen from './components/LoginScreen';
 
 const MOCK_DEVICES: MedicalDevice[] = [
   {
@@ -84,6 +88,31 @@ const App: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<string>('--:--');
   const [showScanner, setShowScanner] = useState(false);
   const [showDocScanner, setShowDocScanner] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => getCurrentUser());
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+
+  const canFinance = hasPermission(currentUser, 'finance');
+  const canEdit = hasPermission(currentUser, 'edit');
+  const canDelete = hasPermission(currentUser, 'delete');
+
+  // Global Ctrl+K / Cmd+K shortcut for the command palette
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowPalette(p => !p);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    authLogout();
+    setCurrentUser(null);
+    setView('DASHBOARD');
+  }, []);
 
   // Deep Linking & Standalone Mode
   useEffect(() => {
@@ -132,8 +161,27 @@ const App: React.FC = () => {
       contracts: Array.isArray(d.contracts) ? d.contracts : [],
       files: files,
       components: Array.isArray(d.components) ? d.components : [],
+      tags: Array.isArray(d.tags) ? d.tags : [],
       updated_at: d.updated_at || d.updatedAt
     } as MedicalDevice;
+  }, []);
+
+  const logAudit = useCallback((action: AuditEntry['action'], entity: AuditEntry['entity'], entityId: string, entityName: string, details?: string) => {
+    const entry: AuditEntry = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      userName: getCurrentUser()?.name || 'Necunoscut',
+      action, entity, entityId, entityName, details,
+      updated_at: new Date().toISOString(),
+    };
+    setAuditLog(prev => [entry, ...prev].slice(0, 2000));
+    // Best-effort persistence — the audit trail must never break the main flow
+    saveAuditToDB([entry]).catch(() => {});
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('audit_logs').insert([entry]).then(({ error }) => {
+        if (error) console.warn('[Audit] Cloud log skipped:', error.message);
+      });
+    }
   }, []);
 
   const loadAndSync = useCallback(async () => {
@@ -157,6 +205,9 @@ const App: React.FC = () => {
       setDevices(cleanedDevices);
       setTasks(cleanedTasks);
       setInvoices(localInvoices);
+      getAllAuditFromDB()
+        .then(entries => setAuditLog(entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 2000)))
+        .catch(() => {});
 
       // UI is ready with local data - hide loader immediately for faster perceived performance
       setIsLoading(false);
@@ -308,6 +359,8 @@ const App: React.FC = () => {
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
     const safeId = String(id).trim();
+    const target = devicesMap.get(safeId);
+    logAudit('delete', 'device', safeId, target?.name || safeId, target ? `SN: ${target.serialNumber}` : undefined);
     setSelectedDeviceId(null);
     setView('INVENTORY');
     setDevices(prev => prev.filter(d => d.id !== safeId));
@@ -323,13 +376,20 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, devicesMap, logAudit]);
 
   const handleUpsertDevices = useCallback(async (data: MedicalDevice | MedicalDevice[]) => {
     const now = new Date().toISOString();
     const items = Array.isArray(data) ? data : [data];
     const payload: MedicalDevice[] = items.map(d => ({ ...normalizeDevice(d), updated_at: now }));
     if (payload.length === 0) return;
+
+    // Audit: individual entries for small edits, one summary entry for bulk imports
+    if (payload.length <= 3) {
+      payload.forEach(p => logAudit(devicesMap.has(p.id) ? 'update' : 'create', 'device', p.id, p.name, `SN: ${p.serialNumber}`));
+    } else {
+      logAudit('update', 'device', 'bulk', `${payload.length} dispozitive`, 'Import / actualizare in masa');
+    }
 
     setDevices((prev: MedicalDevice[]) => {
       const map = new Map<string, MedicalDevice>(prev.map((d: MedicalDevice) => [d.id, d]));
@@ -346,15 +406,18 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("[Registry] Sync deferred:", err);
-    } finally { 
-      setIsSyncing(false); 
+    } finally {
+      setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, normalizeDevice]);
+  }, [isSupabaseConfigured, normalizeDevice, devicesMap, logAudit]);
 
   const handleUpsertTasks = useCallback(async (data: MedicalTask | MedicalTask[]) => {
     const now = new Date().toISOString();
     const items = (Array.isArray(data) ? data : [data]).map(t => ({ ...t, updated_at: now }));
     if (items.length === 0) return;
+
+    const existingIds = new Set(tasks.map(t => t.id));
+    items.forEach(t => logAudit(existingIds.has(t.id) ? 'update' : 'create', 'task', t.id, t.title, t.deviceName));
 
     setTasks((prev: MedicalTask[]) => {
       const map = new Map<string, MedicalTask>(prev.map((t: MedicalTask) => [t.id, t]));
@@ -371,13 +434,15 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("[Tasks] Sync deferred:", err);
-    } finally { 
-      setIsSyncing(false); 
+    } finally {
+      setIsSyncing(false);
     }
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, tasks, logAudit]);
 
   const handleUpsertInvoice = useCallback(async (invoice: Invoice) => {
     const payload: Invoice = { ...invoice, updated_at: new Date().toISOString() };
+
+    logAudit(invoices.some(i => i.id === payload.id) ? 'update' : 'create', 'invoice', payload.id, payload.invoiceNumber, `${payload.supplier} · ${payload.amount} ${payload.currency}`);
 
     setInvoices(prev => {
       const map = new Map(prev.map(i => [i.id, i]));
@@ -397,10 +462,12 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, invoices, logAudit]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
     if (!id) return;
+    const target = invoices.find(i => i.id === id);
+    logAudit('delete', 'invoice', id, target?.invoiceNumber || id, target ? `${target.supplier} · ${target.amount} ${target.currency}` : undefined);
     setInvoices(prev => prev.filter(i => i.id !== id));
 
     setIsSyncing(true);
@@ -414,7 +481,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, invoices, logAudit]);
 
   const handleSaveContract = useCallback(async (contract: Contract, deviceIds: string[]) => {
     const targets = devices.filter(d => deviceIds.includes(d.id));
@@ -448,6 +515,8 @@ const App: React.FC = () => {
   const handleDeleteTask = useCallback(async (id: string) => {
     if (!id) return;
     const safeId = String(id).trim();
+    const target = tasks.find(t => t.id === safeId);
+    logAudit('delete', 'task', safeId, target?.title || safeId, target?.deviceName);
     setTasks(prev => prev.filter(t => t.id !== safeId));
 
     setIsSyncing(true);
@@ -461,7 +530,12 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, tasks, logAudit]);
+
+  // Login gate — everything below requires an authenticated user
+  if (!currentUser && !isStandalone) {
+    return <LoginScreen onLogin={setCurrentUser} />;
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
@@ -474,6 +548,7 @@ const App: React.FC = () => {
           syncStatus={syncStatus}
           lastSyncTime={lastSyncTime}
           loadAndSync={loadAndSync}
+          canFinance={canFinance}
         />
       )}
 
@@ -487,21 +562,32 @@ const App: React.FC = () => {
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Fleet Management System</p>
                </div>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               {isSyncing && (
                 <div className="flex items-center gap-2.5 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                   <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
                   <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Committing Data</span>
                 </div>
               )}
-              <div className="h-8 w-px bg-slate-200" />
               <button
-                onClick={() => setShowDocScanner(true)}
-                className="p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
-                title="Scan document"
+                onClick={() => setShowPalette(true)}
+                className="hidden sm:flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:border-blue-300 hover:text-slate-600 transition-colors"
+                title="Cautare globala"
               >
-                <ScanLine className="w-7 h-7" />
+                <Search className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Cauta...</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[9px] font-black">Ctrl K</kbd>
               </button>
+              <div className="h-8 w-px bg-slate-200" />
+              {canEdit && (
+                <button
+                  onClick={() => setShowDocScanner(true)}
+                  className="p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
+                  title="Scan document"
+                >
+                  <ScanLine className="w-7 h-7" />
+                </button>
+              )}
               <button
                 onClick={() => setShowScanner(true)}
                 className="p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
@@ -509,11 +595,21 @@ const App: React.FC = () => {
               >
                 <QrCode className="w-7 h-7" />
               </button>
-              {view === 'INVENTORY' && (
+              {view === 'INVENTORY' && canEdit && (
                 <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
                   + Register New Asset
                 </button>
               )}
+              <div className="h-8 w-px bg-slate-200" />
+              <div className="flex items-center gap-3">
+                <div className="hidden md:block text-right">
+                  <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
+                </div>
+                <button onClick={handleLogout} className="p-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 transition-colors" title="Delogare">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </header>
         )}
@@ -551,6 +647,7 @@ const App: React.FC = () => {
                     onAddTask={handleUpsertTasks}
                     isStandalone={isStandalone}
                     invoices={invoices}
+                    auditEntries={auditLog}
                   />
                 )}
                 {view === 'TASKS' && (
@@ -563,8 +660,8 @@ const App: React.FC = () => {
                   />
                 )}
                 {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} />}
-                {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} />}
-                {view === 'FINANCE' && (
+                {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} onSelectDevice={handleSelectDevice} />}
+                {view === 'FINANCE' && canFinance && (
                   <FinanceManager
                     devices={devices}
                     invoices={invoices}
@@ -573,7 +670,14 @@ const App: React.FC = () => {
                     onSaveContract={handleSaveContract}
                   />
                 )}
-                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} />}
+                {view === 'FINANCE' && !canFinance && (
+                  <div className="py-32 flex flex-col items-center text-center">
+                    <ShieldCheck className="w-16 h-16 text-slate-200 mb-4" />
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Acces restrictionat</p>
+                    <p className="text-xs text-slate-400 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
+                  </div>
+                )}
+                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} />}
               </Suspense>
             </div>
           )}
@@ -595,6 +699,20 @@ const App: React.FC = () => {
           <DocumentScanner devices={devices} onSave={handleDocScanSave} onClose={() => setShowDocScanner(false)} />
         </Suspense>
       )}
+
+      {showPalette && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            devices={devices}
+            tasks={tasks}
+            invoices={invoices}
+            canFinance={canFinance}
+            onNavigate={setView}
+            onSelectDevice={(id) => { setSelectedDeviceId(id); setView('DEVICE_DETAIL'); }}
+            onClose={() => setShowPalette(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
@@ -607,10 +725,10 @@ const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
   </button>
 ));
 
-const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync }: {
+const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync, canFinance }: {
   isSidebarOpen: boolean; view: string; setView: (v: any) => void;
   setSidebarOpen: (v: boolean) => void; syncStatus: string;
-  lastSyncTime: string; loadAndSync: () => void;
+  lastSyncTime: string; loadAndSync: () => void; canFinance: boolean;
 }) => (
   <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
     <div className="h-full flex flex-col relative">
@@ -630,7 +748,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
         <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
         <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
         <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
-        <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />
+        {canFinance && <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />}
         <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p></div>
         <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
       </nav>
