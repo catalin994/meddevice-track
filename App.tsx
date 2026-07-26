@@ -559,14 +559,14 @@ const App: React.FC = () => {
                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"><Menu className="w-5 h-5" /></button>
                <div>
                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">{view.replace('_', ' ')}</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Fleet Management System</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
             <div className="flex items-center gap-4">
               {isSyncing && (
                 <div className="flex items-center gap-2.5 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                   <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Committing Data</span>
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Se salveaza</span>
                 </div>
               )}
               <button
@@ -583,7 +583,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => setShowDocScanner(true)}
                   className="p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
-                  title="Scan document"
+                  title="Scaneaza document"
                 >
                   <ScanLine className="w-7 h-7" />
                 </button>
@@ -591,13 +591,13 @@ const App: React.FC = () => {
               <button
                 onClick={() => setShowScanner(true)}
                 className="p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
-                title="Scan device QR code"
+                title="Scaneaza cod QR dispozitiv"
               >
                 <QrCode className="w-7 h-7" />
               </button>
               {view === 'INVENTORY' && canEdit && (
                 <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
-                  + Register New Asset
+                  + Inregistreaza Dispozitiv
                 </button>
               )}
               <div className="h-8 w-px bg-slate-200" />
@@ -623,7 +623,7 @@ const App: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">MediTrack OS</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Initializing Core Registry...</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Se initializeaza registrul...</p>
               </div>
             </div>
           ) : (
@@ -631,7 +631,7 @@ const App: React.FC = () => {
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Module...</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Se incarca modulul...</p>
                 </div>
               }>
                 {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} />}
@@ -743,20 +743,20 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
         </div>
       </div>
       <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar bg-white">
-        <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operations</p></div>
-        <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
-        <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventory" />
-        <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Service Tickets" />
-        <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Maintenance" />
+        <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operatiuni</p></div>
+        <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Panou" />
+        <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventar" />
+        <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Tichete Service" />
+        <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Mentenanta" />
         {canFinance && <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />}
-        <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">System</p></div>
-        <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configuration" />
+        <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Sistem</p></div>
+        <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configurare" />
       </nav>
       <div className="p-6 border-t border-slate-100 bg-slate-50/50">
         <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cloud Sync</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizare Cloud</p>
             <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
           </div>
           <div className="flex items-center gap-3">
@@ -764,11 +764,11 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
               {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4 animate-spin" />}
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Syncing...'}</p>
-              <p className="text-[10px] font-medium text-slate-500">Last: {lastSyncTime}</p>
+              <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Se sincronizeaza...'}</p>
+              <p className="text-[10px] font-medium text-slate-500">Ultima: {lastSyncTime}</p>
             </div>
           </div>
-          <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-Sync Engine</button>
+          <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-sincronizare</button>
         </div>
       </div>
     </div>

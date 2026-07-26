@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, HOSPITAL_DEPARTMENTS, getUniqueDepartments } from '../types';
+import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown } from 'lucide-react';
 
 type TaskViewMode = 'CARDS' | 'TABLE' | 'KANBAN';
@@ -184,7 +184,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
             <input 
               type="text"
-              placeholder="Search tasks, departments..."
+              placeholder="Cauta tichete, departamente..."
               className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold shadow-inner focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -195,8 +195,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
           >
-            <option value="ALL">All Status</option>
-            {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+            <option value="ALL">Toate statusurile</option>
+            {Object.values(TaskStatus).map(s => <option key={s} value={s}>{TASK_STATUS_RO[s].toUpperCase()}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             onClick={() => { resetForm(); setIsAdding(true); }}
             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
           >
-            <Plus className="w-4 h-4" /> New Ticket
+            <Plus className="w-4 h-4" /> Tichet Nou
           </button>
         </div>
       </div>
@@ -228,8 +228,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
             <CheckSquare className="w-16 h-16 text-slate-200" />
           </div>
-          <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">Task queue is currently clear</p>
-          <p className="text-xs text-slate-300 mt-2 font-bold uppercase">All clinical requests handled</p>
+          <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">Nu exista tichete active</p>
+          <p className="text-xs text-slate-300 mt-2 font-bold uppercase">Toate solicitarile au fost rezolvate</p>
         </div>
       ) : viewMode === 'CARDS' ? (
         <div className="grid grid-cols-1 gap-4">
@@ -290,14 +290,14 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                       <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{task.priority}</span>
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <button onClick={() => toggleStatus(task)}
                         className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
                         title="Click pentru a schimba statusul">
                         {getStatusIcon(task.status)}
-                        {task.status}
+                        {TASK_STATUS_RO[task.status]}
                       </button>
                     </td>
                     <td className="px-5 py-3.5 text-[10px] font-mono font-bold text-slate-500 whitespace-nowrap">{task.createdAt}</td>
@@ -339,7 +339,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               <div className="flex items-center justify-between px-2 pb-4">
                 <div className="flex items-center gap-2">
                   {getStatusIcon(col.status)}
-                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{col.status}</p>
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{TASK_STATUS_RO[col.status]}</p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${col.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : col.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
                   {col.tasks.length}
@@ -354,7 +354,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition group"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{task.priority}</span>
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
                         <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-300 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
                         <button onClick={() => onDeleteTask(task.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
@@ -389,22 +389,22 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                    {editingTask ? 'Augment Task Data' : 'Open Service Ticket'}
+                    {editingTask ? 'Editeaza Tichet' : 'Deschide Tichet Service'}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                    {editingTask ? `Refining ID: ${editingTask.id}` : 'Clinical Engineering Registry'}
+                    {editingTask ? `Editare ID: ${editingTask.id}` : 'Registru Tichete Service'}
                   </p>
                </div>
                <button onClick={() => { setIsAdding(false); setEditingTask(null); }} className="p-3 text-slate-400 hover:bg-white hover:text-slate-900 rounded-2xl transition border border-slate-200 shadow-sm"><X className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Task Title / Fault Type</label>
-                <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g., Ultrasound probe failure" />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Titlu / Tip Defectiune</label>
+                <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="ex: Defectiune sonda ecograf" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Requesting Unit</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Departament Solicitant</label>
                   <div className="relative">
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
                       {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -413,48 +413,48 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Clinical Priority</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prioritate</label>
                   <div className="relative">
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value as any})}>
-                      {Object.values(TaskPriority).map(p => <option key={p} value={p}>{p}</option>)}
+                      {Object.values(TaskPriority).map(p => <option key={p} value={p}>{TASK_PRIORITY_RO[p]}</option>)}
                     </select>
                     <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
                   </div>
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Linked Clinical Asset (Optional)</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Dispozitiv Asociat (Optional)</label>
                 <div className="relative">
                   <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.deviceId} onChange={(e) => setFormData({...formData, deviceId: e.target.value})}>
-                    <option value="">No device linked</option>
+                    <option value="">Fara dispozitiv</option>
                     {devices.map(d => <option key={d.id} value={d.id}>{d.name} ({d.serialNumber})</option>)}
                   </select>
                   <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Problem Description</label>
-                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the issue reported by the unit..." />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Descrierea Problemei</label>
+                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Descrie problema raportata de departament..." />
               </div>
 
               {/* ADDITIONAL DATA FIELD */}
               <div className="space-y-2 p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
                 <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <StickyNote className="w-4 h-4" /> Technical Notes & Follow-up Data
+                  <StickyNote className="w-4 h-4" /> Note Tehnice
                 </label>
                 <textarea 
                   className="w-full bg-white border border-blue-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[120px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none placeholder:text-blue-300" 
                   value={formData.notes} 
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  placeholder="Append diagnostic results, parts needed, or technical progress..."
+                  placeholder="Adauga rezultate diagnostic, piese necesare sau progres tehnic..."
                 />
-                <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest text-right mt-1 italic">This data is visible only to the engineering team</p>
+                <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest text-right mt-1 italic">Aceste date sunt vizibile doar echipei tehnice</p>
               </div>
 
               <div className="pt-4 flex gap-4">
-                <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition">Discard</button>
+                <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition">Renunta</button>
                 <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> {editingTask ? 'Commit Data Updates' : 'Authorize Ticket'}
+                  <CheckCircle2 className="w-5 h-5" /> {editingTask ? 'Salveaza Modificarile' : 'Creeaza Tichet'}
                 </button>
               </div>
             </form>
@@ -486,7 +486,7 @@ const TaskCard = React.memo(({
       <div className="p-6 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{task.priority}</span>
+            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
               <Building className="w-3 h-3" /> {task.department}
             </span>
@@ -501,8 +501,8 @@ const TaskCard = React.memo(({
               </span>
             )}
             {task.notes && (
-              <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1 border border-amber-100" title="Technical Notes Available">
-                <StickyNote className="w-2.5 h-2.5" /> Notes
+              <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1 border border-amber-100" title="Note tehnice disponibile">
+                <StickyNote className="w-2.5 h-2.5" /> Note
               </span>
             )}
           </div>
@@ -511,7 +511,7 @@ const TaskCard = React.memo(({
           {task.notes && (
             <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" /> Technical Follow-up
+                <MessageSquare className="w-3 h-3" /> Note Tehnice
               </p>
               <p className="text-xs text-slate-600 italic leading-relaxed">{task.notes}</p>
             </div>
@@ -520,7 +520,7 @@ const TaskCard = React.memo(({
 
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right hidden xl:block">
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Logged On</p>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Creat la</p>
             <p className="text-xs font-bold text-slate-600">{task.createdAt}</p>
           </div>
           
@@ -530,21 +530,21 @@ const TaskCard = React.memo(({
               className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border transition-all flex items-center gap-2 shadow-sm active:scale-95 ${getStatusStyles(task.status)}`}
             >
               {getStatusIcon(task.status)}
-              {task.status}
+              {TASK_STATUS_RO[task.status]}
             </button>
             
             <div className="flex gap-1 border-l border-slate-100 pl-4 ml-2">
               <button 
                 onClick={() => onEdit(task)} 
                 className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                title="Add Data / Edit Task"
+                title="Editeaza Tichet"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button 
                 onClick={() => onDelete(task.id)} 
                 className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                title="Delete Ticket"
+                title="Sterge Tichet"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus } from '../types';
+import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus, DEVICE_STATUS_RO } from '../types';
 import { 
   Calendar, Check, Clock, Save, CalendarDays, 
   ChevronDown, Search, Filter, ClipboardList, 
@@ -15,10 +15,11 @@ interface MaintenancePlannerProps {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
 ];
 
+// Stored values stay in English; Romanian labels are display-only
 const FREQUENCY_OPTIONS = [
   'Monthly',
   'Quarterly',
@@ -27,6 +28,15 @@ const FREQUENCY_OPTIONS = [
   'Biennially',
   'On-Demand'
 ];
+
+const FREQUENCY_RO: Record<string, string> = {
+  'Monthly': 'Lunar',
+  'Quarterly': 'Trimestrial',
+  'Bi-Annually': 'Semestrial',
+  'Annually': 'Anual',
+  'Biennially': 'La 2 ani',
+  'On-Demand': 'La cerere'
+};
 
 interface ScheduleDraft {
   deviceId: string;
@@ -81,7 +91,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             deviceId: device.id,
             nextScheduledDate: device.nextMaintenanceDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             frequency: 'Annually',
-            tasks: 'Standard preventive maintenance inspection.',
+            tasks: 'Inspectie standard de mentenanta preventiva.',
             isModified: false
           };
           changed = true;
@@ -115,7 +125,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   , [drafts]);
 
   const handleExportSchedule = useCallback(async () => {
-    if (devices.length === 0) return alert("No devices available to export.");
+    if (devices.length === 0) return alert("Nu exista dispozitive de exportat.");
     const XLSX = await import('xlsx');
 
     const now = new Date();
@@ -131,22 +141,22 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
 
     // 1. Prepare Table Data
     const tableHeader = [
-      'ASSET IDENTIFICATION', 
-      'MANUFACTURER / OEM', 
-      'MODEL / VERSION', 
-      'SERIAL NUMBER', 
-      'DEPARTMENT / UNIT', 
-      'PLANNED SERVICE MONTH', 
-      'MAINTENANCE CYCLE', 
-      'TECHNICAL SCOPE', 
-      'ASSET STATUS'
+      'DENUMIRE DISPOZITIV',
+      'PRODUCATOR',
+      'MODEL / VERSIUNE',
+      'NUMAR SERIE',
+      'DEPARTAMENT',
+      'LUNA PROGRAMATA',
+      'CICLU MENTENANTA',
+      'DETALII TEHNICE',
+      'STATUS DISPOZITIV'
     ];
 
     const tableRows = devices.map(device => {
       const draft = drafts[device.id] || { nextScheduledDate: '', frequency: 'N/A', tasks: 'N/A' };
       const serviceDate = new Date(draft.nextScheduledDate);
-      const serviceWindow = isNaN(serviceDate.getTime()) 
-        ? 'UNSCHEDULED' 
+      const serviceWindow = isNaN(serviceDate.getTime())
+        ? 'NEPROGRAMAT'
         : `${MONTHS[serviceDate.getMonth()].toUpperCase()} ${serviceDate.getFullYear()}`;
 
       return [
@@ -156,31 +166,31 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         device.serialNumber,
         device.department,
         serviceWindow,
-        draft.frequency.toUpperCase(),
+        (FREQUENCY_RO[draft.frequency] || draft.frequency).toUpperCase(),
         draft.tasks,
-        device.status.toUpperCase()
+        (DEVICE_STATUS_RO[device.status] || device.status).toUpperCase()
       ];
     });
 
     // 2. Construct Aesthetic AOA (Array of Arrays) with detailed summary
     const aoa = [
-      ['MEDITRACK CLINICAL ASSET MANAGEMENT SYSTEM'],
-      ['FLEET MAINTENANCE & SERVICE MANIFEST'],
+      ['MEDITRACK - SISTEM DE MANAGEMENT AL DISPOZITIVELOR MEDICALE'],
+      ['PROGRAM DE MENTENANTA SI SERVICE'],
       [''],
-      ['EXECUTIVE SUMMARY'],
-      [`REPORT ID: ${reportId}`, ``, `TOTAL POPULATION: ${devices.length}`],
-      [`GENERATED: ${dateStr} ${timeStr}`, ``, `ACTIVE ASSETS: ${statusCounts[DeviceStatus.ACTIVE] || 0}`],
-      [`PREPARED FOR: CLINICAL ENGINEERING`, ``, `ASSETS IN SERVICE: ${statusCounts[DeviceStatus.MAINTENANCE] || 0}`],
+      ['SUMAR'],
+      [`ID RAPORT: ${reportId}`, ``, `TOTAL DISPOZITIVE: ${devices.length}`],
+      [`GENERAT: ${dateStr} ${timeStr}`, ``, `DISPOZITIVE ACTIVE: ${statusCounts[DeviceStatus.ACTIVE] || 0}`],
+      [`PREGATIT PENTRU: DEPARTAMENTUL TEHNIC`, ``, `DISPOZITIVE IN SERVICE: ${statusCounts[DeviceStatus.MAINTENANCE] || 0}`],
       [''],
       ['------------------------------------------------------------------------------------------------------------------------------------'],
       [''],
       tableHeader,
       ...tableRows,
       [''],
-      ['--- END OF OFFICIAL CLINICAL SERVICE RECORD ---'],
+      ['--- SFARSITUL RAPORTULUI DE SERVICE ---'],
       [''],
-      ['CONFIDENTIALITY NOTICE: This document contains clinical asset data. Access is restricted to authorized biomedical personnel.'],
-      ['MediTrack v2.5 Deployment | Proprietary Clinical Infrastructure Data']
+      ['NOTA DE CONFIDENTIALITATE: Acest document contine date despre dispozitive medicale. Accesul este restrictionat personalului autorizat.'],
+      ['MediTrack v2.5 | Date proprietare infrastructura clinica']
     ];
 
     try {
@@ -217,19 +227,19 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
 
       // 4. Create Workbook and Download
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Clinical Report");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Raport");
       
       const fileDate = now.toISOString().split('T')[0];
       XLSX.writeFile(workbook, `MediTrack_Fleet_Report_${fileDate}.xlsx`);
     } catch (err) {
       console.error("Export error:", err);
-      alert("Failed to generate clinical manifest. Ensure browser pop-ups are allowed.");
+      alert("Generarea raportului a esuat. Verificati daca pop-up-urile sunt permise in browser.");
     }
   }, [devices, drafts]);
 
   const commitAllSchedules = useCallback(() => {
     if (modifiedCount === 0) {
-      alert("No changes detected to apply.");
+      alert("Nu exista modificari de aplicat.");
       return;
     }
 
@@ -255,7 +265,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
     });
 
     onApplyPlan(updatedDevices);
-    alert(`Successfully applied schedules for ${modifiedCount} assets.`);
+    alert(`Programarile au fost aplicate cu succes pentru ${modifiedCount} dispozitive.`);
   }, [devices, drafts, modifiedCount, onApplyPlan]);
 
   return (
@@ -267,10 +277,10 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
               <CalendarDays className="w-8 h-8" />
             </div>
-            Fleet Maintenance Planner
+            Planificator Mentenanta
           </h2>
           <p className="text-slate-500 mt-2 font-medium max-w-xl text-sm">
-            Manually schedule upcoming service windows and clinical task protocols for your equipment.
+            Programeaza manual interventiile de service si protocoalele de mentenanta pentru echipamente.
           </p>
         </div>
 
@@ -289,7 +299,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
             <input 
               type="text"
-              placeholder="Search by name, model, serial, or dept..."
+              placeholder="Cauta dupa nume, model, serie sau departament..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold shadow-inner"
@@ -300,7 +310,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               onClick={handleExportSchedule}
               className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition shadow-sm flex items-center gap-2"
             >
-              <FileSpreadsheet className="w-5 h-5" /> Export Schedule
+              <FileSpreadsheet className="w-5 h-5" /> Exporta Program
             </button>
             <button 
               onClick={commitAllSchedules}
@@ -311,7 +321,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <Save className="w-5 h-5" /> Apply All ({modifiedCount})
+              <Save className="w-5 h-5" /> Aplica Tot ({modifiedCount})
             </button>
           </div>
         </div>
@@ -352,8 +362,8 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <div className="p-8 bg-slate-50 rounded-full mb-6">
               <ClipboardList className="w-16 h-16 text-slate-200" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">No Assets Found</h3>
-            <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs">Adjust your search or add new devices to the inventory to begin planning.</p>
+            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Niciun dispozitiv gasit</h3>
+            <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs">Ajusteaza cautarea sau adauga dispozitive noi in inventar pentru a incepe planificarea.</p>
           </div>
         )}
       </div>
@@ -367,8 +377,8 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               {modifiedCount}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">Pending Sync</p>
-              <p className="text-sm font-bold leading-none">Changes Ready to Apply</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">Modificari in asteptare</p>
+              <p className="text-sm font-bold leading-none">Modificari pregatite</p>
             </div>
           </div>
           <div className="w-px h-8 bg-white/10"></div>
@@ -376,7 +386,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             onClick={commitAllSchedules}
             className="px-6 py-2 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition active:scale-95 flex items-center gap-2"
           >
-            Deploy Now <ArrowRight className="w-4 h-4" />
+            Aplica Acum <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -433,7 +443,7 @@ const MaintenanceCard = React.memo(({
               <Box className="w-3 h-3" /> Model: {device.model || 'N/A'}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{device.department || 'Unknown'}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{device.department || 'Necunoscut'}</span>
               <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
               <span className="text-[9px] font-mono text-slate-400 font-bold">SN: {device.serialNumber || 'N/A'}</span>
             </div>
@@ -448,7 +458,7 @@ const MaintenanceCard = React.memo(({
 
       <div className="space-y-6 flex-1">
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Service Target</label>
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data Programata</label>
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
               <select 
@@ -474,25 +484,25 @@ const MaintenanceCard = React.memo(({
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Frequency</label>
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Frecventa</label>
           <div className="relative">
             <select 
               value={draft.frequency}
               onChange={(e) => onUpdateDraft(device.id, { frequency: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
             >
-              {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{FREQUENCY_RO[opt] || opt}</option>)}
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Service Protocol / Tasks</label>
-          <textarea 
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Protocol Service / Sarcini</label>
+          <textarea
             value={draft.tasks}
             onChange={(e) => onUpdateDraft(device.id, { tasks: e.target.value })}
-            placeholder="Describe calibration, cleaning, or parts replacement..."
+            placeholder="Descrie calibrarea, curatarea sau inlocuirea pieselor..."
             className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-medium text-slate-600 min-h-[80px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none placeholder:text-slate-300"
           />
         </div>
@@ -501,10 +511,10 @@ const MaintenanceCard = React.memo(({
       <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-blue-400" />
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Asset Health: Nominal</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
         </div>
         {!draft.isModified && (
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">Unchanged</span>
+          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">Nemodificat</span>
         )}
       </div>
     </div>

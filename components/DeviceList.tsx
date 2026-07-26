@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
+import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
 import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag } from 'lucide-react';
 
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
@@ -46,7 +46,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ];
 
   // Title row
-  const titleRow = ws.addRow(['MEDITRACK — DEVICE INVENTORY REPORT', ...Array(TOTAL_COLS - 1).fill('')]);
+  const titleRow = ws.addRow(['MEDITRACK — RAPORT INVENTAR DISPOZITIVE', ...Array(TOTAL_COLS - 1).fill('')]);
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
   titleRow.height = 42;
   titleRow.getCell(1).style = {
@@ -57,7 +57,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
 
   // Subtitle row
   const subRow = ws.addRow([
-    `Fleet Management System  •  Generated: ${new Date().toLocaleString()}  •  ${devices.length} devices`,
+    `Sistem de management echipamente medicale  •  Generat: ${new Date().toLocaleString()}  •  ${devices.length} dispozitive`,
     ...Array(TOTAL_COLS - 1).fill(''),
   ]);
   ws.mergeCells(2, 1, 2, TOTAL_COLS);
@@ -75,9 +75,9 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   const summaryGroups = [
     { col: 1,  span: 2,  label: 'TOTAL',        value: devices.length,                  color: 'FF2563EB' },
     { col: 3,  span: 2,  label: 'ACTIVE',        value: statusCounts['Active'] || 0,     color: 'FF059669' },
-    { col: 5,  span: 2,  label: 'MAINTENANCE',   value: statusCounts['In Maintenance'] || 0, color: 'FFD97706' },
-    { col: 7,  span: 2,  label: 'BROKEN',        value: statusCounts['Broken'] || 0,     color: 'FFDC2626' },
-    { col: 9,  span: 2,  label: 'RETIRED',       value: statusCounts['Retired'] || 0,    color: 'FF64748B' },
+    { col: 5,  span: 2,  label: 'MENTENANTA',    value: statusCounts['In Maintenance'] || 0, color: 'FFD97706' },
+    { col: 7,  span: 2,  label: 'DEFECTE',       value: statusCounts['Broken'] || 0,     color: 'FFDC2626' },
+    { col: 9,  span: 2,  label: 'CASATE',        value: statusCounts['Retired'] || 0,    color: 'FF64748B' },
     { col: 11, span: 3,  label: 'CNCAN',         value: cncanCount,                      color: 'FFF59E0B' },
   ];
 
@@ -113,7 +113,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ws.addRow([]).height = 8;
 
   // Header row
-  const headers = ['#', 'Device Name', 'Category', 'Manufacturer', 'Model', 'Serial No.', 'Department', 'Status', 'Purchase Date', 'Warranty Exp.', 'Next PM', 'CNCAN', 'Notes', 'ID (do not edit)'];
+  const headers = ['#', 'Denumire echipament', 'Categorie', 'Producator', 'Model', 'Numar serie', 'Departament', 'Status', 'Data achizitiei', 'Expirare garantie', 'Urmatoarea mentenanta', 'CNCAN', 'Note', 'ID (nu modificati)'];
   const headerRow = ws.addRow(headers);
   headerRow.height = 30;
   headerRow.eachCell(cell => {
@@ -147,11 +147,11 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
       device.model || 'N/A',
       device.serialNumber || 'N/A',
       device.department || 'N/A',
-      device.status || 'N/A',
+      DEVICE_STATUS_RO[device.status] || device.status || 'N/A',
       device.purchaseDate || '—',
       device.warrantyExpiration || '—',
       device.nextMaintenanceDate || '—',
-      device.isCNCAN ? 'YES' : 'NO',
+      device.isCNCAN ? 'DA' : 'NU',
       device.notes || '',
       device.id,
     ]);
@@ -217,24 +217,24 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
     };
   };
 
-  addSectionTitle('MEDITRACK — REPORT SUMMARY');
+  addSectionTitle('MEDITRACK — SUMAR RAPORT');
   wsSummary.addRow([]);
-  addSummaryRow('Generated', new Date().toLocaleString());
-  addSummaryRow('Total Devices', devices.length, true);
-  addSummaryRow('CNCAN Devices', cncanCount, true);
-  wsSummary.addRow([]);
-
-  addSectionTitle('STATUS BREAKDOWN');
-  Object.entries(statusCounts).forEach(([s, c]) => addSummaryRow(s, c));
+  addSummaryRow('Generat', new Date().toLocaleString());
+  addSummaryRow('Total dispozitive', devices.length, true);
+  addSummaryRow('Dispozitive CNCAN', cncanCount, true);
   wsSummary.addRow([]);
 
-  addSectionTitle('DEPARTMENT BREAKDOWN');
+  addSectionTitle('REPARTITIE PE STATUS');
+  Object.entries(statusCounts).forEach(([s, c]) => addSummaryRow(DEVICE_STATUS_RO[s as DeviceStatus] || s, c));
+  wsSummary.addRow([]);
+
+  addSectionTitle('REPARTITIE PE DEPARTAMENTE');
   const deptCounts: Record<string, number> = {};
-  devices.forEach(d => { const k = d.department || 'Unknown'; deptCounts[k] = (deptCounts[k] || 0) + 1; });
+  devices.forEach(d => { const k = d.department || 'Necunoscut'; deptCounts[k] = (deptCounts[k] || 0) + 1; });
   Object.entries(deptCounts).sort((a, b) => b[1] - a[1]).forEach(([dept, c]) => addSummaryRow(dept, c));
   wsSummary.addRow([]);
 
-  addSectionTitle('CATEGORY BREAKDOWN');
+  addSectionTitle('REPARTITIE PE CATEGORII');
   const catCounts: Record<string, number> = {};
   devices.forEach(d => { const k = d.category || 'Other'; catCounts[k] = (catCounts[k] || 0) + 1; });
   Object.entries(catCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, c]) => addSummaryRow(cat, c));
@@ -269,32 +269,33 @@ const importFromExcel = (
       const ws = wb.Sheets[sheetName];
       const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-      // Find the header row: look for a row containing "Device Name"
-      const headerRowIdx = rows.findIndex(r => r.some((c: any) => String(c).trim() === 'Device Name'));
+      // Find the header row: look for a row containing "Device Name" (legacy) or "Denumire echipament"
+      const headerRowIdx = rows.findIndex(r => r.some((c: any) => ['Device Name', 'Denumire echipament'].includes(String(c).trim())));
       if (headerRowIdx === -1) {
-        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Could not find the header row. Make sure you are importing a MediTrack Excel export.'] });
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Nu am gasit randul de antet. Asigurati-va ca importati un export Excel MediTrack.'] });
         return;
       }
 
       const headers: string[] = rows[headerRowIdx].map((c: any) => String(c).trim());
-      const col = (name: string) => headers.findIndex(h => h === name);
+      // Matches both legacy English headers and current Romanian headers
+      const col = (...names: string[]) => headers.findIndex(h => names.includes(h));
 
-      const idCol        = col('ID (do not edit)');
-      const nameCol      = col('Device Name');
-      const catCol       = col('Category');
-      const mfrCol       = col('Manufacturer');
+      const idCol        = col('ID (do not edit)', 'ID (nu modificati)');
+      const nameCol      = col('Device Name', 'Denumire echipament');
+      const catCol       = col('Category', 'Categorie');
+      const mfrCol       = col('Manufacturer', 'Producator');
       const modelCol     = col('Model');
-      const snCol        = col('Serial No.');
-      const deptCol      = col('Department');
+      const snCol        = col('Serial No.', 'Numar serie');
+      const deptCol      = col('Department', 'Departament');
       const statusCol    = col('Status');
-      const purchaseCol  = col('Purchase Date');
-      const warrantyCol  = col('Warranty Exp.');
-      const nextPMCol    = col('Next PM');
+      const purchaseCol  = col('Purchase Date', 'Data achizitiei');
+      const warrantyCol  = col('Warranty Exp.', 'Expirare garantie');
+      const nextPMCol    = col('Next PM', 'Urmatoarea mentenanta');
       const cncanCol     = col('CNCAN');
-      const notesCol     = col('Notes');
+      const notesCol     = col('Notes', 'Note');
 
       if (nameCol === -1) {
-        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Column "Device Name" not found in the file.'] });
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Coloana "Denumire echipament" nu a fost gasita in fisier.'] });
         return;
       }
 
@@ -308,7 +309,10 @@ const importFromExcel = (
         if (!name || name === 'N/A') { result.skipped++; continue; }
 
         const rawId    = idCol !== -1 ? String(row[idCol] ?? '').trim() : '';
-        const status   = String(row[statusCol] ?? 'Active').trim() as DeviceStatus;
+        const statusRaw = String(row[statusCol] ?? 'Active').trim();
+        // Accept both stored enum values and Romanian display labels
+        const statusFromRo = (Object.keys(DEVICE_STATUS_RO) as DeviceStatus[]).find(k => DEVICE_STATUS_RO[k].toLowerCase() === statusRaw.toLowerCase());
+        const status   = (statusFromRo ?? statusRaw) as DeviceStatus;
         const category = String(row[catCol]     ?? 'Altele').trim();
         const purchase = String(row[purchaseCol] ?? '').trim();
 
@@ -327,12 +331,12 @@ const importFromExcel = (
           manufacturer:        String(row[mfrCol]      ?? '').trim() || existing?.manufacturer || '',
           model:               String(row[modelCol]    ?? '').trim() || existing?.model || '',
           serialNumber:        String(row[snCol]       ?? '').trim() || existing?.serialNumber || '',
-          department:          String(row[deptCol]     ?? 'Unassigned').trim(),
+          department:          String(row[deptCol]     ?? 'Nealocat').trim(),
           status:              Object.values(DeviceStatus).includes(status) ? status : DeviceStatus.ACTIVE,
           purchaseDate:        purchase || existing?.purchaseDate || new Date().toISOString().split('T')[0],
           warrantyExpiration:  String(row[warrantyCol] ?? '').trim().replace('—', '') || existing?.warrantyExpiration,
           nextMaintenanceDate: String(row[nextPMCol]   ?? '').trim().replace('—', '') || (purchase ? calculateNextMaintenanceDate(purchase, category) : existing?.nextMaintenanceDate),
-          isCNCAN:             cncanCol !== -1 ? String(row[cncanCol]).trim().toUpperCase() === 'YES' : (existing?.isCNCAN ?? false),
+          isCNCAN:             cncanCol !== -1 ? ['YES', 'DA'].includes(String(row[cncanCol]).trim().toUpperCase()) : (existing?.isCNCAN ?? false),
           notes:               notesCol !== -1 ? String(row[notesCol] ?? '').trim() : (existing?.notes ?? ''),
           updated_at:          new Date().toISOString(),
         } as MedicalDevice;
@@ -343,7 +347,7 @@ const importFromExcel = (
 
       onDone(upserted, result);
     } catch (err: any) {
-      onDone([], { added: 0, updated: 0, skipped: 0, errors: [`Parse error: ${err.message}`] });
+      onDone([], { added: 0, updated: 0, skipped: 0, errors: [`Eroare la citirea fisierului: ${err.message}`] });
     }
   };
   reader.readAsArrayBuffer(file);
@@ -370,7 +374,7 @@ const exportToPDF = (devices: MedicalDevice[]) => {
       <td>${d.model || 'N/A'}</td>
       <td class="mono">${d.serialNumber || 'N/A'}</td>
       <td>${d.department || 'N/A'}</td>
-      <td><span class="badge" style="background:${statusBadgeColor(d.status)}20;color:${statusBadgeColor(d.status)};border:1px solid ${statusBadgeColor(d.status)}40">${d.status}</span></td>
+      <td><span class="badge" style="background:${statusBadgeColor(d.status)}20;color:${statusBadgeColor(d.status)};border:1px solid ${statusBadgeColor(d.status)}40">${DEVICE_STATUS_RO[d.status] || d.status}</span></td>
       <td>${d.purchaseDate || 'N/A'}</td>
       <td>${d.nextMaintenanceDate || '—'}</td>
     </tr>
@@ -380,7 +384,7 @@ const exportToPDF = (devices: MedicalDevice[]) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MediTrack Device Report</title>
+  <title>MediTrack - Raport Dispozitive</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 24px; }
@@ -413,42 +417,42 @@ const exportToPDF = (devices: MedicalDevice[]) => {
 <body>
   <div class="header">
     <div class="header-left">
-      <h1>MediTrack &mdash; Device Inventory Report</h1>
-      <p>Fleet Management System &bull; Biomedical Engineering</p>
+      <h1>MediTrack &mdash; Raport Inventar Dispozitive</h1>
+      <p>Sistem de management echipamente medicale &bull; Inginerie biomedicala</p>
     </div>
     <div class="header-right">
-      <strong>${devices.length} Devices</strong>
-      Generated: ${date}
+      <strong>${devices.length} Dispozitive</strong>
+      Generat: ${date}
     </div>
   </div>
 
   <div class="summary">
-    <div class="stat"><div class="val">${devices.length}</div><div class="lbl">Total Devices</div></div>
-    ${Object.entries(statusCounts).map(([s, c]) => `<div class="stat"><div class="val" style="color:${statusBadgeColor(s)}">${c}</div><div class="lbl">${s}</div></div>`).join('')}
-    <div class="stat"><div class="val">${devices.filter(d => d.isCNCAN).length}</div><div class="lbl">CNCAN Devices</div></div>
+    <div class="stat"><div class="val">${devices.length}</div><div class="lbl">Total dispozitive</div></div>
+    ${Object.entries(statusCounts).map(([s, c]) => `<div class="stat"><div class="val" style="color:${statusBadgeColor(s)}">${c}</div><div class="lbl">${DEVICE_STATUS_RO[s as DeviceStatus] || s}</div></div>`).join('')}
+    <div class="stat"><div class="val">${devices.filter(d => d.isCNCAN).length}</div><div class="lbl">Dispozitive CNCAN</div></div>
   </div>
 
   <table>
     <thead>
       <tr>
         <th>#</th>
-        <th>Device Name</th>
-        <th>Category</th>
-        <th>Manufacturer</th>
+        <th>Denumire echipament</th>
+        <th>Categorie</th>
+        <th>Producator</th>
         <th>Model</th>
-        <th>Serial No.</th>
-        <th>Department</th>
+        <th>Numar serie</th>
+        <th>Departament</th>
         <th>Status</th>
-        <th>Purchase Date</th>
-        <th>Next PM</th>
+        <th>Data achizitiei</th>
+        <th>Urmatoarea mentenanta</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
 
   <div class="footer">
-    <span>MediTrack Fleet Registry &mdash; Confidential</span>
-    <span>Page <span class="pageNumber"></span></span>
+    <span>MediTrack &mdash; Registru Echipamente &mdash; Confidential</span>
+    <span>Pagina <span class="pageNumber"></span></span>
   </div>
 
   <script>window.onload = () => { window.print(); }<\/script>
@@ -496,7 +500,7 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   return (
     <span className={`px-3 py-1.5 rounded-xl tech-label text-[8px] border flex items-center gap-2 w-fit ${styles}`}>
       <div className={`w-1.5 h-1.5 rounded-full ${dot} ${status === DeviceStatus.ACTIVE ? 'animate-pulse' : ''}`} />
-      {status}
+      {DEVICE_STATUS_RO[status] || status}
     </span>
   );
 });
@@ -552,7 +556,7 @@ const DeviceCard = React.memo(({
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
           <h3 className="font-black text-slate-900 text-xl md:text-lg leading-tight truncate group-hover:text-blue-600 transition-colors uppercase tracking-tight">
-            {device.name || 'Unnamed Asset'}
+            {device.name || 'Dispozitiv fara nume'}
           </h3>
           <div className="flex items-center gap-2">
             <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
@@ -565,7 +569,7 @@ const DeviceCard = React.memo(({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <span className="tech-label text-[10px] text-slate-500 uppercase tracking-wider font-bold">MFR:</span>
-            <span className="text-xs font-black text-slate-700">{device.manufacturer || 'Unknown'}</span>
+            <span className="text-xs font-black text-slate-700">{device.manufacturer || 'Necunoscut'}</span>
           </div>
           <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
           <div className="flex items-center gap-2">
@@ -597,18 +601,18 @@ const DeviceCard = React.memo(({
         <button 
           className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onQuickEdit(e, device)}
-          title="Quick Edit"
+          title="Editare rapida"
         >
           <Edit2 className="w-4 h-4" />
-          <span className="md:hidden tech-label text-[10px]">Edit</span>
+          <span className="md:hidden tech-label text-[10px]">Editeaza</span>
         </button>
         <button 
           className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onDelete(e, device.id)}
-          title="Purge Asset"
+          title="Sterge dispozitiv"
         >
           <Trash2 className="w-4 h-4" />
-          <span className="md:hidden tech-label text-[10px]">Purge</span>
+          <span className="md:hidden tech-label text-[10px]">Sterge</span>
         </button>
       </div>
     </div>
@@ -768,7 +772,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           <div className="hardware-card p-10 w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-slide-up">
              <div className="flex justify-between items-center mb-8">
                 <div>
-                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Registry Quick Update</h3>
+                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Editare rapida</h3>
                    <p className="tech-label mt-1">ID: {editingDevice.id}</p>
                 </div>
                 <button onClick={() => setEditingDevice(null)} className="p-3 hover:bg-slate-100 rounded-2xl transition text-slate-400"><X className="w-6 h-6" /></button>
@@ -776,16 +780,16 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
              
              <div className="space-y-6 mb-10">
                 <div className="space-y-1">
-                   <label className="tech-label ml-1">Asset Nomenclature</label>
+                   <label className="tech-label ml-1">Denumire dispozitiv</label>
                    <input name="name" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.name} onChange={handleQuickEditChange} />
                 </div>
                 <div className="space-y-1">
-                   <label className="tech-label ml-1">Serial Identifier</label>
+                   <label className="tech-label ml-1">Numar serie</label>
                    <input name="serialNumber" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.serialNumber} onChange={handleQuickEditChange} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="tech-label ml-1">Unit Assignment</label>
+                    <label className="tech-label ml-1">Departament</label>
                     <div className="relative">
                       <select name="department" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold appearance-none outline-none focus:border-blue-500 transition-colors" value={quickEditForm.department} onChange={handleQuickEditChange}>
                           {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -794,18 +798,18 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="tech-label ml-1">Registry Status</label>
+                    <label className="tech-label ml-1">Status</label>
                     <select name="status" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.status} onChange={handleQuickEditChange}>
-                        {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                        {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s].toUpperCase()}</option>)}
                     </select>
                   </div>
                 </div>
              </div>
 
              <div className="flex gap-4">
-                <button onClick={() => setEditingDevice(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Discard</button>
+                <button onClick={() => setEditingDevice(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Anuleaza</button>
                 <button onClick={handleSaveQuickEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition active:scale-95 flex items-center justify-center gap-3">
-                   <Save className="w-5 h-5" /> Commit Data
+                   <Save className="w-5 h-5" /> Salveaza
                 </button>
              </div>
           </div>
@@ -819,7 +823,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />
             <input 
               type="text"
-              placeholder="Search registry by name, category, serial, or unit..."
+              placeholder="Cauta dupa nume, categorie, serie sau departament..."
               className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
@@ -828,7 +832,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           <button
             onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); setFilterTag('ALL'); }}
             className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
-            title="Reset Filters"
+            title="Reseteaza filtrele"
           >
             <RotateCcw className="w-5 h-5" />
           </button>
@@ -836,24 +840,24 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
 
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
           <div className="space-y-1">
-            <label className="tech-label ml-1">Department</label>
+            <label className="tech-label ml-1">Departament</label>
             <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-              <option value="ALL">ALL DEPTS</option>
+              <option value="ALL">TOATE DEPARTAMENTELE</option>
               {allAvailableDepartments.map(dept => <option key={dept} value={dept}>{dept.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="tech-label ml-1">Category</label>
+            <label className="tech-label ml-1">Categorie</label>
             <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="ALL">ALL CATEGORIES</option>
+              <option value="ALL">TOATE CATEGORIILE</option>
               {DEVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="space-y-1">
             <label className="tech-label ml-1">Status</label>
             <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
-              <option value="ALL">ALL STATUSES</option>
-              {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+              <option value="ALL">TOATE STATUSURILE</option>
+              {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s].toUpperCase()}</option>)}
             </select>
           </div>
           {allTags.length > 0 && (
@@ -874,20 +878,20 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
               {filteredDevices.length}
             </div>
-            <span className="tech-label">Assets Identified</span>
+            <span className="tech-label">Dispozitive gasite</span>
           </div>
           <div className="flex items-center gap-3">
             {selectedIds.size > 0 && (
               <>
-                <span className="tech-label text-blue-600 font-black">{selectedIds.size} Selected</span>
-                <button className="px-4 py-2 bg-red-50 text-red-600 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Bulk Purge</button>
+                <span className="tech-label text-blue-600 font-black">{selectedIds.size} selectate</span>
+                <button className="px-4 py-2 bg-red-50 text-red-600 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Sterge selectia</button>
               </>
             )}
             <button
               onClick={() => exportToExcel(filteredDevices)}
               disabled={filteredDevices.length === 0}
               className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition active:scale-95 shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Export to Excel"
+              title="Exporta in Excel"
             >
               <FileSpreadsheet className="w-4 h-4" />
               Excel
@@ -896,7 +900,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onClick={() => exportToPDF(filteredDevices)}
               disabled={filteredDevices.length === 0}
               className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition active:scale-95 shadow-lg shadow-red-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Export to PDF"
+              title="Exporta in PDF"
             >
               <FileText className="w-4 h-4" />
               PDF
@@ -904,7 +908,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <button
               onClick={() => importInputRef.current?.click()}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-600/20"
-              title="Import from Excel"
+              title="Importa din Excel"
             >
               <Upload className="w-4 h-4" />
               Import
@@ -932,7 +936,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               {importResult.errors.length > 0
                 ? <p className="text-xs font-bold text-red-700">{importResult.errors[0]}</p>
                 : <p className="text-xs font-bold text-emerald-700">
-                    Import complete — <span className="text-emerald-600">{importResult.added} added</span>, <span className="text-blue-600">{importResult.updated} updated</span>{importResult.skipped > 0 ? `, ${importResult.skipped} skipped` : ''}
+                    Import finalizat — <span className="text-emerald-600">{importResult.added} adaugate</span>, <span className="text-blue-600">{importResult.updated} actualizate</span>{importResult.skipped > 0 ? `, ${importResult.skipped} sarite` : ''}
                   </p>
               }
             </div>
@@ -967,12 +971,12 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
                 <Box className="w-10 h-10 text-slate-200" />
               </div>
-              <p className="tech-label mb-8 text-slate-400">No matching assets found in the registry</p>
+              <p className="tech-label mb-8 text-slate-400">Niciun dispozitiv gasit in registru</p>
               <button
                 onClick={onAddDevice}
                 className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
               >
-                <Plus className="w-5 h-5" /> Register New Asset
+                <Plus className="w-5 h-5" /> Inregistreaza Dispozitiv
               </button>
             </div>
           )}

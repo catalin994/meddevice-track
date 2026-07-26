@@ -165,13 +165,13 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
         const legacy = JSON.parse(legacyRaw);
         if (Array.isArray(legacy) && legacy.length > 0) {
           await onImport(legacy);
-          alert(`Successfully recovered ${legacy.length} legacy devices.`);
+          alert(`S-au recuperat cu succes ${legacy.length} dispozitive vechi.`);
         }
       } else {
-        alert("No legacy LocalStorage data found to recover.");
+        alert("Nu s-au gasit date vechi in LocalStorage de recuperat.");
       }
     } catch (err) {
-      alert("Repair failed: " + (err as Error).message);
+      alert("Recuperarea a esuat: " + (err as Error).message);
     } finally {
       setIsRepairing(false);
     }
@@ -194,14 +194,14 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
         errorType: status.errorType 
       });
     } catch (e: any) {
-      setTestResult({ success: false, message: `Failure: ${e.message}` });
+      setTestResult({ success: false, message: `Eroare: ${e.message}` });
     } finally {
       setIsTesting(false);
     }
   }, []);
 
   const handleDisconnectCloud = useCallback(() => {
-    if (window.confirm("Confirm disconnection? This will move the app to local-only mode.")) {
+    if (window.confirm("Confirmi deconectarea? Aplicatia va trece in modul doar local.")) {
       clearSupabaseConfig();
     }
   }, []);
@@ -218,12 +218,12 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
             </div>
             <div>
               <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Global Data Backbone</p>
+              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Infrastructura globala de date</p>
             </div>
           </div>
           <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
              {isTesting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Verify Node</span>
+             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Verifica conexiunea</span>
           </button>
         </div>
 
@@ -232,10 +232,10 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
             <div className="flex gap-4">
               {testResult.success ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
               <div>
-                <p className="font-black text-xs uppercase tracking-widest mb-1">{testResult.success ? 'Connection Verified' : 'Connection Error'}</p>
+                <p className="font-black text-xs uppercase tracking-widest mb-1">{testResult.success ? 'Conexiune verificata' : 'Eroare de conexiune'}</p>
                 <p className="text-sm font-bold leading-relaxed">{testResult.message}</p>
                 {testResult.errorType === 'table' && (
-                  <p className="mt-3 text-[10px] font-black uppercase tracking-widest bg-amber-600/10 p-2 rounded-lg">Action Required: Execute SQL Fix Below</p>
+                  <p className="mt-3 text-[10px] font-black uppercase tracking-widest bg-amber-600/10 p-2 rounded-lg">Actiune necesara: Executa scriptul SQL de mai jos</p>
                 )}
               </div>
             </div>
@@ -245,20 +245,20 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Project Endpoint URL</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">URL Endpoint Proiect</label>
                 <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Service Anon/Secret Key</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
                 <div className="relative">
                   <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
-                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{showKey ? "Hide" : "Show"}</button>
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
                 </div>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Link Cloud Instance</button>
-              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-600 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Disconnect Cloud"><LogOut className="w-6 h-6" /></button>}
+              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
+              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-600 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
             </div>
         </div>
       </div>
@@ -274,8 +274,8 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Database Schema Deployment</h2>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Execute this in Supabase SQL Editor</p>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Instalare Schema Baza de Date</h2>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Executa acest script in Supabase SQL Editor</p>
             </div>
           </div>
 
@@ -288,7 +288,7 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
               className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copied' : 'Copy SQL'}
+              {copied ? 'Copiat' : 'Copiaza SQL'}
             </button>
           </div>
         </div>
@@ -392,18 +392,18 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
               <div className="p-3 bg-blue-500 text-white rounded-2xl shadow-lg">
                 <RefreshCw className={`w-5 h-5 ${isRepairing ? 'animate-spin' : ''}`} />
               </div>
-              <h2 className="text-lg font-black text-white uppercase tracking-tight">Legacy Deep Scan</h2>
+              <h2 className="text-lg font-black text-white uppercase tracking-tight">Scanare Date Vechi</h2>
             </div>
             <p className="text-xs text-blue-100 mb-8 leading-relaxed font-medium">
-              Forces a scan of legacy browser buffers to recover devices from older app versions or alternate data nodes.
+              Forteaza o scanare a datelor vechi din browser pentru a recupera dispozitive din versiuni anterioare ale aplicatiei.
             </p>
             <div className="space-y-4">
               <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
                 {isRepairing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-                Run Recovery
+                Ruleaza Recuperarea
               </button>
               <div className="flex items-center justify-between px-4 py-2 bg-blue-800/30 rounded-lg text-[9px] font-black text-blue-300 uppercase">
-                <span>Legacy Records found</span>
+                <span>Inregistrari vechi gasite</span>
                 <span className="text-white">{lsCount ?? '0'}</span>
               </div>
             </div>
@@ -416,20 +416,20 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
               <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">
                 <Activity className="w-5 h-5" />
               </div>
-              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Sync Diagnostics</h2>
+              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Diagnosticare Sincronizare</h2>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Local Storage Assets</span>
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Echipamente in stocarea locala</span>
                  <span className="text-sm font-black text-slate-900">{dbCount ?? '...'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Active UI Fleet</span>
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Flota activa in aplicatie</span>
                  <span className="text-sm font-black text-blue-600">{devices.length}</span>
               </div>
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Diagnostics auto-refresh on activity</p>
+          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Diagnosticarea se actualizeaza automat la activitate</p>
         </div>
       </div>
     </div>

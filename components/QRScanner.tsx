@@ -49,15 +49,15 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
           // AbortError = play() interrupted by a re-render — camera is fine, ignore
           if (name === 'AbortError') return;
           if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-            setErrorMsg('Camera permission denied. Click the camera icon in your browser address bar, set it to Allow, then try again.');
+            setErrorMsg('Permisiunea pentru camera a fost refuzata. Apasa pe pictograma camerei din bara de adrese a browserului, seteaza Permite, apoi incearca din nou.');
           } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-            setErrorMsg('No camera found on this device.');
+            setErrorMsg('Nu a fost gasita nicio camera pe acest dispozitiv.');
           } else if (name === 'NotReadableError' || name === 'TrackStartError') {
-            setErrorMsg('Camera is in use by another app. Close other apps using the camera and try again.');
+            setErrorMsg('Camera este folosita de alta aplicatie. Inchide celelalte aplicatii care folosesc camera si incearca din nou.');
           } else if (name === 'NotSupportedError') {
-            setErrorMsg('Your browser does not support camera access. Use Chrome or Safari, and make sure the page is on HTTPS or localhost.');
+            setErrorMsg('Browserul tau nu suporta accesul la camera. Foloseste Chrome sau Safari si asigura-te ca pagina este pe HTTPS sau localhost.');
           } else {
-            setErrorMsg(`Camera error (${name || err?.message || 'unknown'}). Make sure camera permission is allowed and the page is on HTTPS or localhost.`);
+            setErrorMsg(`Eroare camera (${name || err?.message || 'necunoscuta'}). Asigura-te ca permisiunea pentru camera este activata si ca pagina este pe HTTPS sau localhost.`);
           }
           setStatus('error');
         }

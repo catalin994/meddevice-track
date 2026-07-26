@@ -1,6 +1,6 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority } from '../types';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock } from 'lucide-react';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       [DeviceStatus.RETIRED]: 0,
     };
     devices.forEach(d => counts[d.status]++);
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return Object.entries(counts).map(([name, value]) => ({ name: DEVICE_STATUS_RO[name as DeviceStatus], value }));
   }, [devices]);
 
   const pendingTasks = useMemo(() => tasks.filter(t => t.status !== TaskStatus.COMPLETED).length, [tasks]);
@@ -50,23 +50,23 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
   return (
     <div className="space-y-8 animate-slide-up">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        <StatCard title="Total Assets" value={devices.length} icon={<Activity className="w-5 h-5" />} trend="+2.4%" color="text-blue-600" bgColor="bg-blue-50" />
-        <StatCard title="Critical Failures" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="High Risk" color="text-red-600" bgColor="bg-red-50" />
-        <StatCard title="Active Tickets" value={pendingTasks} icon={<CheckSquare className="w-5 h-5" />} trend="Operational" color="text-indigo-600" bgColor="bg-indigo-50" />
-        <StatCard title="Emergency Response" value={criticalTasks} icon={<AlertTriangle className="w-5 h-5" />} trend="Immediate" color="text-orange-600" bgColor="bg-orange-50" />
-        <StatCard title="Scheduled PMs" value={upcomingMaintenance.length} icon={<Wrench className="w-5 h-5" />} trend="Next 30d" color="text-amber-600" bgColor="bg-amber-50" />
+        <StatCard title="Total Echipamente" value={devices.length} icon={<Activity className="w-5 h-5" />} trend="+2.4%" color="text-blue-600" bgColor="bg-blue-50" />
+        <StatCard title="Defectiuni Critice" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="Risc ridicat" color="text-red-600" bgColor="bg-red-50" />
+        <StatCard title="Tichete Active" value={pendingTasks} icon={<CheckSquare className="w-5 h-5" />} trend="Operational" color="text-indigo-600" bgColor="bg-indigo-50" />
+        <StatCard title="Interventii Urgente" value={criticalTasks} icon={<AlertTriangle className="w-5 h-5" />} trend="Imediat" color="text-orange-600" bgColor="bg-orange-50" />
+        <StatCard title="Mentenante Programate" value={upcomingMaintenance.length} icon={<Wrench className="w-5 h-5" />} trend="Urm. 30 zile" color="text-amber-600" bgColor="bg-amber-50" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 hardware-card p-10 rounded-[2.5rem]">
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Fleet Integrity Matrix</h3>
-              <p className="tech-label mt-1">Real-time status distribution</p>
+              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Starea Flotei</h3>
+              <p className="tech-label mt-1">Distributie status in timp real</p>
             </div>
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-               <span className="tech-label text-[10px]">Live Feed</span>
+               <span className="tech-label text-[10px]">Timp real</span>
             </div>
           </div>
           <Suspense fallback={<div className="h-72 flex items-center justify-center"><div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}>
@@ -77,10 +77,10 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         <div className="lg:col-span-5 hardware-card p-10 rounded-[2.5rem]">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Field Dispatch</h3>
-              <p className="tech-label mt-1">High-priority operations</p>
+              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Interventii Prioritare</h3>
+              <p className="tech-label mt-1">Operatiuni cu prioritate ridicata</p>
             </div>
-            <span className="px-3 py-1 bg-slate-900 text-white rounded-lg tech-label text-[10px]">Priority Alpha</span>
+            <span className="px-3 py-1 bg-slate-900 text-white rounded-lg tech-label text-[10px]">Prioritate maxima</span>
           </div>
           <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {dispatchTasks.map(task => (
@@ -95,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
                     </div>
                   </div>
                   <div className={`shrink-0 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
-                    {task.priority}
+                    {TASK_PRIORITY_RO[task.priority]}
                   </div>
                 </div>
               </div>
@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
             {tasks.length === 0 && (
               <div className="py-20 text-center">
                  <CheckCircle className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                 <p className="tech-label">No active critical tasks</p>
+                 <p className="tech-label">Niciun tichet critic activ</p>
               </div>
             )}
           </div>
@@ -113,8 +113,8 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       <div className="hardware-card p-10 rounded-[2.5rem]">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Maintenance Watchdog</h3>
-            <p className="tech-label mt-1">30-day preventive schedule</p>
+            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Monitor Mentenante</h3>
+            <p className="tech-label mt-1">Program preventiv 30 zile</p>
           </div>
           <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
             <Wrench className="w-6 h-6" />
@@ -133,7 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
               </div>
               <div className="text-right">
                 <p className={`text-sm font-black font-mono ${device.daysRemaining < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                  {device.daysRemaining < 0 ? 'OVERDUE' : `T-${device.daysRemaining}D`}
+                  {device.daysRemaining < 0 ? 'INTARZIAT' : `T-${device.daysRemaining}Z`}
                 </p>
                 <p className="tech-label text-[10px] mt-1">{device.nextMaintenanceDate}</p>
               </div>
@@ -142,7 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
           {upcomingMaintenance.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
-              <p className="tech-label">All systems operational. No upcoming PMs.</p>
+              <p className="tech-label">Totul operational. Nicio mentenanta programata.</p>
             </div>
           )}
         </div>
