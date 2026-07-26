@@ -166,6 +166,33 @@ export enum InvoiceStatus {
   OVERDUE = 'Overdue',
 }
 
+// Romanian display labels — stored values stay in English so existing data keeps working
+export const DEVICE_STATUS_RO: Record<DeviceStatus, string> = {
+  [DeviceStatus.ACTIVE]: 'Activ',
+  [DeviceStatus.MAINTENANCE]: 'In mentenanta',
+  [DeviceStatus.BROKEN]: 'Defect',
+  [DeviceStatus.RETIRED]: 'Casat',
+};
+
+export const TASK_STATUS_RO: Record<TaskStatus, string> = {
+  [TaskStatus.PENDING]: 'In asteptare',
+  [TaskStatus.IN_PROGRESS]: 'In lucru',
+  [TaskStatus.COMPLETED]: 'Finalizat',
+};
+
+export const TASK_PRIORITY_RO: Record<TaskPriority, string> = {
+  [TaskPriority.CRITICAL]: 'Critica',
+  [TaskPriority.HIGH]: 'Ridicata',
+  [TaskPriority.MEDIUM]: 'Medie',
+  [TaskPriority.LOW]: 'Scazuta',
+};
+
+export const MAINTENANCE_TYPE_RO: Record<MaintenanceType, string> = {
+  [MaintenanceType.PREVENTIVE]: 'Preventiva',
+  [MaintenanceType.CORRECTIVE]: 'Corectiva',
+  [MaintenanceType.CALIBRATION]: 'Calibrare',
+};
+
 export type UserRole = 'ADMIN' | 'TEHNICIAN' | 'CONTABIL' | 'VIZUALIZARE';
 
 export interface AppUser {
