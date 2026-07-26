@@ -125,7 +125,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
             <QrCode className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-white font-black text-sm uppercase tracking-widest">Scan Device QR</p>
+            <p className="text-white font-black text-sm uppercase tracking-widest">Scaneaza QR Dispozitiv</p>
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">MediTrack Scanner</p>
           </div>
         </div>
@@ -142,11 +142,11 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
               <AlertCircle className="w-16 h-16 text-red-400" />
             </div>
             <div className="text-center space-y-2">
-              <p className="font-black text-lg uppercase tracking-tight">Camera Unavailable</p>
+              <p className="font-black text-lg uppercase tracking-tight">Camera Indisponibila</p>
               <p className="text-white/60 text-sm font-medium max-w-xs leading-relaxed">{errorMsg}</p>
             </div>
             <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">
-              Close
+              Inchide
             </button>
           </div>
         )}
@@ -154,7 +154,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
         {status === 'starting' && (
           <div className="flex flex-col items-center justify-center h-full text-white space-y-4">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-white/60 text-sm font-bold uppercase tracking-widest">Starting Camera...</p>
+            <p className="text-white/60 text-sm font-bold uppercase tracking-widest">Se porneste camera...</p>
           </div>
         )}
 
@@ -163,8 +163,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
             <div className="p-6 bg-emerald-500/20 rounded-full animate-pulse">
               <CheckCircle className="w-16 h-16 text-emerald-400" />
             </div>
-            <p className="text-white font-black text-xl uppercase tracking-tight">Device Found!</p>
-            <p className="text-white/60 text-sm font-bold">Opening device page...</p>
+            <p className="text-white font-black text-xl uppercase tracking-tight">Dispozitiv Gasit!</p>
+            <p className="text-white/60 text-sm font-bold">Se deschide pagina...</p>
           </div>
         )}
 
@@ -188,11 +188,11 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
               <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan-line" />
             </div>
             <p className="relative z-10 mt-8 text-white/80 text-sm font-bold tracking-widest uppercase">
-              Point at a device QR code
+              Indreapta camera spre codul QR
             </p>
             <div className="relative z-10 mt-3 flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full backdrop-blur-sm">
               <Camera className="w-4 h-4 text-white/60" />
-              <span className="text-white/60 text-[10px] font-black uppercase tracking-widest">Scanning...</span>
+              <span className="text-white/60 text-[10px] font-black uppercase tracking-widest">Se scaneaza...</span>
             </div>
           </div>
         )}

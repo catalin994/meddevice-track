@@ -72,10 +72,10 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       const name = err?.name || '';
       // AbortError = play() interrupted by a re-render — camera is fine, ignore
       if (name === 'AbortError') return;
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') setCameraError('Camera permission denied.');
-      else if (name === 'NotFoundError') setCameraError('No camera found on this device.');
-      else if (name === 'NotReadableError') setCameraError('Camera is in use by another app.');
-      else setCameraError(`Camera error: ${name || err?.message || 'unknown'}`);
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') setCameraError('Permisiunea pentru camera a fost refuzata.');
+      else if (name === 'NotFoundError') setCameraError('Nu a fost gasita nicio camera pe acest dispozitiv.');
+      else if (name === 'NotReadableError') setCameraError('Camera este folosita de alta aplicatie.');
+      else setCameraError(`Eroare camera: ${name || err?.message || 'necunoscuta'}`);
     }
   }, []);
 
@@ -231,7 +231,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     stopCamera();
     setStatus('processing');
     setOcrProgress(0);
-    setOcrStatusText('Reading PDF...');
+    setOcrStatusText('Se citeste PDF-ul...');
 
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -244,7 +244,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       });
       setPdfData(base64);
 
-      setOcrStatusText('Extracting text from PDF...');
+      setOcrStatusText('Se extrage textul din PDF...');
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
 
@@ -254,7 +254,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
       let fullText = '';
 
       for (let i = 1; i <= totalPages; i++) {
-        setOcrStatusText(`Extracting page ${i} of ${totalPages}...`);
+        setOcrStatusText(`Se extrage pagina ${i} din ${totalPages}...`);
         setOcrProgress(Math.round((i / totalPages) * 100));
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
@@ -393,8 +393,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const handleEmail = useCallback(() => {
     handleDownload();
     const deviceList = matchedDevices.filter(d => selectedDeviceIds.has(d.id)).map(d => `• ${d.name} (SN: ${d.serialNumber})`).join('\n');
-    const subject = encodeURIComponent(`Document — ${savedCount} device(s)`);
-    const body = encodeURIComponent(`Saved for:\n\n${deviceList}\n\nDate: ${new Date().toLocaleDateString()}\n\nFile downloaded — please attach to this email.`);
+    const subject = encodeURIComponent(`Document — ${savedCount} dispozitiv(e)`);
+    const body = encodeURIComponent(`Salvat pentru:\n\n${deviceList}\n\nData: ${new Date().toLocaleDateString()}\n\nFisierul a fost descarcat — atasati-l la acest email.`);
     window.open(`mailto:?subject=${subject}&body=${body}`);
   }, [handleDownload, matchedDevices, selectedDeviceIds, savedCount]);
 
@@ -419,11 +419,11 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const DeviceFields = () => (
     <div className="space-y-3">
       <div>
-        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">File Name</label>
+        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Nume Fisier</label>
         <input value={docName} onChange={e => setDocName(e.target.value)} className="w-full bg-white/10 text-white rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10" />
       </div>
       <div>
-        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Document Type</label>
+        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Tip Document</label>
         <select value={docType} onChange={e => setDocType(e.target.value as DeviceFile['type'])} className="w-full bg-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10">
           <option value="service" className="bg-slate-900">Document Service</option>
           <option value="achizitie" className="bg-slate-900">Document Achizitie</option>
@@ -453,7 +453,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-xl"><ScanLine className="w-5 h-5 text-white" /></div>
           <div>
-            <p className="text-white font-black text-sm uppercase tracking-widest">Document Scanner</p>
+            <p className="text-white font-black text-sm uppercase tracking-widest">Scanner Documente</p>
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">MediTrack · OCR Engine</p>
           </div>
         </div>
@@ -538,7 +538,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="absolute bottom-6 left-0 right-0 flex justify-center">
               <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" />
               <button onClick={() => pdfInputRef.current?.click()} className="flex items-center gap-2.5 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest backdrop-blur-sm transition active:scale-95">
-                <Upload className="w-4 h-4" />Upload PDF
+                <Upload className="w-4 h-4" />Incarca PDF
               </button>
             </div>
           </div>
@@ -554,7 +554,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             ) : capturedImage && <img src={capturedImage} alt="Captured" className="w-full max-w-sm rounded-xl object-contain max-h-48 opacity-60" />}
             <div className="w-full max-w-sm space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{inputMode === 'pdf' ? 'Extracting PDF Text...' : 'OCR Processing...'}</p>
+                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{inputMode === 'pdf' ? 'Se extrage textul...' : 'Procesare OCR...'}</p>
                 <p className="text-blue-400 text-xs font-black">{ocrProgress}%</p>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -573,10 +573,10 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-emerald-400 font-black text-sm uppercase tracking-tight">
-                  {matchedDevices.length === 1 ? 'Device Matched' : `${matchedDevices.length} Devices Found`}
+                  {matchedDevices.length === 1 ? 'Dispozitiv Identificat' : `${matchedDevices.length} Dispozitive Gasite`}
                 </p>
                 <p className="text-white/50 text-xs mt-1">
-                  {matchedDevices.length === 1 ? 'Select how to save this file.' : 'Multiple devices detected across pages.'}
+                  {matchedDevices.length === 1 ? 'Alege cum sa salvezi acest fisier.' : 'Au fost detectate mai multe dispozitive in pagini.'}
                 </p>
               </div>
             </div>
@@ -590,9 +590,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Copy className="w-4 h-4 text-blue-400" />
-                    <p className="text-white text-xs font-black uppercase tracking-tight">Full PDF</p>
+                    <p className="text-white text-xs font-black uppercase tracking-tight">PDF Intreg</p>
                   </div>
-                  <p className="text-white/40 text-[10px]">Same file saved to each device</p>
+                  <p className="text-white/40 text-[10px]">Acelasi fisier la fiecare dispozitiv</p>
                 </button>
                 <button
                   onClick={() => setSaveMode('split')}
@@ -600,9 +600,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Scissors className="w-4 h-4 text-emerald-400" />
-                    <p className="text-white text-xs font-black uppercase tracking-tight">Split PDF</p>
+                    <p className="text-white text-xs font-black uppercase tracking-tight">Imparte PDF</p>
                   </div>
-                  <p className="text-white/40 text-[10px]">Each device gets only its pages</p>
+                  <p className="text-white/40 text-[10px]">Fiecare dispozitiv primeste doar paginile lui</p>
                 </button>
               </div>
             )}
@@ -610,7 +610,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             {/* Device list with page counts */}
             <div className="space-y-2">
               <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">
-                {matchedDevices.length === 1 ? 'Matched Device' : `Matched Devices (${selectedDeviceIds.size} selected)`}
+                {matchedDevices.length === 1 ? 'Dispozitiv Identificat' : `Dispozitive Identificate (${selectedDeviceIds.size} selectate)`}
               </p>
               {matchedDevices.map(d => {
                 const pageCount = getPageCountForDevice(d.id);
@@ -641,11 +641,11 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 <RotateCcw className="w-5 h-5" />
               </button>
               <button onClick={() => setStatus('manual')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
-                Add More
+                Adauga Altele
               </button>
               <button onClick={handleSave} disabled={selectedDeviceIds.size === 0} className={`flex-1 py-3 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 ${saveMode === 'split' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
                 {saveMode === 'split' ? <Scissors className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {saveMode === 'split' ? 'Split & Save' : `Save to ${selectedDeviceIds.size > 1 ? `${selectedDeviceIds.size} Devices` : 'Device'}`}
+                {saveMode === 'split' ? 'Imparte & Salveaza' : `Salveaza la ${selectedDeviceIds.size > 1 ? `${selectedDeviceIds.size} Dispozitive` : 'Dispozitiv'}`}
               </button>
             </div>
           </div>
@@ -657,23 +657,23 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             {matchedDevices.length > 0 ? (
               <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
                 <Search className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-blue-300 text-xs">Add more devices to associate with this document.</p>
+                <p className="text-blue-300 text-xs">Adauga mai multe dispozitive de asociat cu acest document.</p>
               </div>
             ) : (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-amber-400 font-black text-sm uppercase tracking-tight">No Device Detected</p>
-                  <p className="text-white/60 text-xs mt-1">No serial numbers found. Search manually.</p>
+                  <p className="text-amber-400 font-black text-sm uppercase tracking-tight">Niciun Dispozitiv Detectat</p>
+                  <p className="text-white/60 text-xs mt-1">Nu au fost gasite numere de serie. Cauta manual.</p>
                 </div>
               </div>
             )}
             <div className="space-y-3">
               <div>
-                <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Search Device</label>
+                <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Cauta Dispozitiv</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                  <input value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Serial number, name or model..."
+                  <input value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Numar de serie, nume sau model..."
                     className="w-full bg-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10 placeholder:text-white/20" />
                 </div>
               </div>
@@ -694,7 +694,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               )}
               {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Selected</p>
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Selectate</p>
                   {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).map(d => (
                     <div key={d.id} className="flex items-center gap-2 p-2.5 bg-blue-600/10 border border-blue-500/20 rounded-xl">
                       <CheckCircle className="w-4 h-4 text-blue-400 shrink-0" />
@@ -709,11 +709,11 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="flex gap-3">
               <button onClick={handleRetry} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition"><RotateCcw className="w-5 h-5" /></button>
               {matchedDevices.length > 0 && (
-                <button onClick={() => setStatus('review')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Back</button>
+                <button onClick={() => setStatus('review')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Inapoi</button>
               )}
               <button onClick={handleSave} disabled={matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length === 0}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
-                Save File
+                Salveaza Fisierul
               </button>
             </div>
           </div>
@@ -723,7 +723,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
             <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
             <p className="text-white/60 text-sm font-bold uppercase tracking-widest">
-              {saveMode === 'split' ? 'Splitting & saving PDF...' : 'Saving document...'}
+              {saveMode === 'split' ? 'Se imparte si se salveaza PDF-ul...' : 'Se salveaza documentul...'}
             </p>
           </div>
         )}
@@ -735,13 +735,13 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             </div>
             <div className="text-center space-y-1">
               <p className="text-white font-black text-xl uppercase tracking-tight">
-                {instantSaved ? 'Salvat Instant!' : saveMode === 'split' ? 'PDF Split & Saved!' : 'File Saved!'}
+                {instantSaved ? 'Salvat Instant!' : saveMode === 'split' ? 'PDF Impartit & Salvat!' : 'Fisier Salvat!'}
               </p>
               <p className="text-white/50 text-sm">{docName}</p>
               <p className="text-white/40 text-xs mt-1">
                 {instantSaved
                   ? `Dispozitiv identificat automat — document atasat la ${matchedDevices[0]?.name || ''}`
-                  : `Saved to ${savedCount} device${savedCount !== 1 ? 's' : ''}`}
+                  : `Salvat la ${savedCount} dispozitiv${savedCount !== 1 ? 'e' : ''}`}
               </p>
             </div>
             {savedCount > 1 && (
@@ -757,15 +757,15 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             )}
             <div className="flex gap-3 w-full max-w-xs">
               <button onClick={handleDownload} className="flex-1 py-3 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
-                <Download className="w-4 h-4" />Download
+                <Download className="w-4 h-4" />Descarca
               </button>
               <button onClick={handleEmail} className="flex-1 py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
                 <Mail className="w-4 h-4" />Email
               </button>
             </div>
             <div className="flex gap-3 w-full max-w-xs">
-              <button onClick={handleRetry} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Scan Another</button>
-              <button onClick={() => { stopCamera(); onClose(); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Close</button>
+              <button onClick={handleRetry} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Scaneaza Altul</button>
+              <button onClick={() => { stopCamera(); onClose(); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Inchide</button>
             </div>
           </div>
         )}
@@ -774,7 +774,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
           <div className="flex flex-col items-center justify-center min-h-[400px] p-8 space-y-6">
             <div className="p-6 bg-red-500/10 rounded-full"><AlertCircle className="w-16 h-16 text-red-400" /></div>
             <p className="text-white/60 text-sm max-w-xs text-center">{cameraError}</p>
-            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">Close</button>
+            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">Inchide</button>
           </div>
         )}
       </div>

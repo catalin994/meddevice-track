@@ -112,7 +112,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
     // 5MB limit to ensure compatibility with cloud sync (base64 increases size)
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError("File too large (Max 5MB)");
+      setUploadError("Fisier prea mare (max 5MB)");
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -140,12 +140,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         setLastSyncTime(new Date().toLocaleTimeString());
       };
       reader.onerror = () => {
-        setUploadError("Failed to read file");
+        setUploadError("Citirea fisierului a esuat");
       };
       reader.readAsDataURL(file);
     } catch (err) {
       console.error("File upload failed", err);
-      setUploadError("Upload failed");
+      setUploadError("Incarcarea a esuat");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -179,7 +179,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       
       const win = window.open(url, '_blank');
       if (!win) {
-        setUploadError("Popup blocked! Enable popups to view.");
+        setUploadError("Popup blocat! Activati popup-urile pentru vizualizare.");
       }
     } catch (err) {
       console.error("Failed to view file", err);
@@ -196,7 +196,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         `);
         win.document.close();
       } else {
-        setUploadError("Popup blocked! Enable popups to view.");
+        setUploadError("Popup blocat! Activati popup-urile pentru vizualizare.");
       }
     }
   }, []);
@@ -211,7 +211,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       document.body.removeChild(link);
     } catch (err) {
       console.error("Download failed", err);
-      setUploadError("Download failed");
+      setUploadError("Descarcarea a esuat");
     }
   }, []);
 
@@ -223,15 +223,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
                  <Trash2 className="w-10 h-10" />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-4">Confirm Atomic Purge</h3>
+              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-4">Confirmare stergere</h3>
               <p className="text-sm text-slate-500 font-medium mb-10 leading-relaxed">
-                 You are about to permanently remove <span className="font-black text-slate-900">{device.name}</span> and all associated service history.
+                 Sunteti pe cale sa stergeti definitiv <span className="font-black text-slate-900">{device.name}</span> si tot istoricul de service asociat.
               </p>
               <div className="flex gap-4">
-                 <button disabled={isPurging} onClick={() => setShowPurgeConfirm(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Discard Request</button>
+                 <button disabled={isPurging} onClick={() => setShowPurgeConfirm(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Anuleaza</button>
                  <button disabled={isPurging} onClick={handleFinalPurge} className="flex-[2] py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-500/20 transition flex items-center justify-center gap-3">
                     {isPurging ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                    {isPurging ? "Purging..." : "Confirm Purge"}
+                    {isPurging ? "Se sterge..." : "Confirma stergerea"}
                  </button>
               </div>
            </div>
@@ -248,7 +248,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           <div>
             {!isStandalone && (
               <button onClick={onBack} className="tech-label mb-4 flex items-center gap-2 transition group hover:text-slate-900 cursor-pointer">
-                <span className="group-hover:-translate-x-1 transition-transform font-bold">←</span> SYSTEM_INDEX / ASSETS
+                <span className="group-hover:-translate-x-1 transition-transform font-bold">←</span> INAPOI / DISPOZITIVE
               </button>
             )}
             <div className="flex flex-wrap items-center gap-4">
@@ -268,27 +268,27 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
              {!isStandalone && (
                isEditing ? (
                  <>
-                   <button onClick={handleSaveEdit} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-blue-700"><Save className="w-4 h-4" /> Commit Changes</button>
-                   <button onClick={() => setIsEditing(false)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-slate-200">Abort</button>
+                   <button onClick={handleSaveEdit} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-blue-700"><Save className="w-4 h-4" /> Salveaza</button>
+                   <button onClick={() => setIsEditing(false)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-slate-200">Anuleaza</button>
                  </>
                ) : (
                  <>
-                   <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-slate-800"><Edit2 className="w-4 h-4" /> Modify Asset</button>
-                   <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4" /> Purge</button>
+                   <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition hover:bg-slate-800"><Edit2 className="w-4 h-4" /> Editeaza</button>
+                   <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4" /> Sterge</button>
                  </>
                )
              )}
            </div>
-           {lastSyncTime && <span className="tech-label text-[10px] text-emerald-500">Last Sync: {lastSyncTime}</span>}
+           {lastSyncTime && <span className="tech-label text-[10px] text-emerald-500">Ultima sincronizare: {lastSyncTime}</span>}
         </div>
       </div>
 
       <div className="flex border-b border-slate-100 px-8 bg-white overflow-x-auto no-scrollbar shadow-sm z-10">
-        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity className="w-4 h-4" />} label="Technical Details" />
-        <TabButton active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} icon={<Wrench className="w-4 h-4" />} label="Service Logs" />
-        <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Archives & Docs" />
-        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<CheckSquare className="w-4 h-4" />} label="Operations" />
-        <TabButton active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} icon={<QrCode className="w-4 h-4" />} label="Identity" />
+        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity className="w-4 h-4" />} label="Detalii Tehnice" />
+        <TabButton active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} icon={<Wrench className="w-4 h-4" />} label="Istoric Service" />
+        <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Arhiva & Documente" />
+        <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<CheckSquare className="w-4 h-4" />} label="Operatiuni" />
+        <TabButton active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} icon={<QrCode className="w-4 h-4" />} label="Identitate" />
         <TabButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<Clock className="w-4 h-4" />} label="Istoric" />
       </div>
 
@@ -299,21 +299,21 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 <div className="hardware-card p-10 rounded-[2.5rem] space-y-8">
                    <div className="flex items-center gap-4 mb-2">
                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Info className="w-6 h-6" /></div>
-                      <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Master Asset Card</h3>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Fisa Dispozitivului</h3>
                    </div>
                    
                    {isEditing ? (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Asset Nomenclature</label>
+                           <label className="tech-label ml-1">Denumire dispozitiv</label>
                            <input name="name" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.name} onChange={handleEditChange} />
                         </div>
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Serial Number</label>
+                           <label className="tech-label ml-1">Numar serie</label>
                            <input name="serialNumber" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.serialNumber} onChange={handleEditChange} />
                         </div>
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Asset Category</label>
+                           <label className="tech-label ml-1">Categorie</label>
                            <div className="relative">
                               <select name="category" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 transition-colors" value={editForm.category} onChange={handleEditChange}>
                                 {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -322,15 +322,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            </div>
                         </div>
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Manufacturer</label>
+                           <label className="tech-label ml-1">Producator</label>
                            <input name="manufacturer" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.manufacturer} onChange={handleEditChange} />
                         </div>
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Model Line</label>
+                           <label className="tech-label ml-1">Model</label>
                            <input name="model" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.model} onChange={handleEditChange} />
                         </div>
                         <div className="space-y-1">
-                           <label className="tech-label ml-1">Fleet Unit (Department)</label>
+                           <label className="tech-label ml-1">Departament</label>
                            <div className="relative">
                               <select name="department" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 transition-colors" value={editForm.department} onChange={handleEditChange}>
                                 {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -339,9 +339,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            </div>
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                           <label className="tech-label ml-1">Functional Status</label>
+                           <label className="tech-label ml-1">Status</label>
                            <select name="status" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.status} onChange={handleEditChange}>
-                              {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                              {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s]}</option>)}
                            </select>
                         </div>
                         <div className="space-y-1 md:col-span-2">
@@ -372,13 +372,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                    ) : (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                        <InfoRow label="Serial Number" value={device.serialNumber} badge />
-                        <InfoRow label="Model Line" value={device.model} />
-                        <InfoRow label="Clinical Unit" value={device.department} />
-                        <InfoRow label="Asset Class" value={device.category} />
-                        <InfoRow label="Manufacturer" value={device.manufacturer} />
-                        <InfoRow label="Status" value={device.status} />
-                        <InfoRow label="Next PM Date" value={device.nextMaintenanceDate || 'Not Scheduled'} badge />
+                        <InfoRow label="Numar serie" value={device.serialNumber} badge />
+                        <InfoRow label="Model" value={device.model} />
+                        <InfoRow label="Departament" value={device.department} />
+                        <InfoRow label="Categorie" value={device.category} />
+                        <InfoRow label="Producator" value={device.manufacturer} />
+                        <InfoRow label="Status" value={DEVICE_STATUS_RO[device.status] || device.status} />
+                        <InfoRow label="Urmatoarea mentenanta" value={device.nextMaintenanceDate || 'Neprogramata'} badge />
                         {(device.tags || []).length > 0 && (
                           <div className="md:col-span-2 space-y-2">
                             <span className="tech-label">Etichete</span>
@@ -395,12 +395,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    )}
                    
                    <div className="pt-8 border-t border-slate-100">
-                      <label className="tech-label block mb-3">Technical Field Notes</label>
+                      <label className="tech-label block mb-3">Note tehnice</label>
                       {isEditing ? (
                         <textarea name="notes" className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium min-h-[100px] outline-none focus:border-blue-500 transition-colors" value={editForm.notes} onChange={handleEditChange} />
                       ) : (
                         <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50/50 p-6 rounded-2xl border border-slate-100 italic">
-                          {device.notes || 'No operational exceptions logged.'}
+                          {device.notes || 'Nicio observatie inregistrata.'}
                         </p>
                       )}
                    </div>
@@ -429,34 +429,34 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <BookOpen className="w-8 h-8" />
                    </div>
                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Technical Archives</h3>
-                      <p className="tech-label mt-1">Centralized Asset Documentation & Manuals</p>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Arhiva Tehnica</h3>
+                      <p className="tech-label mt-1">Documentatie si manuale centralizate</p>
                    </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                      <label className="tech-label ml-1 mb-1">Document Type</label>
+                      <label className="tech-label ml-1 mb-1">Tip Document</label>
                       <select 
                          className="bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm min-w-[180px]"
                          value={uploadType}
                          onChange={(e) => setUploadType(e.target.value as any)}
                       >
-                         <option value="report">Service Report</option>
-                         <option value="manual">Technical Manual</option>
+                         <option value="report">Raport Service</option>
+                         <option value="manual">Manual Tehnic</option>
                          <option value="service">Document Service</option>
                          <option value="achizitie">Document Achizitie</option>
-                         <option value="other">Other Document</option>
+                         <option value="other">Alt Document</option>
                       </select>
                    </div>
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                      <label className="tech-label ml-1 mb-1 opacity-0">Action</label>
+                      <label className="tech-label ml-1 mb-1 opacity-0">Actiune</label>
                       <button 
                          onClick={() => fileInputRef.current?.click()}
                          disabled={isUploading}
                          className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
                       >
                          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                         {isUploading ? "Processing..." : "Register Archive"}
+                         {isUploading ? "Se proceseaza..." : "Incarca Document"}
                       </button>
                    </div>
                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
@@ -476,9 +476,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="flex items-center justify-between px-2">
                      <div className="flex items-center gap-3">
                         <div className="w-2 h-6 bg-blue-600 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Technical Manuals</h4>
+                        <h4 className="tech-label text-slate-900">Manuale Tehnice</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'manual').length} Units</span>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'manual').length} fisiere</span>
                   </div>
                   
                   <div className="space-y-4">
@@ -489,7 +489,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      ) : (
                        <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
                           <BookOpen className="w-10 h-10 text-slate-300 mb-3" />
-                          <p className="tech-label">No Manuals Found</p>
+                          <p className="tech-label">Niciun manual</p>
                        </div>
                      )}
                   </div>
@@ -500,9 +500,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="flex items-center justify-between px-2">
                      <div className="flex items-center gap-3">
                         <div className="w-2 h-6 bg-emerald-500 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Service Reports</h4>
+                        <h4 className="tech-label text-slate-900">Rapoarte Service</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'report').length} Units</span>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'report').length} fisiere</span>
                   </div>
                   
                   <div className="space-y-4">
@@ -513,7 +513,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      ) : (
                        <div className="py-12 hardware-card rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
                           <FileText className="w-10 h-10 text-slate-300 mb-3" />
-                          <p className="tech-label">No Reports Found</p>
+                          <p className="tech-label">Niciun raport</p>
                        </div>
                      )}
                   </div>
@@ -526,7 +526,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-amber-500 rounded-full" />
                         <h4 className="tech-label text-slate-900">Documente Service</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'service').length} Units</span>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'service').length} fisiere</span>
                   </div>
                   <div className="space-y-4">
                      {editForm.files.filter(f => f.type === 'service').length > 0 ? (
@@ -549,7 +549,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-indigo-500 rounded-full" />
                         <h4 className="tech-label text-slate-900">Documente Achizitie</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'achizitie').length} Units</span>
+                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'achizitie').length} fisiere</span>
                   </div>
                   <div className="space-y-4">
                      {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
@@ -573,7 +573,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           <div className="w-2 h-6 bg-slate-400 rounded-full" />
                           <h4 className="tech-label text-slate-900">Alte Documente</h4>
                        </div>
-                       <span className="tech-label text-slate-400">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} Units</span>
+                       <span className="tech-label text-slate-400">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} fisiere</span>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                        {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
@@ -594,15 +594,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <CheckSquare className="w-8 h-8" />
                    </div>
                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Operation Tracker</h3>
-                      <p className="tech-label mt-1">Active Maintenance & Deployment Tasks</p>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Urmarire Operatiuni</h3>
+                      <p className="tech-label mt-1">Sarcini active de mentenanta si operare</p>
                    </div>
                 </div>
                 <button 
                    onClick={() => {
                      const newTask: MedicalTask = {
                        id: `TASK-${Date.now()}`,
-                       title: `Maintenance for ${device.name}`,
+                       title: `Mentenanta pentru ${device.name}`,
                        description: '',
                        deviceId: device.id,
                        deviceName: device.name,
@@ -615,7 +615,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    }}
                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                 >
-                   <Plus className="w-5 h-5" /> Initialize Task
+                   <Plus className="w-5 h-5" /> Adauga Sarcina
                 </button>
              </div>
 
@@ -634,13 +634,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                               task.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
                               task.status === 'in-progress' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'
                            }`}>
-                              {task.status}
+                              {TASK_STATUS_RO[task.status] || task.status}
                            </span>
                            <span className="text-[10px] font-mono font-bold text-slate-400">ID: {task.id.slice(0,8)}</span>
-                           <span className="text-[10px] font-mono font-bold text-slate-400">Due: {task.createdAt}</span>
+                           <span className="text-[10px] font-mono font-bold text-slate-400">Termen: {task.createdAt}</span>
                         </div>
                         <h4 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">{task.title}</h4>
-                        <p className="text-sm text-slate-500 mt-1 line-clamp-1 font-medium">{task.description || 'No description provided.'}</p>
+                        <p className="text-sm text-slate-500 mt-1 line-clamp-1 font-medium">{task.description || 'Fara descriere.'}</p>
                      </div>
                       <div className="flex items-center gap-4">
                         <span className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border ${
@@ -648,14 +648,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           task.status === TaskStatus.IN_PROGRESS ? 'border-blue-200 text-blue-600 bg-blue-50/50' : 
                           'border-green-200 text-green-600 bg-green-50/50'
                         }`}>
-                          {task.status}
+                          {TASK_STATUS_RO[task.status] || task.status}
                         </span>
                       </div>
                   </div>
                 )) : (
                   <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
                      <CheckSquare className="w-16 h-16 text-slate-100 mb-4" />
-                     <p className="tech-label">No active operations</p>
+                     <p className="tech-label">Nicio operatiune activa</p>
                   </div>
                 )}
              </div>
@@ -670,8 +670,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <Wrench className="w-8 h-8" />
                    </div>
                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Service History</h3>
-                      <p className="tech-label mt-1">Technical Intervention Logs</p>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Istoric Service</h3>
+                      <p className="tech-label mt-1">Jurnal interventii tehnice</p>
                    </div>
                 </div>
                 <button 
@@ -680,8 +680,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                        id: `MT-${Math.floor(Math.random() * 90000)}`,
                        date: new Date().toISOString().split('T')[0],
                        type: MaintenanceType.PREVENTIVE,
-                       technician: 'Assigned Bio-Med',
-                       description: 'Standard preventive maintenance and calibration check.',
+                       technician: 'Tehnician desemnat',
+                       description: 'Mentenanta preventiva standard si verificare calibrare.',
                        completed: true
                      };
                      const updatedDevice = {
@@ -693,7 +693,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    }}
                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                 >
-                   <Plus className="w-5 h-5" /> Log Intervention
+                   <Plus className="w-5 h-5" /> Adauga Interventie
                 </button>
              </div>
 
@@ -706,8 +706,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                               <Calendar className="w-5 h-5" />
                            </div>
                            <div>
-                              <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">{record.type}</h4>
-                              <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">EXECUTED ON: {record.date} BY {record.technician}</p>
+                              <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">{MAINTENANCE_TYPE_RO[record.type] || record.type}</h4>
+                              <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">EFECTUAT LA: {record.date} DE {record.technician}</p>
                            </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -725,7 +725,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 )) : (
                   <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
                      <Wrench className="w-16 h-16 text-slate-100 mb-4" />
-                     <p className="tech-label">No service history recorded</p>
+                     <p className="tech-label">Niciun istoric de service inregistrat</p>
                   </div>
                 )}
              </div>
@@ -736,8 +736,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           <div className="max-w-xl mx-auto py-12 animate-slide-up">
              <div className="hardware-card p-12 rounded-[3rem] text-center space-y-10">
                 <div className="space-y-2">
-                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Asset Identity Matrix</h3>
-                   <p className="tech-label">Unique QR Identification</p>
+                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Identitate Dispozitiv</h3>
+                   <p className="tech-label">Identificare unica QR</p>
                 </div>
                 
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-inner border border-slate-100 inline-block mx-auto relative group">
@@ -756,7 +756,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
                 <div className="space-y-6">
                    <div className="flex flex-col items-center gap-2">
-                      <span className="tech-label">Asset Identifier</span>
+                      <span className="tech-label">Identificator dispozitiv</span>
                       <code className="px-6 py-2 bg-slate-900 text-white rounded-xl font-mono text-sm shadow-lg">{device.id}</code>
                    </div>
                    
@@ -774,20 +774,20 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         }}
                         className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                       >
-                        <Download className="w-5 h-5" /> Export Matrix
+                        <Download className="w-5 h-5" /> Descarca QR
                       </button>
                       <button 
                         onClick={() => window.print()}
                         className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-200 transition active:scale-95"
                       >
-                        <Printer className="w-5 h-5" /> Print Label
+                        <Printer className="w-5 h-5" /> Printeaza Eticheta
                       </button>
                    </div>
                 </div>
 
                 <div className="pt-8 border-t border-slate-100">
                    <p className="text-[10px] font-mono font-bold text-slate-400 leading-relaxed uppercase">
-                      Scanning this matrix provides instant access to technical documentation, service history, and operational status.
+                      Scanarea acestui cod ofera acces instant la documentatia tehnica, istoricul de service si statusul operational.
                    </p>
                 </div>
              </div>
@@ -842,18 +842,28 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               <h1 className="text-lg font-black tracking-tight text-white uppercase">MediTrack</h1>
            </div>
            <p className="text-xs text-slate-400 font-medium max-w-xs">
-              This is a standalone asset view. To manage your entire clinical fleet, access the main application dashboard.
+              Aceasta este o vizualizare individuala a dispozitivului. Pentru administrarea intregului parc de echipamente, accesati aplicatia principala.
            </p>
            <a 
               href={window.location.origin}
               className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10"
            >
-              Open Full Application
+              Deschide Aplicatia Completa
            </a>
         </div>
       )}
     </div>
   );
+};
+
+// Display labels for internal file type values — the stored values stay unchanged
+const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
+  manual: 'Manual',
+  report: 'Raport',
+  service: 'Service',
+  achizitie: 'Achizitie',
+  image: 'Imagine',
+  other: 'Altele',
 };
 
 const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete }: any) => (
@@ -866,16 +876,16 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
              <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest border bg-${color}-50 border-${color}-100 text-${color}-700`}>
-                {file.type}
+                {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
              </span>
              <span className="text-[10px] font-mono font-bold text-slate-400">{file.dateAdded}</span>
           </div>
           <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
        </div>
        <div className="flex items-center gap-0.5">
-          <button onClick={onView} className="p-2 text-slate-400 hover:text-blue-600 transition active:scale-90" title="View"><Eye className="w-3.5 h-3.5" /></button>
-          <button onClick={onDownload} className="p-2 text-slate-400 hover:text-green-600 transition active:scale-90" title="Download"><Download className="w-3.5 h-3.5" /></button>
-          <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 transition active:scale-90" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={onView} className="p-2 text-slate-400 hover:text-blue-600 transition active:scale-90" title="Vizualizeaza"><Eye className="w-3.5 h-3.5" /></button>
+          <button onClick={onDownload} className="p-2 text-slate-400 hover:text-green-600 transition active:scale-90" title="Descarca"><Download className="w-3.5 h-3.5" /></button>
+          <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 transition active:scale-90" title="Sterge"><Trash2 className="w-3.5 h-3.5" /></button>
        </div>
     </div>
   </div>

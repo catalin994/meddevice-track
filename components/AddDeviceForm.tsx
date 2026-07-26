@@ -185,43 +185,43 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       {(isProcessing || isSubmitting) && <div className="absolute inset-0 bg-slate-900/90 z-[200] flex items-center justify-center"><Activity className="w-12 h-12 text-blue-500 animate-spin" /></div>}
       
       <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-        <h2 className="text-2xl font-black text-slate-900 uppercase">Asset Intake</h2>
+        <h2 className="text-2xl font-black text-slate-900 uppercase">Inregistrare Dispozitiv</h2>
         <button onClick={onCancel} className="p-2 text-slate-400"><X className="w-6 h-6" /></button>
       </div>
 
       <div className="flex border-b border-slate-100 bg-white">
         <TabButton active={activeTab === 'single'} onClick={() => setActiveTab('single')} label="Manual" icon={<Box className="w-4 h-4" />} />
-        <TabButton active={activeTab === 'batch'} onClick={() => setActiveTab('batch')} label="Batch" icon={<Layers className="w-4 h-4" />} />
+        <TabButton active={activeTab === 'batch'} onClick={() => setActiveTab('batch')} label="Lot" icon={<Layers className="w-4 h-4" />} />
         <TabButton active={activeTab === 'excel'} onClick={() => setActiveTab('excel')} label="Import" icon={<FileSpreadsheet className="w-4 h-4" />} />
       </div>
 
       <div className="p-10">
         {previewDevices.length > 0 ? (
           <div className="space-y-6">
-            <h3 className="font-black text-xl">Deploy {previewDevices.length} Assets</h3>
+            <h3 className="font-black text-xl">Adauga {previewDevices.length} dispozitive</h3>
             <div className="max-h-60 overflow-y-auto bg-slate-50 p-4 rounded-xl space-y-2">
               {previewDevices.map((d, i) => <div key={i} className="text-xs bg-white p-2 rounded border">{d.name} ({d.serialNumber})</div>)}
             </div>
-            <button onClick={() => onBulkSave(previewDevices)} className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase">Commit to Registry</button>
+            <button onClick={() => onBulkSave(previewDevices)} className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase">Salveaza in Registru</button>
           </div>
         ) : (
           <form onSubmit={activeTab === 'single' ? handleSingleSubmit : handleGenerateBatch} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Asset Name" name="name" value={formData.name} onChange={handleChange} required />
+              <FormField label="Denumire dispozitiv" name="name" value={formData.name} onChange={handleChange} required />
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400">Category</label>
+                <label className="text-[10px] font-black uppercase text-slate-400">Categorie</label>
                 <select name="category" value={formData.category} onChange={handleChange} className="w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none">
                   {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <FormField label="Manufacturer" name="manufacturer" value={formData.manufacturer} onChange={handleChange} required />
+              <FormField label="Producator" name="manufacturer" value={formData.manufacturer} onChange={handleChange} required />
               <FormField label="Model" name="model" value={formData.model} onChange={handleChange} required />
-              {activeTab === 'single' && <FormField label="Serial Number" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required />}
+              {activeTab === 'single' && <FormField label="Numar serie" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required />}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400">Department</label>
+                <label className="text-[10px] font-black uppercase text-slate-400">Departament</label>
                 <select name="department" value={formData.department} onChange={handleChange} className="w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none">
                   {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-                  <option value="NEW_DEPT">+ Add New Department</option>
+                  <option value="NEW_DEPT">+ Adauga departament nou</option>
                 </select>
               </div>
               {formData.department === 'NEW_DEPT' && (
