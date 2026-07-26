@@ -873,14 +873,14 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-8 py-2 flex-wrap gap-4">
+        <div className="flex items-center justify-between px-2 sm:px-8 py-2 flex-wrap gap-3">
           <div className="flex items-center gap-4">
             <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
               {filteredDevices.length}
             </div>
             <span className="tech-label">Dispozitive gasite</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {selectedIds.size > 0 && (
               <>
                 <span className="tech-label text-blue-600 font-black">{selectedIds.size} selectate</span>

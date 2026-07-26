@@ -106,7 +106,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
           {weeks.map((week, wi) => (
             <div key={wi} className="grid grid-cols-7 gap-1.5">
               {week.map((day, di) => {
-                if (!day) return <div key={di} className="min-h-[84px] rounded-2xl bg-slate-50/40" />;
+                if (!day) return <div key={di} className="min-h-[56px] sm:min-h-[84px] rounded-2xl bg-slate-50/40" />;
                 const key = toKey(day);
                 const dayDevices = byDate.get(key) || [];
                 const isToday = key === todayKey;
@@ -119,7 +119,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
                     onDragOver={e => { e.preventDefault(); setDragOverDay(key); }}
                     onDragLeave={() => setDragOverDay(d => d === key ? null : d)}
                     onDrop={e => handleDrop(e, key)}
-                    className={`min-h-[84px] rounded-2xl border p-1.5 cursor-pointer transition flex flex-col
+                    className={`min-h-[56px] sm:min-h-[84px] rounded-2xl border p-1 sm:p-1.5 cursor-pointer transition flex flex-col
                       ${dragOverDay === key ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-500/10' :
                         isSelected ? 'border-slate-900 bg-slate-900' :
                         isToday ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}
@@ -134,7 +134,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 space-y-0.5 overflow-hidden">
+                    <div className="mt-1 space-y-0.5 overflow-hidden hidden sm:block">
                       {dayDevices.slice(0, 2).map(d => (
                         <div
                           key={d.id}

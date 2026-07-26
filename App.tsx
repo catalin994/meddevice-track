@@ -554,59 +554,64 @@ const App: React.FC = () => {
 
       <main className={`flex-1 flex flex-col overflow-hidden relative ${isStandalone ? 'bg-white' : ''}`}>
         {!isStandalone && (
-          <header className="h-24 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0 z-50">
-            <div className="flex items-center gap-4">
-               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"><Menu className="w-5 h-5" /></button>
-               <div>
-                 <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">{view.replace('_', ' ')}</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
+          <header className="h-16 sm:h-24 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0"><Menu className="w-5 h-5" /></button>
+               <div className="min-w-0">
+                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{view.replace('_', ' ')}</h2>
+                 <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
               {isSyncing && (
-                <div className="flex items-center gap-2.5 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
+                <div className="flex items-center gap-2.5 px-2.5 sm:px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                   <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Se salveaza</span>
+                  <span className="hidden sm:inline text-[10px] font-black text-blue-600 uppercase tracking-widest">Se salveaza</span>
                 </div>
               )}
               <button
                 onClick={() => setShowPalette(true)}
-                className="hidden sm:flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:border-blue-300 hover:text-slate-600 transition-colors"
+                className="hidden md:flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:border-blue-300 hover:text-slate-600 transition-colors"
                 title="Cautare globala"
               >
                 <Search className="w-4 h-4" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Cauta...</span>
                 <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[9px] font-black">Ctrl K</kbd>
               </button>
-              <div className="h-8 w-px bg-slate-200" />
+              {/* Mobile: compact search icon */}
+              <button onClick={() => setShowPalette(true)} className="md:hidden p-2.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl" title="Cautare">
+                <Search className="w-4 h-4" />
+              </button>
+              <div className="hidden sm:block h-8 w-px bg-slate-200" />
               {canEdit && (
                 <button
                   onClick={() => setShowDocScanner(true)}
-                  className="p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
+                  className="p-2.5 sm:p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
                   title="Scaneaza document"
                 >
-                  <ScanLine className="w-7 h-7" />
+                  <ScanLine className="w-5 h-5 sm:w-7 sm:h-7" />
                 </button>
               )}
               <button
                 onClick={() => setShowScanner(true)}
-                className="p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
+                className="p-2.5 sm:p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
                 title="Scaneaza cod QR dispozitiv"
               >
-                <QrCode className="w-7 h-7" />
+                <QrCode className="w-5 h-5 sm:w-7 sm:h-7" />
               </button>
               {view === 'INVENTORY' && canEdit && (
-                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700 hover:-translate-y-0.5">
-                  + Inregistreaza Dispozitiv
+                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white p-2.5 sm:px-6 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700" title="Inregistreaza Dispozitiv">
+                  <span className="hidden sm:inline">+ Inregistreaza Dispozitiv</span>
+                  <span className="sm:hidden text-base leading-none font-black">+</span>
                 </button>
               )}
-              <div className="h-8 w-px bg-slate-200" />
+              <div className="hidden sm:block h-8 w-px bg-slate-200" />
               <div className="flex items-center gap-3">
                 <div className="hidden md:block text-right">
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
-                <button onClick={handleLogout} className="p-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 transition-colors" title="Delogare">
+                <button onClick={handleLogout} className="p-2.5 sm:p-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 transition-colors" title="Delogare">
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
@@ -614,7 +619,7 @@ const App: React.FC = () => {
           </header>
         )}
 
-        <div className={`flex-1 overflow-y-auto relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-6 lg:p-10'}`}>
+        <div className={`flex-1 overflow-y-auto relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-3 sm:p-6 lg:p-10'}`}>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-fade-in">
               <div className="relative">

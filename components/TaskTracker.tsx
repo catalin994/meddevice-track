@@ -193,9 +193,9 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
-      <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="relative flex-1 max-w-md">
+      <div className="bg-white p-4 sm:p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
+          <div className="relative flex-1 sm:max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
             <input 
               type="text"
@@ -214,7 +214,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             {Object.values(TaskStatus).map(s => <option key={s} value={s}>{TASK_STATUS_RO[s].toUpperCase()}</option>)}
           </select>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
             {([
               ['CARDS', 'Carduri', LayoutGrid],

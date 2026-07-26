@@ -477,7 +477,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           </div>
         </div>
 
-        <div className="flex gap-2 mt-8">
+        <div className="flex flex-wrap gap-2 mt-8">
           {([
             ['OVERVIEW', 'Sumar', TrendingUp],
             ['INVOICES', 'Facturi', Receipt],
