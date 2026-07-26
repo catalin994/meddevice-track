@@ -57,6 +57,15 @@ export const DEVICE_CATEGORIES = [
 export type HospitalDepartment = typeof HOSPITAL_DEPARTMENTS[number];
 export type DeviceCategory = typeof DEVICE_CATEGORIES[number];
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  kind: 'image' | 'video' | 'file';
+  url: string;       // data URL
+  size: number;      // bytes
+  dateAdded: string;
+}
+
 export interface MedicalTask {
   id: string;
   title: string;
@@ -70,6 +79,7 @@ export interface MedicalTask {
   updated_at?: string;
   dueDate?: string;
   notes?: string;
+  attachments?: TaskAttachment[];
 }
 
 export interface MaintenanceRecord {

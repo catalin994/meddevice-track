@@ -115,6 +115,9 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- Adds the tags column for older installs (safe to re-run)
 ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
 
+-- Adds incident attachments (photos/video/files) to tickets (safe to re-run)
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+
 CREATE TABLE IF NOT EXISTS public.invoices (
     id TEXT PRIMARY KEY,
     "invoiceNumber" TEXT NOT NULL,

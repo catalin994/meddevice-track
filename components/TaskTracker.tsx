@@ -1,7 +1,21 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
-import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown } from 'lucide-react';
+import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
+import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
+import IncidentReport from './IncidentReport';
+
+// Opens an attachment in a new tab (data URLs need a blob URL for large media)
+const openAttachment = (a: TaskAttachment) => {
+  try {
+    const [meta, b64] = a.url.split(',');
+    const mime = meta.match(/data:(.*?);/)?.[1] || 'application/octet-stream';
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    window.open(blobUrl, '_blank');
+  } catch {
+    window.open(a.url, '_blank');
+  }
+};
 
 type TaskViewMode = 'CARDS' | 'TABLE' | 'KANBAN';
 type SortKey = 'title' | 'deviceName' | 'department' | 'priority' | 'status' | 'createdAt' | 'dueDate';
@@ -33,6 +47,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<TaskViewMode>('CARDS');
+  const [isReportingIncident, setIsReportingIncident] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
@@ -215,6 +230,12 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             ))}
           </div>
           <button
+            onClick={() => setIsReportingIncident(true)}
+            className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-red-600/20 hover:bg-red-700 transition flex items-center gap-2 active:scale-95"
+          >
+            <Siren className="w-4 h-4" /> Raporteaza Incident
+          </button>
+          <button
             onClick={() => { resetForm(); setIsAdding(true); }}
             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
           >
@@ -275,11 +296,18 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   <tr key={task.id} className="border-b border-slate-50 hover:bg-blue-50/30 transition group">
                     <td className="px-5 py-3.5 max-w-[280px]">
                       <p className="text-xs font-black text-slate-900 truncate" title={task.title}>{task.title}</p>
-                      {task.notes && (
-                        <p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest flex items-center gap-1 mt-0.5">
-                          <StickyNote className="w-2.5 h-2.5" /> Note tehnice
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {task.notes && (
+                          <p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                            <StickyNote className="w-2.5 h-2.5" /> Note tehnice
+                          </p>
+                        )}
+                        {(task.attachments || []).length > 0 && (
+                          <p className="text-[9px] text-blue-600 font-bold uppercase tracking-widest flex items-center gap-1" title={`${task.attachments!.length} atasamente`}>
+                            <Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length}
+                          </p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 max-w-[180px]">
                       {task.deviceName
@@ -362,6 +390,9 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     </div>
                     <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
                     {task.deviceName && <p className="text-[10px] font-bold text-blue-600 truncate mt-1">{task.deviceName}</p>}
+                    {(task.attachments || []).length > 0 && (
+                      <p className="text-[9px] text-slate-400 font-bold flex items-center gap-1 mt-1"><Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length} atasamente</p>
+                    )}
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-50">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                         <Building className="w-2.5 h-2.5" /> {task.department}
@@ -381,6 +412,14 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             </div>
           ))}
         </div>
+      )}
+
+      {isReportingIncident && (
+        <IncidentReport
+          devices={devices}
+          onSubmit={onAddTask}
+          onClose={() => setIsReportingIncident(false)}
+        />
       )}
 
       {(isAdding || editingTask) && (
@@ -514,6 +553,26 @@ const TaskCard = React.memo(({
                 <MessageSquare className="w-3 h-3" /> Note Tehnice
               </p>
               <p className="text-xs text-slate-600 italic leading-relaxed">{task.notes}</p>
+            </div>
+          )}
+
+          {/* Incident attachments */}
+          {(task.attachments || []).length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {(task.attachments || []).map(a => (
+                a.kind === 'image' ? (
+                  <button key={a.id} onClick={() => openAttachment(a)} title={a.name}
+                    className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-400 transition shadow-sm">
+                    <img src={a.url} alt={a.name} className="w-full h-full object-cover" />
+                  </button>
+                ) : (
+                  <button key={a.id} onClick={() => openAttachment(a)} title={a.name}
+                    className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-400 transition text-slate-600">
+                    {a.kind === 'video' ? <Film className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
+                    <span className="text-[10px] font-bold max-w-[110px] truncate">{a.name}</span>
+                  </button>
+                )
+              ))}
             </div>
           )}
         </div>
