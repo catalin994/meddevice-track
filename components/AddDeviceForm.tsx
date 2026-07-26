@@ -88,7 +88,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
   const handleSingleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Unassigned') : formData.department).trim();
+    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Nealocat') : formData.department).trim();
     
     const newDevice: MedicalDevice = {
       // FIX: Ensure every new device gets a truly unique identifier
@@ -118,7 +118,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
   const handleGenerateBatch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const batch: MedicalDevice[] = [];
-    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Unassigned') : formData.department).trim();
+    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Nealocat') : formData.department).trim();
     for (let i = 0; i < batchData.quantity; i++) {
       batch.push({
         id: `DEV-B-${crypto.randomUUID()}`,
@@ -168,7 +168,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
           category,
           purchaseDate,
           nextMaintenanceDate: calculateNextMaintenanceDate(purchaseDate, category),
-          department: (p.department || 'Unassigned').trim(),
+          department: (p.department || 'Nealocat').trim(),
           maintenanceHistory: [], 
           contracts: [], 
           files: [], 
@@ -225,12 +225,12 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
                 </select>
               </div>
               {formData.department === 'NEW_DEPT' && (
-                <FormField label="Custom Department Name" name="customDepartment" value={formData.customDepartment} onChange={handleChange} required />
+                <FormField label="Nume departament nou" name="customDepartment" value={formData.customDepartment} onChange={handleChange} required />
               )}
             </div>
             <div className="flex justify-end gap-4 pt-6">
-              <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase">Cancel</button>
-              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-xl hover:bg-blue-700">Save Asset</button>
+              <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase">Anuleaza</button>
+              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-xl hover:bg-blue-700">Salveaza</button>
             </div>
           </form>
         )}
