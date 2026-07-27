@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
+import Portal from './Portal';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -233,8 +234,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   }, []);
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-slide-up">
+    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-fade-in">
       {showPurgeConfirm && (
+        <Portal>
         <div className="fixed inset-0 z-[600] bg-slate-900/40 flex items-center justify-center p-4">
            <div className="hardware-card p-12 max-w-lg w-full text-center rounded-[3rem] shadow-2xl animate-slide-up">
               <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
@@ -253,11 +255,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               </div>
            </div>
         </div>
+        </Portal>
       )}
 
-      <div className="p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/50 relative overflow-hidden">
+      <div className="p-4 sm:p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-white/50 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600 opacity-20" />
-        <div className="flex items-start gap-6">
+        <div className="flex items-start gap-4 sm:gap-6 min-w-0">
           <div className="hidden md:flex flex-col items-center gap-2">
             <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_rgba(37,99,235,0.5)] ${device.status === DeviceStatus.ACTIVE ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-amber-500 shadow-amber-500/50'} animate-pulse`} />
             <div className="w-px h-12 bg-slate-100" />
@@ -268,13 +271,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 <span className="group-hover:-translate-x-1 transition-transform font-bold">←</span> INAPOI / DISPOZITIVE
               </button>
             )}
-            <div className="flex flex-wrap items-center gap-4">
-               <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">{device.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+               <h1 className="text-xl sm:text-4xl font-black text-slate-900 tracking-tighter uppercase leading-tight break-words">{device.name}</h1>
                <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-lg tech-label text-[10px]">
-                 <Cpu className="w-3 h-3" /> {device.serialNumber}
+                 <Cpu className="w-3 h-3 shrink-0" /> {device.serialNumber}
                </div>
             </div>
-            <div className="mt-2 flex items-center gap-4">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
               <span className="tech-label text-slate-400">MOD: <span className="text-slate-600">{device.model}</span></span>
               <span className="tech-label text-slate-400">CAT: <span className="text-slate-600">{device.category}</span></span>
             </div>
@@ -300,7 +303,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         </div>
       </div>
 
-      <div className="flex border-b border-slate-100 px-8 bg-white overflow-x-auto no-scrollbar shadow-sm z-10">
+      <div className="flex border-b border-slate-100 px-3 sm:px-8 bg-white overflow-x-auto no-scrollbar shadow-sm z-10">
         <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity className="w-4 h-4" />} label="Detalii Tehnice" />
         <TabButton active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} icon={<Wrench className="w-4 h-4" />} label="Istoric Service" />
         <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Arhiva & Documente" />
@@ -313,7 +316,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         {activeTab === 'overview' && (
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 max-w-7xl mx-auto">
               <div className="xl:col-span-8 space-y-8 animate-slide-up">
-                <div className="hardware-card p-10 rounded-[2.5rem] space-y-8">
+                <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem] space-y-8">
                    <div className="flex items-center gap-4 mb-2">
                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Info className="w-6 h-6" /></div>
                       <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Fisa Dispozitivului</h3>
@@ -425,7 +428,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               </div>
 
               <div className="xl:col-span-4 space-y-8">
-                <div className="hardware-card p-8 rounded-[2.5rem] overflow-hidden group">
+                <div className="hardware-card p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] overflow-hidden group">
                    <div className="aspect-square bg-white rounded-3xl border border-slate-100 flex items-center justify-center overflow-hidden relative shadow-inner">
                       {device.image ? <img src={device.image} alt="Visual" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" /> : <Box className="w-16 h-16 text-slate-200 opacity-50" />}
                    </div>
@@ -439,18 +442,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'docs' && (
           <div className="max-w-6xl mx-auto py-6 space-y-8 animate-slide-up">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col lg:flex-row justify-between items-center gap-8 relative overflow-hidden">
+             <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem] flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-5 sm:gap-8 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20" />
-                <div className="flex items-center gap-6">
-                   <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl">
-                      <BookOpen className="w-8 h-8" />
+                <div className="flex items-center gap-4 sm:gap-6">
+                   <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl">
+                      <BookOpen className="w-6 h-6 sm:w-8 sm:h-8" />
                    </div>
                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Arhiva Tehnica</h3>
+                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Arhiva Tehnica</h3>
                       <p className="tech-label mt-1">Documentatie si manuale centralizate</p>
                    </div>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full lg:w-auto">
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1">Tip Document</label>
                       <select 
@@ -467,22 +470,23 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    </div>
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1 opacity-0">Actiune</label>
-                      <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2">
                         <button
                            onClick={() => fileInputRef.current?.click()}
                            disabled={isUploading}
-                           className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
+                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 whitespace-nowrap"
                         >
-                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                           {isUploading ? "Se proceseaza..." : "Incarca Document"}
+                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Upload className="w-4 h-4 shrink-0" />}
+                           <span className="truncate">{isUploading ? "Se proceseaza" : "Incarca"}</span>
+                           <span className="hidden sm:inline">{isUploading ? "..." : "Document"}</span>
                         </button>
                         <button
                            onClick={() => setShowDocCapture(true)}
                            disabled={isUploading}
-                           className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-600 transition shadow-xl active:scale-95 disabled:opacity-50"
+                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-emerald-600 transition shadow-xl active:scale-95 disabled:opacity-50 whitespace-nowrap"
                            title="Scaneaza documentul cu camera — paginile se combina intr-un PDF"
                         >
-                           <Camera className="w-4 h-4" />
+                           <Camera className="w-4 h-4 shrink-0" />
                            Scaneaza
                         </button>
                       </div>
@@ -616,7 +620,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'tasks' && (
           <div className="max-w-5xl mx-auto py-6 space-y-8 animate-fade-in">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
+             <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                       <CheckSquare className="w-8 h-8" />
@@ -692,7 +696,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'maintenance' && (
           <div className="max-w-5xl mx-auto py-6 space-y-8 animate-slide-up">
-             <div className="hardware-card p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
+             <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-6">
                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                       <Wrench className="w-8 h-8" />
@@ -727,7 +731,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
              <div className="space-y-6">
                 {(device.maintenanceHistory || []).length > 0 ? device.maintenanceHistory.map(record => (
-                  <div key={record.id} className="hardware-card p-8 rounded-[2.5rem] space-y-6 hover:shadow-xl transition-all group">
+                  <div key={record.id} className="hardware-card p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] space-y-6 hover:shadow-xl transition-all group">
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-4">
                            <div className="p-3 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
@@ -762,13 +766,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'qr' && (
           <div className="max-w-xl mx-auto py-12 animate-slide-up">
-             <div className="hardware-card p-12 rounded-[3rem] text-center space-y-10">
+             <div className="hardware-card p-6 sm:p-12 rounded-3xl sm:rounded-[3rem] text-center space-y-10">
                 <div className="space-y-2">
                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Identitate Dispozitiv</h3>
                    <p className="tech-label">Identificare unica QR</p>
                 </div>
                 
-                <div className="bg-white p-10 rounded-[2.5rem] shadow-inner border border-slate-100 inline-block mx-auto relative group">
+                <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem] shadow-inner border border-slate-100 inline-block mx-auto relative group">
                    <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
                    <React.Suspense fallback={<div className="w-60 h-60 animate-pulse bg-slate-100 rounded-2xl" />}>
                      <LazyQRCode
@@ -824,7 +828,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
         {activeTab === 'audit' && (
           <div className="max-w-4xl mx-auto py-6 animate-slide-up">
-            <div className="hardware-card p-10 rounded-[2.5rem]">
+            <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
               <div className="flex items-center gap-4 mb-8">
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm"><Clock className="w-6 h-6" /></div>
                 <div>
@@ -967,7 +971,7 @@ const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice
   const fmt = (n: number) => n.toLocaleString('ro-RO', { maximumFractionDigits: 2 });
 
   return (
-    <div className="hardware-card p-8 rounded-[2.5rem]">
+    <div className="hardware-card p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem]">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Costuri Asociate</h3>

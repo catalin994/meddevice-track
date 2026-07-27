@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
 import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag } from 'lucide-react';
 
+import Portal from './Portal';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 const exportToExcel = async (devices: MedicalDevice[]) => {
@@ -765,9 +766,10 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   }, [devices, onBulkUpdate]);
 
   return (
-    <div className="space-y-8 pb-24 relative animate-slide-up">
+    <div className="space-y-8 pb-24 relative animate-fade-in">
       {/* QUICK EDIT OVERLAY */}
       {editingDevice && (
+        <Portal>
         <div className="fixed inset-0 z-[500] bg-slate-900/40 flex items-center justify-center p-4">
           <div className="hardware-card p-10 w-full max-w-xl rounded-[2.5rem] shadow-2xl animate-slide-up">
              <div className="flex justify-between items-center mb-8">
@@ -814,10 +816,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
              </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* FILTER CONTROLS */}
-      <div className="hardware-card p-8 rounded-[2.5rem] flex flex-col gap-6">
+      <div className="hardware-card p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row items-center gap-4 w-full">
           <div className="relative flex-1 w-full group">
             <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />

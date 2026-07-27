@@ -58,7 +58,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 hardware-card p-10 rounded-[2.5rem]">
+        <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
           <div className="flex items-center justify-between mb-10">
             <div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Starea Flotei</h3>
@@ -74,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
           </Suspense>
         </div>
 
-        <div className="lg:col-span-5 hardware-card p-10 rounded-[2.5rem]">
+        <div className="lg:col-span-5 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Interventii Prioritare</h3>
@@ -110,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         </div>
       </div>
 
-      <div className="hardware-card p-10 rounded-[2.5rem]">
+      <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
         <div className="flex justify-between items-center mb-10">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Monitor Mentenante</h3>

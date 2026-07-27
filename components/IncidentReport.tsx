@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { X, Siren, Search, Camera, Paperclip, Trash2, Loader2, CheckCircle2, Film, FileText, AlertTriangle } from 'lucide-react';
 import { MedicalDevice, MedicalTask, TaskAttachment, TaskPriority, TaskStatus, TASK_PRIORITY_RO, HOSPITAL_DEPARTMENTS } from '../types';
 
+import Portal from './Portal';
 interface IncidentReportProps {
   devices: MedicalDevice[];
   onSubmit: (task: MedicalTask) => Promise<void> | void;
@@ -146,6 +147,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
   const fmtSize = (b: number) => b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[500] bg-slate-900/80 flex items-center justify-center p-4">
       <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col animate-slide-up">
         {/* Header */}
@@ -307,6 +309,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
         </form>
       </div>
     </div>
+    </Portal>
   );
 };
 

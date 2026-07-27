@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ScanLine, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
+import Portal from './Portal';
 interface CameraDocCaptureProps {
   title?: string;
   onCapture: (pdfDataUrl: string, pageCount: number) => Promise<void> | void;
@@ -84,6 +85,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   }, [pages, stopCamera, onCapture, onClose]);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[650] bg-black flex flex-col">
       <div className="flex items-center justify-between p-4 sm:p-5 bg-black/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">
@@ -159,6 +161,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         <canvas ref={canvasRef} className="hidden" />
       </div>
     </div>
+    </Portal>
   );
 };
 

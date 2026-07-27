@@ -3,6 +3,7 @@ import React, { useRef, useState, Suspense } from 'react';
 import { X, Printer, QrCode, Loader2 } from 'lucide-react';
 import { MedicalDevice } from '../types';
 
+import Portal from './Portal';
 const QRCodeCanvas = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 
 interface QRLabelSheetProps {
@@ -61,6 +62,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[650] bg-slate-900/60 flex items-center justify-center p-4">
       <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-up">
         <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
@@ -106,6 +108,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
         </div>
       </div>
     </div>
+    </Portal>
   );
 };
 

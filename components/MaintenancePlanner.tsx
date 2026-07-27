@@ -271,7 +271,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       {/* Header & Global Controls */}
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col xl:flex-row items-center justify-between gap-8">
+      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col xl:flex-row items-center justify-between gap-8">
         <div className="flex-1">
           <h2 className="text-3xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tight">
             <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">

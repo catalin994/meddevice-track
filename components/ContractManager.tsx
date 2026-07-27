@@ -4,6 +4,7 @@ import { Contract, MedicalDevice } from '../types';
 import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2 } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
 
+import Portal from './Portal';
 interface ContractManagerProps {
   devices: MedicalDevice[];
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
@@ -99,9 +100,9 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
               <ShieldCheck className="w-8 h-8" />
             </div>
@@ -119,7 +120,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {globalContracts.map(contract => (
-          <div key={contract.contractNumber} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+          <div key={contract.contractNumber} className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
@@ -172,6 +173,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
       </div>
 
       {isAdding && (
+        <Portal>
         <div className="fixed inset-0 z-[100] bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in border border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -186,7 +188,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                   <div className="lg:col-span-7 space-y-10">
                      <div className="space-y-6">
-                        <div className="bg-violet-900 p-8 rounded-[2rem] text-white shadow-xl">
+                        <div className="bg-violet-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
                            <div className="flex items-center gap-3 mb-6">
                               <Wand2 className="w-6 h-6 text-violet-400" />
                               <h4 className="text-sm font-black uppercase tracking-widest">Extragere Inteligenta AI</h4>
@@ -230,7 +232,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                   </div>
 
                   <div className="lg:col-span-5 space-y-6">
-                     <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 h-full flex flex-col">
+                     <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 h-full flex flex-col">
                         <div className="mb-6">
                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                               <Plus className="w-5 h-5 text-indigo-600" /> Asociaza Dispozitive
@@ -286,6 +288,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

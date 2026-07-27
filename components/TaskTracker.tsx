@@ -4,6 +4,7 @@ import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, H
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
 import IncidentReport from './IncidentReport';
 
+import Portal from './Portal';
 // Opens an attachment in a new tab (data URLs need a blob URL for large media)
 const openAttachment = (a: TaskAttachment) => {
   try {
@@ -423,6 +424,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
       )}
 
       {(isAdding || editingTask) && (
+        <Portal>
         <div className="fixed inset-0 z-[100] bg-slate-900/80 flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-fade-in overflow-hidden border-4 border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -499,6 +501,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             </form>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

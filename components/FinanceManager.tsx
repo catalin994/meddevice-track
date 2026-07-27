@@ -8,6 +8,7 @@ import {
 import { MedicalDevice, Invoice, InvoiceStatus, Contract } from '../types';
 import ContractManager from './ContractManager';
 
+import Portal from './Portal';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 
 interface FinanceManagerProps {
@@ -453,14 +454,14 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header + tabs */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
               <Wallet className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Financiar</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">Financiar</h2>
               <p className="text-sm text-slate-400 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
             </div>
           </div>
@@ -501,7 +502,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             <KpiCard icon={<Landmark className="w-5 h-5" />} label="Contracte / an" value={`${fmt(totals.contractsAnnual)}`} tone="indigo" />
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Cheltuieli lunare</h3>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ultimele 12 luni · {dominantCurrency}</span>
@@ -513,7 +514,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Expiring contracts */}
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <CalendarClock className="w-4 h-4 text-amber-500" /> Contracte care expira (90 zile)
               </h3>
@@ -538,7 +539,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
 
             {/* Top devices by cost */}
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-500" /> Top dispozitive dupa cost
               </h3>
@@ -655,6 +656,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
 
       {/* ============ BULK IMPORT REVIEW MODAL ============ */}
       {bulkDrafts && (
+        <Portal>
         <div className="fixed inset-0 z-[500] bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
@@ -722,10 +724,12 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* ============ INVOICE MODAL ============ */}
       {isEditing && (
+        <Portal>
         <div className="fixed inset-0 z-[500] bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
@@ -779,8 +783,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 </Field>
                 <Field label="Suma" required>
                   <div className="flex gap-2">
-                    <input required type="number" step="0.01" min="0" value={form.amount || ''} onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))} placeholder="0.00" className="fin-input flex-1" />
-                    <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className="fin-input w-24">
+                    <input required type="number" step="0.01" min="0" value={form.amount || ''} onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))} placeholder="0.00" className="fin-input" style={{ flex: '1 1 auto', minWidth: 0 }} />
+                    <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className="fin-input" style={{ flex: '0 0 auto', width: '6.5rem' }}>
                       <option>RON</option><option>EUR</option><option>USD</option>
                     </select>
                   </div>
@@ -840,6 +844,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Local input styling */}

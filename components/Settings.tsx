@@ -220,7 +220,7 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
               <Cloud className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Infrastructura globala de date</p>
             </div>
           </div>
@@ -267,7 +267,7 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
       </div>
 
       {/* SQL SCHEMA FIX */}
-      <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/10 shadow-xl relative overflow-hidden">
+      <div className="bg-slate-900 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-white/10 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Terminal className="w-40 h-40 text-blue-400" />
         </div>
@@ -386,7 +386,7 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
 
       {/* RECOVERY HUB */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-blue-900 p-8 rounded-[2.5rem] border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
+        <div className="bg-blue-900 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
             <Wand2 className="w-40 h-40 text-white" />
           </div>
@@ -413,7 +413,7 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
           </div>
         </div>
 
-        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+        <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">

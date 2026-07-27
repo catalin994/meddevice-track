@@ -632,7 +632,7 @@ const App: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="max-w-7xl mx-auto animate-slide-up">
+            <div className="max-w-7xl mx-auto animate-fade-in">
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
