@@ -1,8 +1,10 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ScanLine, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal } from 'lucide-react';
 
 import Portal from './Portal';
+import { cropVideoToFrame, FRAME_ASPECT, Orientation } from './scanUtils';
+
 interface CameraDocCaptureProps {
   title?: string;
   onCapture: (pdfDataUrl: string, pageCount: number) => Promise<void> | void;
@@ -14,8 +16,10 @@ interface CameraDocCaptureProps {
 const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza Document', onCapture, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [pages, setPages] = useState<string[]>([]);
+  const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [cameraError, setCameraError] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
 
@@ -56,10 +60,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')!.drawImage(video, 0, 0);
-    setPages(prev => [...prev, canvas.toDataURL('image/jpeg', 0.9)]);
+    const dataUrl = cropVideoToFrame(video, frameRef.current, canvas, 0.9);
+    if (dataUrl) setPages(prev => [...prev, dataUrl]);
   }, []);
 
   const finish = useCallback(async () => {
@@ -110,8 +112,25 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         ) : (
           <>
             <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+
+            {/* Orientation switch — the frame defines what gets saved */}
+            <div className="absolute top-3 left-0 right-0 flex justify-center px-4 z-10">
+              <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
+                {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
+                  <button key={val} onClick={() => setOrientation(val)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                    <Icon className="w-4 h-4" /> {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-[88%] max-w-xl aspect-[1.414/1] border-2 border-white/40 rounded-lg relative">
+              <div
+                ref={frameRef}
+                className={`border-2 border-white/40 rounded-lg relative transition-all duration-300 ${orientation === 'portrait' ? 'h-[62%] max-h-[70vh]' : 'w-[88%] max-w-xl'}`}
+                style={{ aspectRatio: FRAME_ASPECT[orientation] }}
+              >
                 <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
                 <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                 <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
@@ -126,7 +145,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
               <div className="absolute left-3 bottom-28 flex flex-col gap-2 max-h-[50%] overflow-y-auto no-scrollbar">
                 {pages.map((p, i) => (
                   <div key={i} className="relative group">
-                    <img src={p} alt={`Pagina ${i + 1}`} className="w-12 h-16 object-cover rounded-lg border-2 border-white/40 shadow-lg" />
+                    <img src={p} alt={`Pagina ${i + 1}`} className="w-14 h-14 object-contain bg-black/50 rounded-lg border-2 border-white/40 shadow-lg" />
                     <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center">{i + 1}</span>
                     <button onClick={() => setPages(prev => prev.filter((_, x) => x !== i))}
                       className="absolute inset-0 bg-red-600/70 rounded-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center">

@@ -1,6 +1,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ScanLine, AlertCircle, CheckCircle, Search, Loader2, Mail, Download, FileText, RotateCcw, Upload, Scissors, Copy } from 'lucide-react';
+import { X, ScanLine, AlertCircle, CheckCircle, Search, Loader2, Mail, Download, FileText, RotateCcw, Upload, Scissors, Copy, RectangleVertical, RectangleHorizontal } from 'lucide-react';
+import { cropVideoToFrame, FRAME_ASPECT, Orientation } from './scanUtils';
 import { MedicalDevice, DeviceFile } from '../types';
 
 interface DocumentScannerProps {
@@ -31,6 +32,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const [pdfFileName, setPdfFileName] = useState('');
   // Multi-page scanning: captured pages accumulate here until the user finishes
   const [pages, setPages] = useState<string[]>([]);
+  const [orientation, setOrientation] = useState<Orientation>('portrait');
+  const frameRef = useRef<HTMLDivElement>(null);
   const [instantSaved, setInstantSaved] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatusText, setOcrStatusText] = useState('');
@@ -139,11 +142,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')!.drawImage(video, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg', 0.92);
-    setPages(prev => [...prev, imageData]);
+    const imageData = cropVideoToFrame(video, frameRef.current, canvas, 0.92);
+    if (imageData) setPages(prev => [...prev, imageData]);
   }, []);
 
   const CATEGORY_LABELS: Record<string, string> = { service: 'Doc_Service', achizitie: 'Doc_Achizitie', report: 'Raport', manual: 'Manual', other: 'Document', image: 'Imagine' };
@@ -475,9 +475,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <>
                 <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
 
-                {/* Document type quick-select — pick before scanning */}
-                <div className="absolute top-4 left-0 right-0 flex justify-center px-4">
-                  <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl overflow-x-auto no-scrollbar">
+                {/* Document type + orientation — pick before scanning */}
+                <div className="absolute top-3 left-0 right-0 flex flex-col items-center gap-2 px-3 z-10">
+                  <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl overflow-x-auto no-scrollbar max-w-full">
                     {([['service', 'Service'], ['achizitie', 'Achizitie'], ['report', 'Raport'], ['other', 'Altele']] as [DeviceFile['type'], string][]).map(([val, label]) => (
                       <button key={val} onClick={() => setDocType(val)}
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition ${docType === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
@@ -485,10 +485,22 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                       </button>
                     ))}
                   </div>
+                  <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
+                    {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
+                      <button key={val} onClick={() => setOrientation(val)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                        <Icon className="w-4 h-4" /> {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-[85%] max-w-xl aspect-[1.414/1] border-2 border-white/40 rounded-lg relative">
+                  <div
+                    ref={frameRef}
+                    className={`border-2 border-white/40 rounded-lg relative transition-all duration-300 ${orientation === 'portrait' ? 'h-[58%] max-h-[64vh]' : 'w-[85%] max-w-xl'}`}
+                    style={{ aspectRatio: FRAME_ASPECT[orientation] }}
+                  >
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
@@ -504,7 +516,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                   <div className="absolute left-4 bottom-24 flex flex-col gap-2 max-h-[50%] overflow-y-auto no-scrollbar">
                     {pages.map((p, i) => (
                       <div key={i} className="relative group">
-                        <img src={p} alt={`Pagina ${i + 1}`} className="w-14 h-18 object-cover rounded-lg border-2 border-white/40 shadow-lg" />
+                        <img src={p} alt={`Pagina ${i + 1}`} className="w-14 h-14 object-contain bg-black/50 rounded-lg border-2 border-white/40 shadow-lg" />
                         <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center">{i + 1}</span>
                         <button onClick={() => setPages(prev => prev.filter((_, x) => x !== i))}
                           className="absolute inset-0 bg-red-600/70 rounded-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
