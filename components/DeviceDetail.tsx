@@ -7,6 +7,7 @@ import {
   ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer, Wallet, ShieldCheck, Receipt
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
+const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
 
 interface DeviceDetailProps {
   device: MedicalDevice;
@@ -33,6 +34,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
+  const [showDocCapture, setShowDocCapture] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: device.name,
@@ -103,6 +105,21 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
     setEditForm(prev => ({ ...prev, [name]: val }));
   }, []);
+
+  // Save a camera-scanned multi-page PDF into this device's files
+  const handleScannedDoc = useCallback(async (pdfDataUrl: string, pageCount: number) => {
+    const newFile: DeviceFile = {
+      id: `FILE-${Date.now()}`,
+      name: `Scan_${device.serialNumber || device.id}_${new Date().toISOString().split('T')[0]}${pageCount > 1 ? `_${pageCount}pag` : ''}.pdf`,
+      type: uploadType,
+      url: pdfDataUrl,
+      dateAdded: new Date().toISOString().split('T')[0]
+    };
+    const updatedFiles = [...(editForm.files || []), newFile];
+    setEditForm(prev => ({ ...prev, files: updatedFiles }));
+    await onUpdate({ ...device, ...editForm, files: updatedFiles });
+    setLastSyncTime(new Date().toLocaleTimeString());
+  }, [device, editForm, onUpdate, uploadType]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -450,14 +467,25 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    </div>
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1 opacity-0">Actiune</label>
-                      <button 
-                         onClick={() => fileInputRef.current?.click()}
-                         disabled={isUploading}
-                         className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
-                      >
-                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                         {isUploading ? "Se proceseaza..." : "Incarca Document"}
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                           onClick={() => fileInputRef.current?.click()}
+                           disabled={isUploading}
+                           className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50"
+                        >
+                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                           {isUploading ? "Se proceseaza..." : "Incarca Document"}
+                        </button>
+                        <button
+                           onClick={() => setShowDocCapture(true)}
+                           disabled={isUploading}
+                           className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-emerald-600 transition shadow-xl active:scale-95 disabled:opacity-50"
+                           title="Scaneaza documentul cu camera — paginile se combina intr-un PDF"
+                        >
+                           <Camera className="w-4 h-4" />
+                           Scaneaza
+                        </button>
+                      </div>
                    </div>
                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                 </div>
@@ -834,6 +862,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           </div>
         )}
       </div>
+
+      {showDocCapture && (
+        <React.Suspense fallback={null}>
+          <CameraDocCapture
+            title={`Scaneaza — ${device.name}`}
+            onCapture={handleScannedDoc}
+            onClose={() => setShowDocCapture(false)}
+          />
+        </React.Suspense>
+      )}
 
       {isStandalone && (
         <div className="p-8 bg-slate-900 text-white flex flex-col items-center gap-4 text-center">
