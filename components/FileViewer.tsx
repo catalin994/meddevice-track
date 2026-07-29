@@ -1,7 +1,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Download, FileText, ArrowLeft, AlertCircle, ExternalLink } from 'lucide-react';
+import { X, Download, FileText, ArrowLeft, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import Portal from './Portal';
+const PdfCanvasViewer = React.lazy(() => import('./PdfCanvasViewer'));
 import { DeviceFile } from '../types';
 
 interface FileViewerProps {
@@ -48,6 +49,17 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
     return () => { if (url?.startsWith('blob:')) URL.revokeObjectURL(url); };
   }, [file.url]);
 
+  // Raw bytes for the canvas PDF renderer
+  const pdfData = useMemo(() => {
+    if (!isPdf || !file.url.startsWith('data:')) return null;
+    try {
+      const b64 = file.url.split(',')[1];
+      return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+    } catch {
+      return null;
+    }
+  }, [isPdf, file.url]);
+
   // Escape closes the viewer
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -55,12 +67,9 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Not every browser can render a PDF inline (headless Chrome and some mobile
-  // browsers have no built-in viewer). Detect it up front so we show the
-  // download card instead of an empty "file not found" iframe.
-  const pdfInlineSupported = typeof navigator !== 'undefined' && (navigator as any).pdfViewerEnabled !== false;
-
-  const canPreview = !!blobUrl && !failed && (isImage || (isPdf && pdfInlineSupported));
+  // PDFs are rasterised by pdf.js (works identically on every browser), images
+  // render directly. Anything else falls back to the download card.
+  const canPreview = !failed && ((isImage && !!blobUrl) || (isPdf && !!pdfData));
 
   return (
     <Portal>
@@ -106,13 +115,9 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
             isImage ? (
               <img src={blobUrl!} alt={file.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onError={() => setFailed(true)} />
             ) : (
-              <div className="w-full h-full flex flex-col gap-2">
-                <iframe src={blobUrl!} title={file.name} className="flex-1 w-full rounded-lg bg-white shadow-2xl" onError={() => setFailed(true)} />
-                <button onClick={() => setFailed(true)}
-                  className="shrink-0 text-white/40 hover:text-white/80 text-[10px] font-bold uppercase tracking-widest py-1 transition">
-                  Documentul nu se afiseaza? Apasa aici
-                </button>
-              </div>
+              <React.Suspense fallback={<Loader2 className="w-8 h-8 text-white animate-spin" />}>
+                <PdfCanvasViewer data={pdfData!} onFail={() => setFailed(true)} />
+              </React.Suspense>
             )
           ) : (
             <div className="flex flex-col items-center gap-5 text-center p-8">

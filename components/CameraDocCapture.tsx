@@ -1,9 +1,9 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal } from 'lucide-react';
+import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand } from 'lucide-react';
 
 import Portal from './Portal';
-import { cropVideoToFrame, FRAME_ASPECT, Orientation } from './scanUtils';
+import { cropVideoToFrame, cropVideoToRect, detectDocumentRect, rectIoU, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
 
 interface CameraDocCaptureProps {
   title?: string;
@@ -23,9 +23,31 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   const [cameraError, setCameraError] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
 
+  // Auto page detection
+  const [autoMode, setAutoMode] = useState(true);
+  const [detected, setDetected] = useState<DocRect | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0); // 0..1 while framing settles
+  const [justCaptured, setJustCaptured] = useState(false);
+  const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastRectRef = useRef<DocRect | null>(null);
+  const stableSinceRef = useRef<number>(0);
+  const cooldownUntilRef = useRef<number>(0);
+  const detectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
+  }, []);
+
+  // The overlay renders through a Portal, so the <video> can mount *after*
+  // getUserMedia resolves (instant when the camera is already authorised).
+  // Attaching from the ref callback covers both orderings.
+  const attachVideo = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+      el.srcObject = streamRef.current;
+      el.play().catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -41,7 +63,10 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         }
         if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
       } catch (err: any) {
         const name = err?.name || '';
         if (name === 'AbortError') return;
@@ -60,9 +85,61 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    const dataUrl = cropVideoToFrame(video, frameRef.current, canvas, 0.9);
-    if (dataUrl) setPages(prev => [...prev, dataUrl]);
-  }, []);
+    // In auto mode use the detected sheet; otherwise fall back to the guide frame
+    const rect = autoMode ? lastRectRef.current : null;
+    const dataUrl = rect
+      ? cropVideoToRect(video, rect, canvas, 0.9)
+      : cropVideoToFrame(video, frameRef.current, canvas, 0.9);
+    if (dataUrl) {
+      setPages(prev => [...prev, dataUrl]);
+      setJustCaptured(true);
+      setTimeout(() => setJustCaptured(false), 450);
+      // Give the user time to move to the next page before detecting again
+      cooldownUntilRef.current = Date.now() + 1800;
+      stableSinceRef.current = 0;
+      setHoldProgress(0);
+    }
+  }, [autoMode]);
+
+  // Detection loop — samples the frame a few times a second and auto-captures
+  // once the same sheet has stayed put for a moment.
+  useEffect(() => {
+    if (!autoMode || cameraError) {
+      setDetected(null);
+      setHoldProgress(0);
+      return;
+    }
+    if (!workCanvasRef.current) workCanvasRef.current = document.createElement('canvas');
+    const HOLD_MS = 900;
+
+    detectTimerRef.current = setInterval(() => {
+      const video = videoRef.current;
+      const work = workCanvasRef.current;
+      if (!video || !work || video.readyState < 2) return;
+
+      if (Date.now() < cooldownUntilRef.current) { setDetected(null); setHoldProgress(0); return; }
+
+      const rect = detectDocumentRect(video, work);
+      setDetected(rect);
+
+      if (!rect) { lastRectRef.current = null; stableSinceRef.current = 0; setHoldProgress(0); return; }
+
+      const prev = lastRectRef.current;
+      lastRectRef.current = rect;
+
+      if (prev && rectIoU(prev, rect) > 0.9) {
+        if (!stableSinceRef.current) stableSinceRef.current = Date.now();
+        const held = Date.now() - stableSinceRef.current;
+        setHoldProgress(Math.min(1, held / HOLD_MS));
+        if (held >= HOLD_MS) capturePage();
+      } else {
+        stableSinceRef.current = 0;
+        setHoldProgress(0);
+      }
+    }, 180);
+
+    return () => { if (detectTimerRef.current) clearInterval(detectTimerRef.current); };
+  }, [autoMode, cameraError, capturePage]);
 
   const finish = useCallback(async () => {
     if (pages.length === 0) return;
@@ -111,35 +188,87 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
           </div>
         ) : (
           <>
-            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+            <video ref={attachVideo} className="w-full h-full object-cover" playsInline muted />
 
-            {/* Orientation switch — the frame defines what gets saved */}
-            <div className="absolute top-3 left-0 right-0 flex justify-center px-4 z-10">
+            {/* Mode + orientation switches */}
+            <div className="absolute top-3 left-0 right-0 flex flex-col items-center gap-2 px-3 z-10">
               <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
-                {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
-                  <button key={val} onClick={() => setOrientation(val)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
-                    <Icon className="w-4 h-4" /> {label}
-                  </button>
-                ))}
+                <button onClick={() => setAutoMode(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${autoMode ? 'bg-emerald-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                  <Sparkles className="w-4 h-4" /> Auto
+                </button>
+                <button onClick={() => setAutoMode(false)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${!autoMode ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                  <Hand className="w-4 h-4" /> Manual
+                </button>
               </div>
+              {!autoMode && (
+                <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
+                  {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
+                    <button key={val} onClick={() => setOrientation(val)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                      <Icon className="w-4 h-4" /> {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div
-                ref={frameRef}
-                className={`border-2 border-white/40 rounded-lg relative transition-all duration-300 ${orientation === 'portrait' ? 'h-[62%] max-h-[70vh]' : 'w-[88%] max-w-xl'}`}
-                style={{ aspectRatio: FRAME_ASPECT[orientation] }}
-              >
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">
-                  {pages.length === 0 ? 'Aliniaza documentul in cadru' : `Pagina ${pages.length + 1} — sau finalizeaza`}
+            {/* AUTO: live outline around the detected sheet */}
+            {autoMode && (
+              <div className="absolute inset-0 pointer-events-none">
+                {detected ? (
+                  <div
+                    className="absolute border-4 rounded-lg transition-all duration-150 border-emerald-400"
+                    style={{
+                      left: `${detected.x * 100}%`,
+                      top: `${detected.y * 100}%`,
+                      width: `${detected.w * 100}%`,
+                      height: `${detected.h * 100}%`,
+                      boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
+                      opacity: 0.4 + holdProgress * 0.6,
+                    }}
+                  >
+                    {holdProgress > 0 && (
+                      <div className="absolute -bottom-1 left-0 h-1.5 bg-emerald-400 rounded-full transition-all duration-150" style={{ width: `${holdProgress * 100}%` }} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="px-5 py-3 bg-black/60 rounded-2xl">
+                      <p className="text-white/70 text-xs font-bold tracking-widest uppercase">Cauta documentul...</p>
+                    </div>
+                  </div>
+                )}
+                <p className="absolute bottom-40 left-0 right-0 text-center text-white/80 text-xs font-bold tracking-widest uppercase px-6">
+                  {detected
+                    ? (holdProgress > 0 ? 'Tine telefonul nemiscat...' : 'Document detectat')
+                    : 'Aseaza documentul pe o suprafata contrastanta'}
                 </p>
               </div>
-            </div>
+            )}
+
+            {/* MANUAL: fixed guide frame */}
+            {!autoMode && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  ref={frameRef}
+                  className={`border-2 border-white/40 rounded-lg relative transition-all duration-300 ${orientation === 'portrait' ? 'h-[62%] max-h-[70vh]' : 'w-[88%] max-w-xl'}`}
+                  style={{ aspectRatio: FRAME_ASPECT[orientation] }}
+                >
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                  <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">
+                    {pages.length === 0 ? 'Aliniaza documentul in cadru' : `Pagina ${pages.length + 1} — sau finalizeaza`}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Capture flash */}
+            {justCaptured && <div className="absolute inset-0 bg-white/70 pointer-events-none animate-fade-in" />}
 
             {pages.length > 0 && (
               <div className="absolute left-3 bottom-28 flex flex-col gap-2 max-h-[50%] overflow-y-auto no-scrollbar">
