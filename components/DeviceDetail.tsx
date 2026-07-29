@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
+const FileViewer = React.lazy(() => import('./FileViewer'));
 
 interface DeviceDetailProps {
   device: MedicalDevice;
@@ -36,6 +37,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
   const [showDocCapture, setShowDocCapture] = useState(false);
+  const [viewingFile, setViewingFile] = useState<DeviceFile | null>(null);
 
   const [editForm, setEditForm] = useState({
     name: device.name,
@@ -177,46 +179,10 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     await onUpdate({ ...device, ...editForm, files: updatedFiles });
   }, [device, editForm, onUpdate]);
 
+  // Opens the built-in viewer instead of a new browser tab, so the user can
+  // close it and land straight back in the app (and popup blockers can't interfere).
   const viewFile = useCallback((file: DeviceFile) => {
-    try {
-      let url = file.url;
-      
-      // For data URLs, we convert to Blob for more reliable opening in new tabs
-      if (file.url.startsWith('data:')) {
-        const parts = file.url.split(',');
-        const mime = parts[0].match(/:(.*?);/)?.[1];
-        const bstr = atob(parts[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        const blob = new Blob([u8arr], { type: mime });
-        url = URL.createObjectURL(blob);
-      }
-      
-      const win = window.open(url, '_blank');
-      if (!win) {
-        setUploadError("Popup blocat! Activati popup-urile pentru vizualizare.");
-      }
-    } catch (err) {
-      console.error("Failed to view file", err);
-      // Fallback to iframe method
-      const win = window.open();
-      if (win) {
-        win.document.write(`
-          <html>
-            <head><title>${file.name}</title></head>
-            <body style="margin:0; padding:0; overflow:hidden;">
-              <iframe src="${file.url}" frameborder="0" style="width:100%; height:100vh; border:none;" allowfullscreen></iframe>
-            </body>
-          </html>
-        `);
-        win.document.close();
-      } else {
-        setUploadError("Popup blocat! Activati popup-urile pentru vizualizare.");
-      }
-    }
+    setViewingFile(file);
   }, []);
 
   const downloadFile = useCallback((file: DeviceFile) => {
@@ -877,6 +843,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         </React.Suspense>
       )}
 
+      {viewingFile && (
+        <React.Suspense fallback={null}>
+          <FileViewer
+            file={viewingFile}
+            onDownload={downloadFile}
+            onClose={() => setViewingFile(null)}
+          />
+        </React.Suspense>
+      )}
+
       {isStandalone && (
         <div className="p-8 bg-slate-900 text-white flex flex-col items-center gap-4 text-center">
            <div className="flex items-center gap-3">
@@ -911,23 +887,26 @@ const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
 const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete }: any) => (
   <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
     <div className={`absolute top-0 left-0 w-1 h-full bg-${color}-600`} />
-    <div className="flex items-center gap-4">
-       <div className={`p-3 rounded-xl bg-${color}-50 text-${color}-600 shadow-sm`}>
-          {file.type === 'manual' ? <BookOpen className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+         <div className={`p-3 rounded-xl bg-${color}-50 text-${color}-600 shadow-sm shrink-0`}>
+            {file.type === 'manual' ? <BookOpen className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+         </div>
+         <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 min-w-0">
+               <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700`}>
+                  {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
+               </span>
+               <span className="text-[10px] font-mono font-bold text-slate-400 truncate">{file.dateAdded}</span>
+            </div>
+            <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
+         </div>
        </div>
-       <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-             <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest border bg-${color}-50 border-${color}-100 text-${color}-700`}>
-                {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
-             </span>
-             <span className="text-[10px] font-mono font-bold text-slate-400">{file.dateAdded}</span>
-          </div>
-          <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
-       </div>
-       <div className="flex items-center gap-0.5">
-          <button onClick={onView} className="p-2 text-slate-400 hover:text-blue-600 transition active:scale-90" title="Vizualizeaza"><Eye className="w-3.5 h-3.5" /></button>
-          <button onClick={onDownload} className="p-2 text-slate-400 hover:text-green-600 transition active:scale-90" title="Descarca"><Download className="w-3.5 h-3.5" /></button>
-          <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 transition active:scale-90" title="Sterge"><Trash2 className="w-3.5 h-3.5" /></button>
+       {/* Actions drop to their own full-width row on phones so the file name keeps its space */}
+       <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-1.5 sm:shrink-0">
+          <button onClick={onView} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-blue-600 hover:border-blue-600 rounded-xl transition active:scale-90" title="Vizualizeaza"><Eye className="w-5 h-5" /></button>
+          <button onClick={onDownload} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-emerald-600 hover:border-emerald-600 rounded-xl transition active:scale-90" title="Descarca"><Download className="w-5 h-5" /></button>
+          <button onClick={onDelete} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-red-600 hover:border-red-600 rounded-xl transition active:scale-90" title="Sterge"><Trash2 className="w-5 h-5" /></button>
        </div>
     </div>
   </div>
