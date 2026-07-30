@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
-import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection } from '../services/supabase';
+import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
 
@@ -26,6 +26,41 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   const [dbCount, setDbCount] = useState<number | null>(null);
   const [lsCount, setLsCount] = useState<number | null>(null);
   const [isRepairing, setIsRepairing] = useState(false);
+
+  // Cloud vs local comparison — makes an incomplete upload visible instead of silent
+  const [cloudCount, setCloudCount] = useState<number | null>(null);
+  const [cloudError, setCloudError] = useState<string | null>(null);
+  const [isCountingCloud, setIsCountingCloud] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushProgress, setPushProgress] = useState(0);
+  const [pushResult, setPushResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const refreshCloudCount = useCallback(async () => {
+    if (!isSupabaseConfigured) { setCloudError('Cloud neconfigurat'); return; }
+    setIsCountingCloud(true);
+    setCloudError(null);
+    const { count, error } = await countCloudRows('devices');
+    if (error) { setCloudError(error.message || 'eroare necunoscuta'); setCloudCount(null); }
+    else setCloudCount(count);
+    setIsCountingCloud(false);
+  }, []);
+
+  useEffect(() => { refreshCloudCount(); }, [refreshCloudCount, devices.length]);
+
+  const handlePushAll = useCallback(async () => {
+    if (devices.length === 0) return;
+    setIsPushing(true);
+    setPushProgress(0);
+    setPushResult(null);
+    const { error, written } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
+    setIsPushing(false);
+    if (error) {
+      setPushResult({ ok: false, message: `Urcarea s-a oprit dupa ${written} echipamente: ${error.message || error}` });
+    } else {
+      setPushResult({ ok: true, message: `${written} echipamente au fost urcate in cloud. Deschide aplicatia pe celalalt telefon si apasa Re-sincronizare.` });
+    }
+    await refreshCloudCount();
+  }, [devices, refreshCloudCount]);
 
   // User management (admin only)
   const canManageUsers = hasPermission(currentUser, 'manageUsers');
@@ -430,9 +465,50 @@ CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true
                  <span className="text-[10px] font-black text-slate-400 uppercase">Flota activa in aplicatie</span>
                  <span className="text-sm font-black text-blue-600">{devices.length}</span>
               </div>
+              <div className={`flex items-center justify-between p-4 rounded-2xl border ${cloudCount !== null && cloudCount < devices.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-100'}`}>
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Echipamente in cloud</span>
+                 <span className="flex items-center gap-2">
+                   <span className={`text-sm font-black ${cloudCount !== null && cloudCount < devices.length ? 'text-amber-600' : 'text-emerald-600'}`}>
+                     {isCountingCloud ? '...' : cloudError ? '—' : cloudCount ?? '?'}
+                   </span>
+                   <button onClick={refreshCloudCount} disabled={isCountingCloud} className="p-1.5 text-slate-400 hover:text-blue-600 transition" title="Verifica din nou">
+                     <RefreshCw className={`w-3.5 h-3.5 ${isCountingCloud ? 'animate-spin' : ''}`} />
+                   </button>
+                 </span>
+              </div>
+
+              {cloudError && (
+                <p className="text-[10px] font-bold text-red-600 px-1 leading-relaxed">Cloud inaccesibil: {cloudError}</p>
+              )}
+
+              {cloudCount !== null && cloudCount < devices.length && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                  <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                    In cloud lipsesc <strong>{devices.length - cloudCount}</strong> echipamente. Pe alt telefon vor aparea doar cele {cloudCount} existente in cloud.
+                    Apasa mai jos pentru a urca toata flota.
+                  </p>
+                  <button onClick={handlePushAll} disabled={isPushing}
+                    className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
+                    {isPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
+                    {isPushing ? `Se urca ${pushProgress}/${devices.length}...` : 'Urca toata flota in cloud'}
+                  </button>
+                  {isPushing && (
+                    <div className="h-2 bg-white rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 transition-all duration-300" style={{ width: `${devices.length ? (pushProgress / devices.length) * 100 : 0}%` }} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pushResult && (
+                <div className={`p-4 rounded-2xl border flex items-start gap-3 ${pushResult.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                  {pushResult.ok ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />}
+                  <p className={`text-[11px] font-bold leading-relaxed ${pushResult.ok ? 'text-emerald-700' : 'text-red-700'}`}>{pushResult.message}</p>
+                </div>
+              )}
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Diagnosticarea se actualizeaza automat la activitate</p>
+          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Compara ce ai local cu ce exista in cloud</p>
         </div>
       </div>
     </div>

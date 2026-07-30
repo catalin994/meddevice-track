@@ -91,11 +91,15 @@ export const fetchAllRows = async <T>(
  * Writes rows in batches. Devices can carry base64 files, so a single request
  * with the whole fleet exceeds the request size limit and the write fails
  * outright — leaving the cloud copy incomplete.
+ *
+ * onProgress reports rows written so far, so long uploads can show a bar
+ * instead of appearing frozen.
  */
 export const upsertInChunks = async (
   table: string,
   rows: any[],
   chunkSize = 100,
+  onProgress?: (written: number, total: number) => void,
 ): Promise<{ error: any; written: number }> => {
   if (!supabase) return { error: new Error('Supabase not initialised'), written: 0 };
 
@@ -105,8 +109,25 @@ export const upsertInChunks = async (
     const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
     if (error) return { error, written };
     written += chunk.length;
+    onProgress?.(written, rows.length);
   }
   return { error: null, written };
+};
+
+/**
+ * Row count from the server without downloading the table.
+ *
+ * Uses a normal GET limited to one row rather than `head: true`: a HEAD request
+ * is refused by some proxies and CORS setups, which would report "cloud
+ * unreachable" on a perfectly healthy project.
+ */
+export const countCloudRows = async (table: string): Promise<{ count: number | null; error: any }> => {
+  if (!supabase) return { count: null, error: new Error('Supabase not initialised') };
+  const { count, error } = await supabase
+    .from(table)
+    .select('id', { count: 'exact' })
+    .limit(1);
+  return { count: count ?? null, error };
 };
 
 /**
