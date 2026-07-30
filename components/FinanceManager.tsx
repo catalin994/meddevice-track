@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { MedicalDevice, Invoice, InvoiceStatus, Contract } from '../types';
 import ContractManager from './ContractManager';
+import { saveFileAs } from '../services/fileService';
 
 import Portal from './Portal';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
@@ -630,9 +631,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     <div className="flex items-center gap-4 shrink-0">
                       <p className="text-lg font-black text-slate-900">{fmt(inv.amount)} <span className="text-xs text-slate-400">{inv.currency}</span></p>
                       {inv.fileUrl && (
-                        <a href={inv.fileUrl} download={inv.fileName || `${inv.invoiceNumber}.pdf`} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
+                        <button onClick={() => saveFileAs(inv.fileName || `${inv.invoiceNumber}.pdf`, inv.fileUrl!)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
                           <Download className="w-4 h-4" />
-                        </a>
+                        </button>
                       )}
                       <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Editeaza">
                         <Pencil className="w-4 h-4" />

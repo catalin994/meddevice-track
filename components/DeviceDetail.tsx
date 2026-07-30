@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import Portal from './Portal';
+import { saveFileAs } from '../services/fileService';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -38,6 +39,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
   const [showDocCapture, setShowDocCapture] = useState(false);
   const [viewingFile, setViewingFile] = useState<DeviceFile | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({
     name: device.name,
@@ -185,17 +187,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     setViewingFile(file);
   }, []);
 
-  const downloadFile = useCallback((file: DeviceFile) => {
-    try {
-      const link = document.createElement('a');
-      link.href = file.url;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error("Download failed", err);
-      setUploadError("Descarcarea a esuat");
+  const downloadFile = useCallback(async (file: DeviceFile) => {
+    setSaveNotice(null);
+    const outcome = await saveFileAs(file.name, file.url);
+    if (outcome === 'failed') {
+      setUploadError('Descarcarea a esuat');
+    } else if (outcome !== 'cancelled') {
+      setSaveNotice(outcome === 'saved' ? `"${file.name}" a fost salvat.` : `"${file.name}" a fost descarcat.`);
+      setTimeout(() => setSaveNotice(null), 4000);
     }
   }, []);
 
@@ -465,6 +464,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 animate-shake">
                  <ShieldAlert className="w-5 h-5 text-red-600" />
                  <span className="text-xs font-bold text-red-600 uppercase tracking-wider">{uploadError}</span>
+               </div>
+             )}
+
+             {saveNotice && (
+               <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3 animate-fade-in">
+                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                 <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{saveNotice}</span>
                </div>
              )}
 

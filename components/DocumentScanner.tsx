@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ScanLine, AlertCircle, CheckCircle, Search, Loader2, Mail, Download, FileText, RotateCcw, Upload, Scissors, Copy, RectangleVertical, RectangleHorizontal } from 'lucide-react';
 import { cropVideoToFrame, FRAME_ASPECT, Orientation } from './scanUtils';
 import { MedicalDevice, DeviceFile } from '../types';
+import { saveFileAs } from '../services/fileService';
 
 interface DocumentScannerProps {
   devices: MedicalDevice[];
@@ -381,13 +382,11 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     setSearchResults(devices.filter(d => d.serialNumber?.toLowerCase().includes(lower) || d.name?.toLowerCase().includes(lower) || d.model?.toLowerCase().includes(lower)).slice(0, 6));
   }, [devices]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     const url = inputMode === 'pdf' ? pdfData : capturedImage;
     if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = inputMode === 'pdf' ? `${docName || 'document'}.pdf` : `${docName || 'scan'}.jpg`;
-    a.click();
+    const name = inputMode === 'pdf' ? `${docName || 'document'}.pdf` : `${docName || 'scan'}.jpg`;
+    await saveFileAs(name, url);
   }, [inputMode, pdfData, capturedImage, docName]);
 
   const handleEmail = useCallback(() => {
