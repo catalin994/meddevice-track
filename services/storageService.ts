@@ -1,12 +1,13 @@
 
-import { MedicalDevice, MedicalTask, Invoice, AuditEntry } from '../types';
+import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion } from '../types';
 
 const DB_NAME = 'MediTrackDB';
 const STORE_DEVICES = 'devices';
 const STORE_TASKS = 'tasks';
 const STORE_INVOICES = 'invoices';
 const STORE_AUDIT = 'audit';
-const DB_VERSION = 5;
+const STORE_DELETIONS = 'deletions';
+const DB_VERSION = 6;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -37,6 +38,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_AUDIT)) {
         db.createObjectStore(STORE_AUDIT, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_DELETIONS)) {
+        db.createObjectStore(STORE_DELETIONS, { keyPath: 'id' });
       }
     };
 
@@ -205,6 +209,28 @@ export const getAllAuditFromDB = async (): Promise<AuditEntry[]> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_AUDIT, 'readonly');
     const store = transaction.objectStore(STORE_AUDIT);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const saveDeletionsToDB = async (entries: Deletion[]): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_DELETIONS, 'readwrite');
+    const store = transaction.objectStore(STORE_DELETIONS);
+    for (const entry of entries) store.put(entry);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const getAllDeletionsFromDB = async (): Promise<Deletion[]> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_DELETIONS, 'readonly');
+    const store = transaction.objectStore(STORE_DELETIONS);
     const request = store.getAll();
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = (event: any) => reject(event.target.error);

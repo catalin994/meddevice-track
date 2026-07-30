@@ -57,6 +57,21 @@ export const DEVICE_CATEGORIES = [
 export type HospitalDepartment = typeof HOSPITAL_DEPARTMENTS[number];
 export type DeviceCategory = typeof DEVICE_CATEGORIES[number];
 
+/**
+ * A record that something was deleted.
+ *
+ * Without these, a device deleted on one phone still exists in the local copy
+ * of every other phone — and on their next sync they upload it back, undoing
+ * the deletion and leaving the fleet counts different between devices.
+ */
+export interface Deletion {
+  id: string;                                  // "device:DEV-0001"
+  entity: 'device' | 'task' | 'invoice';
+  entityId: string;
+  deletedAt: string;
+  updated_at?: string;
+}
+
 export interface TaskAttachment {
   id: string;
   name: string;

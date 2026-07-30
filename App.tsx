@@ -47,9 +47,9 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB } from './services/storageService';
 import { getCurrentUser, logout as authLogout } from './services/authService';
 import LoginScreen from './components/LoginScreen';
 
@@ -170,6 +170,23 @@ const App: React.FC = () => {
     } as MedicalDevice;
   }, []);
 
+  /** Records that an entity was deleted, locally and in the cloud, so other
+   *  devices remove it instead of uploading their stale copy back. */
+  const recordDeletion = useCallback(async (entity: Deletion['entity'], entityId: string) => {
+    const tombstone: Deletion = {
+      id: `${entity}:${entityId}`,
+      entity,
+      entityId,
+      deletedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    await saveDeletionsToDB([tombstone]).catch(() => {});
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('deletions').upsert([tombstone], { onConflict: 'id' });
+      if (error) console.warn('[Sync] Deletion not recorded in cloud:', error.message);
+    }
+  }, [isSupabaseConfigured]);
+
   const logAudit = useCallback((action: AuditEntry['action'], entity: AuditEntry['entity'], entityId: string, entityName: string, details?: string) => {
     const entry: AuditEntry = {
       id: crypto.randomUUID(),
@@ -195,10 +212,11 @@ const App: React.FC = () => {
     setSyncMessage('Se citesc datele locale...');
     try {
       // 1. Immediate UI from Local Storage
-      const [localDevices, localTasks, localInvoices] = await Promise.all([
+      const [localDevices, localTasks, localInvoices, localDeletions] = await Promise.all([
         getAllDevicesFromDB(),
         getAllTasksFromDB(),
-        getAllInvoicesFromDB().catch(() => [] as Invoice[])
+        getAllInvoicesFromDB().catch(() => [] as Invoice[]),
+        getAllDeletionsFromDB().catch(() => [] as Deletion[])
       ]);
       
       const deviceMap = new Map<string, MedicalDevice>();
@@ -235,10 +253,45 @@ const App: React.FC = () => {
         // 3. Successful Wake-up Sync
         try {
           // Parallel fetch from cloud
-          const [deviceRes, taskRes] = await Promise.all([
+          const [deviceRes, taskRes, deletionRes] = await Promise.all([
             fetchAllRows<any>('devices'),
-            fetchAllRows<any>('tasks')
+            fetchAllRows<any>('tasks'),
+            fetchAllRows<Deletion>('deletions').catch(() => ({ data: [] as Deletion[], error: null }))
           ]);
+
+          // Merge tombstones from every device, then apply them: anything
+          // deleted anywhere must disappear here too, and must never be
+          // uploaded back to the cloud.
+          const tombstones = new Map<string, Deletion>(localDeletions.map(d => [d.id, d]));
+          (deletionRes.data || []).forEach(d => { if (d?.id) tombstones.set(d.id, d); });
+
+          const deletedDeviceIds = new Set(
+            Array.from(tombstones.values()).filter(d => d.entity === 'device').map(d => d.entityId)
+          );
+          const deletedTaskIds = new Set(
+            Array.from(tombstones.values()).filter(d => d.entity === 'task').map(d => d.entityId)
+          );
+
+          // Persist the combined log and push back any tombstone the cloud lacks
+          const allTombstones = Array.from(tombstones.values());
+          if (allTombstones.length > 0) {
+            await saveDeletionsToDB(allTombstones).catch(() => {});
+            const cloudIds = new Set((deletionRes.data || []).map(d => d.id));
+            const missingInCloud = allTombstones.filter(d => !cloudIds.has(d.id));
+            if (missingInCloud.length > 0) {
+              await upsertInChunks('deletions', missingInCloud, 200);
+            }
+          }
+
+          // Drop locally-held copies of things that were deleted elsewhere
+          if (deletedDeviceIds.size > 0) {
+            for (const gone of deletedDeviceIds) {
+              if (deviceMap.has(gone)) {
+                deviceMap.delete(gone);
+                await deleteDeviceFromDB(gone).catch(() => {});
+              }
+            }
+          }
 
           if (deviceRes.error) throw deviceRes.error;
           
@@ -247,6 +300,7 @@ const App: React.FC = () => {
             const cloudDevices: MedicalDevice[] = deviceRes.data.map(normalizeDevice);
             
             cloudDevices.forEach((d: MedicalDevice) => {
+              if (deletedDeviceIds.has(d.id)) return; // deleted elsewhere
               const local = deviceMap.get(d.id);
               // Only overwrite if:
               // 1. Local doesn't exist
@@ -265,8 +319,10 @@ const App: React.FC = () => {
             await saveDevicesToDB(finalMerged);
             
             // If local was newer, push it to cloud
+            const cloudById = new Map(cloudDevices.map(cd => [cd.id, cd]));
             const newerLocals = Array.from(deviceMap.values()).filter(d => {
-              const cloud = cloudDevices.find(cd => cd.id === d.id);
+              if (deletedDeviceIds.has(d.id)) return false;
+              const cloud = cloudById.get(d.id);
               const cloudTime = cloud?.updated_at ? new Date(cloud.updated_at).getTime() : 0;
               const localTime = d.updated_at ? new Date(d.updated_at).getTime() : 0;
               return !cloud || (localTime > cloudTime);
@@ -285,9 +341,10 @@ const App: React.FC = () => {
              console.warn("[App] Tasks sync skipped (table might be missing)");
           } else if (taskRes.data && taskRes.data.length > 0) {
              const cloudTasks: MedicalTask[] = taskRes.data;
-             const taskMap = new Map<string, MedicalTask>(localTasks.map(t => [t.id, t]));
-             
+             const taskMap = new Map<string, MedicalTask>(localTasks.filter(t => !deletedTaskIds.has(t.id)).map(t => [t.id, t]));
+
              cloudTasks.forEach(ct => {
+               if (deletedTaskIds.has(ct.id)) return;
                const local = taskMap.get(ct.id);
                const cloudTime = ct.updated_at ? new Date(ct.updated_at).getTime() : 0;
                const localTime = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
@@ -386,6 +443,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteDeviceFromDB(safeId);
+      await recordDeletion('device', safeId);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('devices').delete().eq('id', safeId);
       }
@@ -394,7 +452,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, devicesMap, logAudit]);
+  }, [isSupabaseConfigured, devicesMap, logAudit, recordDeletion]);
 
   const handleUpsertDevices = useCallback(async (data: MedicalDevice | MedicalDevice[]) => {
     const now = new Date().toISOString();
@@ -456,7 +514,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, tasks, logAudit]);
+  }, [isSupabaseConfigured, tasks, logAudit, recordDeletion]);
 
   const handleUpsertInvoice = useCallback(async (invoice: Invoice) => {
     const payload: Invoice = { ...invoice, updated_at: new Date().toISOString() };
@@ -481,7 +539,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, invoices, logAudit]);
+  }, [isSupabaseConfigured, invoices, logAudit, recordDeletion]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
     if (!id) return;
@@ -492,6 +550,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteInvoiceFromDB(id);
+      await recordDeletion('invoice', id);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('invoices').delete().eq('id', id);
       }
@@ -541,6 +600,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteTaskFromDB(safeId);
+      await recordDeletion('task', safeId);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('tasks').delete().eq('id', safeId);
       }

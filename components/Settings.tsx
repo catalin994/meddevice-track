@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
-import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis } from '../services/supabase';
+import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
 
@@ -47,6 +47,30 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   }, []);
 
   useEffect(() => { refreshCloudCount(); }, [refreshCloudCount, devices.length]);
+
+  // Lists exactly which device IDs differ, so a count mismatch stops being a mystery
+  const [diffResult, setDiffResult] = useState<{ localOnly: string[]; cloudOnly: string[] } | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+
+  const handleCompare = useCallback(async () => {
+    setIsComparing(true);
+    setDiffResult(null);
+    const { data, error } = await fetchAllRows<{ id: string; name?: string }>('devices');
+    if (error || !data) {
+      setPushResult({ ok: false, message: `Nu s-a putut citi lista din cloud: ${error?.message || 'eroare'}` });
+      setIsComparing(false);
+      return;
+    }
+    const cloudIds = new Set(data.map(d => String(d.id).trim()));
+    const localIds = new Set(devices.map(d => String(d.id).trim()));
+    const nameOf = (id: string) => devices.find(d => d.id === id)?.name
+      || data.find(d => String(d.id).trim() === id)?.name || id;
+    setDiffResult({
+      localOnly: [...localIds].filter(id => !cloudIds.has(id)).map(id => `${nameOf(id)} (${id})`),
+      cloudOnly: [...cloudIds].filter(id => !localIds.has(id)).map(id => `${nameOf(id)} (${id})`),
+    });
+    setIsComparing(false);
+  }, [devices]);
 
   const handlePushAll = useCallback(async () => {
     if (devices.length === 0) return;
@@ -163,6 +187,14 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+CREATE TABLE IF NOT EXISTS public.deletions (
+    id TEXT PRIMARY KEY,
+    entity TEXT,
+    "entityId" TEXT,
+    "deletedAt" TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id TEXT PRIMARY KEY,
     timestamp TEXT,
@@ -236,16 +268,19 @@ ALTER TABLE public.devices    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deletions  ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all public access" ON public.devices;
 DROP POLICY IF EXISTS "Allow all public access" ON public.tasks;
 DROP POLICY IF EXISTS "Allow all public access" ON public.invoices;
 DROP POLICY IF EXISTS "Allow all public access" ON public.audit_logs;
+DROP POLICY IF EXISTS "Allow all public access" ON public.deletions;
 
 CREATE POLICY "Allow all public access" ON public.devices    FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.tasks      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.invoices   FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.deletions  FOR ALL USING (true) WITH CHECK (true);
 
 -- ── 5. Reincarca schema pentru API ──────────────────────────────────────────
 NOTIFY pgrst, 'reload schema';
@@ -563,6 +598,49 @@ NOTIFY pgrst, 'reload schema';
                     <div className="h-2 bg-white rounded-full overflow-hidden">
                       <div className="h-full bg-amber-500 transition-all duration-300" style={{ width: `${devices.length ? (pushProgress / devices.length) * 100 : 0}%` }} />
                     </div>
+                  )}
+                </div>
+              )}
+
+              <button onClick={handleCompare} disabled={isComparing}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
+                {isComparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+                {isComparing ? 'Se compara...' : 'Compara local cu cloud'}
+              </button>
+
+              {diffResult && (
+                <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
+                  {diffResult.localOnly.length === 0 && diffResult.cloudOnly.length === 0 ? (
+                    <p className="text-[11px] font-bold text-emerald-700">Identice — fiecare echipament local exista si in cloud.</p>
+                  ) : (
+                    <>
+                      {diffResult.localOnly.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">
+                            Doar pe acest dispozitiv ({diffResult.localOnly.length})
+                          </p>
+                          <ul className="space-y-0.5 max-h-28 overflow-y-auto">
+                            {diffResult.localOnly.slice(0, 20).map(x => (
+                              <li key={x} className="text-[10px] font-mono text-slate-600 truncate">{x}</li>
+                            ))}
+                          </ul>
+                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Urca toata flota" ca sa ajunga si in cloud.</p>
+                        </div>
+                      )}
+                      {diffResult.cloudOnly.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">
+                            Doar in cloud ({diffResult.cloudOnly.length})
+                          </p>
+                          <ul className="space-y-0.5 max-h-28 overflow-y-auto">
+                            {diffResult.cloudOnly.slice(0, 20).map(x => (
+                              <li key={x} className="text-[10px] font-mono text-slate-600 truncate">{x}</li>
+                            ))}
+                          </ul>
+                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Re-sincronizare" ca sa le aduci aici.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
