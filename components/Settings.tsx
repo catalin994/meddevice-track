@@ -95,28 +95,37 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     }
   }, []);
 
-  const SQL_FIX = `-- 1. OPEN SUPABASE DASHBOARD -> SQL EDITOR
--- 2. PASTE THIS SCRIPT AND CLICK 'RUN'
--- 3. THIS RESOLVES THE 'PGRST205' ERROR
+  const SQL_FIX = `-- MEDITRACK — SCHEMA + MIGRARE (se poate rula de mai multe ori, in siguranta)
+-- 1. Deschide Supabase Dashboard -> SQL Editor
+-- 2. Lipeste tot acest script si apasa RUN
+--
+-- IMPORTANT: in PostgreSQL, un nume de coloana scris fara ghilimele devine
+-- minuscule (serialNumber -> serialnumber). Aplicatia trimite serialNumber,
+-- deci fara ghilimele fiecare salvare de echipament era respinsa.
+-- Blocul de migrare de mai jos redenumeste coloanele vechi, pastrand datele.
 
+-- ── 1. TABELE ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.devices (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     category TEXT DEFAULT 'Altele',
     manufacturer TEXT,
     model TEXT,
-    serialNumber TEXT,
+    "serialNumber" TEXT,
     department TEXT,
-    purchaseDate TEXT,
+    "purchaseDate" TEXT,
+    "warrantyExpiration" TEXT,
+    "nextMaintenanceDate" TEXT,
     status TEXT DEFAULT 'Active',
-    isCNCAN BOOLEAN DEFAULT FALSE,
+    "isCNCAN" BOOLEAN DEFAULT FALSE,
     image TEXT,
     notes TEXT,
-    maintenanceHistory JSONB DEFAULT '[]'::jsonb,
+    tags JSONB DEFAULT '[]'::jsonb,
+    "maintenanceHistory" JSONB DEFAULT '[]'::jsonb,
     contracts JSONB DEFAULT '[]'::jsonb,
     files JSONB DEFAULT '[]'::jsonb,
     components JSONB DEFAULT '[]'::jsonb,
-    locationHistory JSONB DEFAULT '[]'::jsonb,
+    "locationHistory" JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -124,7 +133,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
-    "deviceId" TEXT REFERENCES public.devices(id) ON DELETE SET NULL,
+    "deviceId" TEXT,
     "deviceName" TEXT,
     department TEXT,
     priority TEXT DEFAULT 'Medium',
@@ -132,26 +141,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     "createdAt" TEXT,
     "dueDate" TEXT,
     notes TEXT,
+    attachments JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
-
-CREATE TABLE IF NOT EXISTS public.audit_logs (
-    id TEXT PRIMARY KEY,
-    timestamp TEXT,
-    "userName" TEXT,
-    action TEXT,
-    entity TEXT,
-    "entityId" TEXT,
-    "entityName" TEXT,
-    details TEXT,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
--- Adds the tags column for older installs (safe to re-run)
-ALTER TABLE public.devices ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
-
--- Adds incident attachments (photos/video/files) to tickets (safe to re-run)
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.invoices (
     id TEXT PRIMARY KEY,
@@ -170,17 +162,92 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- Enable RLS
-ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT,
+    "userName" TEXT,
+    action TEXT,
+    entity TEXT,
+    "entityId" TEXT,
+    "entityName" TEXT,
+    details TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- ── 2. MIGRARE: redenumeste coloanele minuscule create anterior ──────────────
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT * FROM (VALUES
+      ('devices','serialnumber','serialNumber'),
+      ('devices','purchasedate','purchaseDate'),
+      ('devices','warrantyexpiration','warrantyExpiration'),
+      ('devices','nextmaintenancedate','nextMaintenanceDate'),
+      ('devices','iscncan','isCNCAN'),
+      ('devices','maintenancehistory','maintenanceHistory'),
+      ('devices','locationhistory','locationHistory'),
+      ('tasks','deviceid','deviceId'),
+      ('tasks','devicename','deviceName'),
+      ('tasks','createdat','createdAt'),
+      ('tasks','duedate','dueDate'),
+      ('invoices','invoicenumber','invoiceNumber'),
+      ('invoices','issuedate','issueDate'),
+      ('invoices','duedate','dueDate'),
+      ('invoices','contractnumber','contractNumber'),
+      ('invoices','deviceids','deviceIds'),
+      ('invoices','fileurl','fileUrl'),
+      ('invoices','filename','fileName'),
+      ('audit_logs','username','userName'),
+      ('audit_logs','entityid','entityId'),
+      ('audit_logs','entityname','entityName')
+    ) AS t(tbl, old_col, new_col)
+  LOOP
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema='public' AND table_name=r.tbl AND column_name=r.old_col)
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema='public' AND table_name=r.tbl AND column_name=r.new_col) THEN
+      EXECUTE format('ALTER TABLE public.%I RENAME COLUMN %I TO %I', r.tbl, r.old_col, r.new_col);
+      RAISE NOTICE 'Redenumit %.% -> %', r.tbl, r.old_col, r.new_col;
+    END IF;
+  END LOOP;
+END $$;
+
+-- ── 3. COMPLETEAZA coloanele lipsa (pentru instalari partiale) ───────────────
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "serialNumber" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "purchaseDate" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "warrantyExpiration" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "nextMaintenanceDate" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "isCNCAN" BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "maintenanceHistory" JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "locationHistory" JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS contracts JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS files JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS components JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS image TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS "deviceId" TEXT;
+ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS "deviceName" TEXT;
+
+-- ── 4. ACCES (idempotent — se poate rula din nou fara eroare) ────────────────
+ALTER TABLE public.devices    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-CREATE POLICY "Allow all public access" ON public.devices FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all public access" ON public.devices;
+DROP POLICY IF EXISTS "Allow all public access" ON public.tasks;
+DROP POLICY IF EXISTS "Allow all public access" ON public.invoices;
+DROP POLICY IF EXISTS "Allow all public access" ON public.audit_logs;
+
+CREATE POLICY "Allow all public access" ON public.devices    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.tasks      FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all public access" ON public.invoices   FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- ── 5. Reincarca schema pentru API ──────────────────────────────────────────
+NOTIFY pgrst, 'reload schema';
 `;
 
   useEffect(() => {
