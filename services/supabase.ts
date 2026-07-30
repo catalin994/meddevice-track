@@ -130,6 +130,81 @@ export const countCloudRows = async (table: string): Promise<{ count: number | n
   return { count: count ?? null, error };
 };
 
+export type CloudStage = 'no-config' | 'unreachable' | 'blocked' | 'auth' | 'schema' | 'ok';
+
+export interface CloudDiagnosis {
+  ok: boolean;
+  stage: CloudStage;
+  title: string;
+  detail: string;
+  hint: string;
+}
+
+/**
+ * Works out *why* the cloud can't be reached.
+ *
+ * fetch() reports every network-level problem as the same opaque
+ * "Failed to fetch", so we probe in stages: an opaque no-cors request tells us
+ * whether the host answers at all (a paused or deleted Supabase project simply
+ * doesn't resolve), and only then do we look at status codes and error codes.
+ */
+export const diagnoseCloud = async (): Promise<CloudDiagnosis> => {
+  const { url, key } = getSupabaseConfig();
+
+  if (!url || !key) {
+    return { ok: false, stage: 'no-config', title: 'Cloud neconfigurat',
+      detail: 'Lipsesc URL-ul proiectului sau cheia anon.',
+      hint: 'Completeaza-le mai sus si apasa "Conecteaza instanta cloud".' };
+  }
+
+  const base = url.replace(/\/+$/, '');
+
+  // Stage 1 — does the host answer at all? An opaque response is enough.
+  try {
+    await fetch(`${base}/rest/v1/`, { method: 'GET', mode: 'no-cors', cache: 'no-store' });
+  } catch {
+    return { ok: false, stage: 'unreachable', title: 'Serverul nu raspunde',
+      detail: `Nu se poate ajunge la ${base}.`,
+      hint: 'Cauze uzuale: proiectul Supabase este in pauza sau a fost sters (proiectele gratuite se pun in pauza dupa 7 zile de inactivitate) · URL scris gresit · lipsa internet · retea sau extensie care blocheaza supabase.co. Deschide dashboard.supabase.com si verifica daca proiectul e activ; daca scrie "Paused", apasa Resume.' };
+  }
+
+  // Stage 2 — a real, authenticated request
+  try {
+    const res = await fetch(`${base}/rest/v1/devices?select=id&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      cache: 'no-store',
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, stage: 'auth', title: 'Cheie respinsa',
+        detail: `Serverul a raspuns ${res.status}.`,
+        hint: 'Cheia anon nu este valida pentru acest proiect. Copiaza-o din Supabase → Project Settings → API → anon public.' };
+    }
+
+    const body = await res.json().catch(() => null);
+
+    if (res.status === 404 || body?.code === 'PGRST205' || body?.code === '42P01') {
+      return { ok: false, stage: 'schema', title: 'Tabelele lipsesc',
+        detail: body?.message || 'Tabelul "devices" nu a fost gasit.',
+        hint: 'Copiaza scriptul SQL de mai jos si ruleaza-l in Supabase → SQL Editor.' };
+    }
+
+    if (!res.ok) {
+      return { ok: false, stage: 'blocked', title: `Eroare server (${res.status})`,
+        detail: body?.message || res.statusText,
+        hint: 'Verifica politicile RLS din Supabase sau ruleaza din nou scriptul SQL.' };
+    }
+
+    return { ok: true, stage: 'ok', title: 'Conexiune functionala',
+      detail: 'Serverul raspunde si tabelele exista.', hint: '' };
+  } catch (err: any) {
+    // Host answered the opaque probe but blocks the real request → CORS/policy
+    return { ok: false, stage: 'blocked', title: 'Cerere blocata',
+      detail: err?.message || 'Failed to fetch',
+      hint: 'Serverul exista, dar cererea este blocata. Verifica in Supabase → Project Settings → API daca URL-ul este cel corect, si dezactiveaza temporar extensiile de blocare din browser.' };
+  }
+};
+
 /**
  * Enhanced check to specifically identify "Paused", "Table Missing", or "Resuming" states.
  * PGRST205: Table not in schema cache (common missing table error).

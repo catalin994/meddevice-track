@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
-import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks } from '../services/supabase';
+import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
 
@@ -21,6 +21,7 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; errorType?: string } | null>(null);
+  const [diagnosis, setDiagnosis] = useState<CloudDiagnosis | null>(null);
   const [copied, setCopied] = useState(false);
   
   const [dbCount, setDbCount] = useState<number | null>(null);
@@ -290,16 +291,12 @@ NOTIFY pgrst, 'reload schema';
 
   const handleRunIntegrityTest = useCallback(async () => {
     setIsTesting(true);
-    setTestResult(null);
+    setDiagnosis(null);
     try {
-      const status = await checkConnection();
-      setTestResult({ 
-        success: status.success, 
-        message: status.message,
-        errorType: status.errorType 
-      });
+      setDiagnosis(await diagnoseCloud());
     } catch (e: any) {
-      setTestResult({ success: false, message: `Eroare: ${e.message}` });
+      setDiagnosis({ ok: false, stage: 'blocked', title: 'Verificare eșuată',
+        detail: e?.message || String(e), hint: 'Reincearca sau verifica conexiunea la internet.' });
     } finally {
       setIsTesting(false);
     }
@@ -332,15 +329,18 @@ NOTIFY pgrst, 'reload schema';
           </button>
         </div>
 
-        {testResult && (
-          <div className={`mb-8 p-6 rounded-3xl border animate-fade-in ${testResult.success ? 'bg-green-50 border-green-200 text-green-700' : testResult.errorType === 'table' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+        {diagnosis && (
+          <div className={`mb-8 p-5 sm:p-6 rounded-3xl border animate-fade-in ${
+            diagnosis.ok ? 'bg-green-50 border-green-200 text-green-700'
+            : diagnosis.stage === 'schema' ? 'bg-amber-50 border-amber-200 text-amber-800'
+            : 'bg-red-50 border-red-200 text-red-700'}`}>
             <div className="flex gap-4">
-              {testResult.success ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
-              <div>
-                <p className="font-black text-xs uppercase tracking-widest mb-1">{testResult.success ? 'Conexiune verificata' : 'Eroare de conexiune'}</p>
-                <p className="text-sm font-bold leading-relaxed">{testResult.message}</p>
-                {testResult.errorType === 'table' && (
-                  <p className="mt-3 text-[10px] font-black uppercase tracking-widest bg-amber-600/10 p-2 rounded-lg">Actiune necesara: Executa scriptul SQL de mai jos</p>
+              {diagnosis.ok ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
+              <div className="min-w-0 space-y-2">
+                <p className="font-black text-xs uppercase tracking-widest">{diagnosis.title}</p>
+                <p className="text-sm font-bold leading-relaxed break-words">{diagnosis.detail}</p>
+                {diagnosis.hint && (
+                  <p className="text-[11px] font-medium leading-relaxed bg-black/5 p-3 rounded-xl">{diagnosis.hint}</p>
                 )}
               </div>
             </div>
