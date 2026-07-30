@@ -48,7 +48,7 @@ const prefetchModules = () => {
 };
 
 import { MedicalDevice, MedicalTask, Invoice, Contract, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
-import { supabase, isSupabaseConfigured, checkConnection } from './services/supabase';
+import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB } from './services/storageService';
 import { getCurrentUser, logout as authLogout } from './services/authService';
 import LoginScreen from './components/LoginScreen';
@@ -227,8 +227,8 @@ const App: React.FC = () => {
         try {
           // Parallel fetch from cloud
           const [deviceRes, taskRes] = await Promise.all([
-            supabase.from('devices').select('*').order('id', { ascending: true }),
-            supabase.from('tasks').select('*').order('id', { ascending: true })
+            fetchAllRows<any>('devices'),
+            fetchAllRows<any>('tasks')
           ]);
 
           if (deviceRes.error) throw deviceRes.error;
@@ -263,10 +263,12 @@ const App: React.FC = () => {
               return !cloud || (localTime > cloudTime);
             });
             if (newerLocals.length > 0) {
-              await supabase.from('devices').upsert(newerLocals);
+              const { error: pushErr } = await upsertInChunks('devices', newerLocals);
+              if (pushErr) console.warn('[App] Device push incomplete:', pushErr.message);
             }
           } else if (localDevices.length > 0) {
-            await supabase.from('devices').upsert(localDevices);
+            const { error: seedErr } = await upsertInChunks('devices', localDevices);
+            if (seedErr) console.warn('[App] Device seed incomplete:', seedErr.message);
           }
 
           // Sync Tasks
@@ -298,15 +300,15 @@ const App: React.FC = () => {
                return !cloud || localTime > cloudTime;
              });
              if (newerLocalTasks.length > 0) {
-               await supabase.from('tasks').upsert(newerLocalTasks);
+               await upsertInChunks('tasks', newerLocalTasks);
              }
           } else if (localTasks.length > 0) {
-             await supabase.from('tasks').upsert(localTasks);
+             await upsertInChunks('tasks', localTasks);
           }
 
           // Sync Invoices (tolerant — table may not exist yet)
           try {
-            const invoiceRes = await supabase.from('invoices').select('*').order('id', { ascending: true });
+            const invoiceRes = await fetchAllRows<Invoice>('invoices');
             if (!invoiceRes.error && invoiceRes.data) {
               const cloudInvoices: Invoice[] = invoiceRes.data;
               const invoiceMap = new Map<string, Invoice>(localInvoices.map(i => [i.id, i]));
@@ -331,7 +333,7 @@ const App: React.FC = () => {
                 return !cloud || localTime > cloudTime;
               });
               if (newerLocalInvoices.length > 0) {
-                await supabase.from('invoices').upsert(newerLocalInvoices);
+                await upsertInChunks('invoices', newerLocalInvoices);
               }
             } else if (invoiceRes.error) {
               console.warn("[App] Invoices sync skipped (table might be missing)");
@@ -401,7 +403,8 @@ const App: React.FC = () => {
     try {
       await saveDevicesToDB(payload);
       if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.from('devices').upsert(payload, { onConflict: 'id' });
+        // Chunked: a 2000-row Excel import in one request exceeds the size limit
+        const { error } = await upsertInChunks('devices', payload);
         if (error) throw error;
       }
     } catch (err) {

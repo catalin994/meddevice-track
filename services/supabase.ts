@@ -52,6 +52,63 @@ export const clearSupabaseConfig = () => {
   window.location.reload();
 };
 
+/** PostgREST caps every response at 1000 rows by default, so a plain
+ *  select('*') silently truncates larger fleets. */
+const PAGE_SIZE = 1000;
+
+/**
+ * Reads an entire table, one page at a time.
+ *
+ * Without this a device list longer than 1000 arrives incomplete — which looks
+ * exactly like "some equipment is missing" on a freshly installed phone, where
+ * there is no local copy to fall back on.
+ */
+export const fetchAllRows = async <T>(
+  table: string,
+  orderColumn = 'id',
+): Promise<{ data: T[] | null; error: any }> => {
+  if (!supabase) return { data: null, error: new Error('Supabase not initialised') };
+
+  const all: T[] = [];
+  const MAX_PAGES = 100; // 100k rows — a hard stop against a misbehaving endpoint
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .order(orderColumn, { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break;
+  }
+  return { data: all, error: null };
+};
+
+/**
+ * Writes rows in batches. Devices can carry base64 files, so a single request
+ * with the whole fleet exceeds the request size limit and the write fails
+ * outright — leaving the cloud copy incomplete.
+ */
+export const upsertInChunks = async (
+  table: string,
+  rows: any[],
+  chunkSize = 100,
+): Promise<{ error: any; written: number }> => {
+  if (!supabase) return { error: new Error('Supabase not initialised'), written: 0 };
+
+  let written = 0;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
+    if (error) return { error, written };
+    written += chunk.length;
+  }
+  return { error: null, written };
+};
+
 /**
  * Enhanced check to specifically identify "Paused", "Table Missing", or "Resuming" states.
  * PGRST205: Table not in schema cache (common missing table error).
