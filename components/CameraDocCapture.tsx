@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand } from 'lucide-react';
+import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check } from 'lucide-react';
 
 import Portal from './Portal';
 import { cropVideoToFrame, cropVideoToRect, detectDocumentRect, rectIoU, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
@@ -28,6 +28,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   const [detected, setDetected] = useState<DocRect | null>(null);
   const [holdProgress, setHoldProgress] = useState(0); // 0..1 while framing settles
   const [justCaptured, setJustCaptured] = useState(false);
+  // Auto-captured page awaiting the user's keep/retake decision
+  const [pendingPage, setPendingPage] = useState<string | null>(null);
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastRectRef = useRef<DocRect | null>(null);
   const stableSinceRef = useRef<number>(0);
@@ -81,30 +83,62 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     return () => { active = false; stopCamera(); };
   }, [stopCamera]);
 
-  const capturePage = useCallback(() => {
+  const grabFrame = useCallback((): string => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas) return '';
     // In auto mode use the detected sheet; otherwise fall back to the guide frame
     const rect = autoMode ? lastRectRef.current : null;
-    const dataUrl = rect
+    return rect
       ? cropVideoToRect(video, rect, canvas, 0.9)
       : cropVideoToFrame(video, frameRef.current, canvas, 0.9);
-    if (dataUrl) {
-      setPages(prev => [...prev, dataUrl]);
-      setJustCaptured(true);
-      setTimeout(() => setJustCaptured(false), 450);
-      // Give the user time to move to the next page before detecting again
-      cooldownUntilRef.current = Date.now() + 1800;
-      stableSinceRef.current = 0;
-      setHoldProgress(0);
-    }
   }, [autoMode]);
+
+  const resetDetection = useCallback((cooldownMs = 1500) => {
+    cooldownUntilRef.current = Date.now() + cooldownMs;
+    stableSinceRef.current = 0;
+    lastRectRef.current = null;
+    setHoldProgress(0);
+    setDetected(null);
+  }, []);
+
+  // Manual shutter — commits straight away, the press is the confirmation
+  const capturePage = useCallback(() => {
+    const dataUrl = grabFrame();
+    if (!dataUrl) return;
+    setPages(prev => [...prev, dataUrl]);
+    setJustCaptured(true);
+    setTimeout(() => setJustCaptured(false), 450);
+    resetDetection(1800);
+  }, [grabFrame, resetDetection]);
+
+  // Auto capture — hands the shot to the review step instead of committing it
+  const captureForReview = useCallback(() => {
+    const dataUrl = grabFrame();
+    if (!dataUrl) return;
+    setPendingPage(dataUrl);
+    setJustCaptured(true);
+    setTimeout(() => setJustCaptured(false), 450);
+    resetDetection(0);
+  }, [grabFrame, resetDetection]);
+
+  const keepPendingPage = useCallback(() => {
+    if (!pendingPage) return;
+    setPages(prev => [...prev, pendingPage]);
+    setPendingPage(null);
+    resetDetection(1500); // pause so turning the page doesn't trigger a shot
+  }, [pendingPage, resetDetection]);
+
+  const retakePendingPage = useCallback(() => {
+    setPendingPage(null);
+    resetDetection(700);
+  }, [resetDetection]);
 
   // Detection loop — samples the frame a few times a second and auto-captures
   // once the same sheet has stayed put for a moment.
   useEffect(() => {
-    if (!autoMode || cameraError) {
+    // Detection pauses while a shot is waiting for the user's decision
+    if (!autoMode || cameraError || pendingPage) {
       setDetected(null);
       setHoldProgress(0);
       return;
@@ -131,7 +165,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         if (!stableSinceRef.current) stableSinceRef.current = Date.now();
         const held = Date.now() - stableSinceRef.current;
         setHoldProgress(Math.min(1, held / HOLD_MS));
-        if (held >= HOLD_MS) capturePage();
+        if (held >= HOLD_MS) captureForReview();
       } else {
         stableSinceRef.current = 0;
         setHoldProgress(0);
@@ -139,7 +173,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     }, 180);
 
     return () => { if (detectTimerRef.current) clearInterval(detectTimerRef.current); };
-  }, [autoMode, cameraError, capturePage]);
+  }, [autoMode, cameraError, pendingPage, captureForReview]);
 
   const finish = useCallback(async () => {
     if (pages.length === 0) return;
@@ -269,6 +303,36 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
 
             {/* Capture flash */}
             {justCaptured && <div className="absolute inset-0 bg-white/70 pointer-events-none animate-fade-in" />}
+
+            {/* Review step — the auto shot waits here for a decision */}
+            {pendingPage && (
+              <div className="absolute inset-0 bg-slate-950/95 flex flex-col z-20 animate-fade-in">
+                <div className="shrink-0 px-5 pt-5 pb-3 text-center">
+                  <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Pagina {pages.length + 1} scanata</p>
+                  <p className="text-white font-black text-base uppercase tracking-tight mt-1">Pastrezi aceasta pagina?</p>
+                </div>
+
+                <div className="flex-1 min-h-0 px-5 flex items-center justify-center">
+                  <img src={pendingPage} alt={`Pagina ${pages.length + 1}`} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-white/10" />
+                </div>
+
+                <div className="shrink-0 p-5 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={retakePendingPage}
+                      className="flex items-center justify-center gap-2 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95">
+                      <RotateCcw className="w-5 h-5" /> Refa
+                    </button>
+                    <button onClick={keepPendingPage}
+                      className="flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95 shadow-xl shadow-emerald-600/20">
+                      <Check className="w-5 h-5" /> Pastreaza
+                    </button>
+                  </div>
+                  <p className="text-center text-white/40 text-[10px] font-bold uppercase tracking-widest">
+                    Dupa confirmare poti scana pagina urmatoare
+                  </p>
+                </div>
+              </div>
+            )}
 
             {pages.length > 0 && (
               <div className="absolute left-3 bottom-28 flex flex-col gap-2 max-h-[50%] overflow-y-auto no-scrollbar">
