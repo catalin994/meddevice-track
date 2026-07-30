@@ -67,7 +67,7 @@ export const fetchAllRows = async <T>(
   table: string,
   orderColumn = 'id',
 ): Promise<{ data: T[] | null; error: any }> => {
-  if (!supabase) return { data: null, error: new Error('Supabase not initialised') };
+  if (!supabase) return { data: null, error: new Error('Cloud neconfigurat') };
 
   const all: T[] = [];
   const MAX_PAGES = 100; // 100k rows — a hard stop against a misbehaving endpoint
@@ -101,7 +101,7 @@ export const upsertInChunks = async (
   chunkSize = 100,
   onProgress?: (written: number, total: number) => void,
 ): Promise<{ error: any; written: number }> => {
-  if (!supabase) return { error: new Error('Supabase not initialised'), written: 0 };
+  if (!supabase) return { error: new Error('Cloud neconfigurat'), written: 0 };
 
   let written = 0;
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -122,7 +122,7 @@ export const upsertInChunks = async (
  * unreachable" on a perfectly healthy project.
  */
 export const countCloudRows = async (table: string): Promise<{ count: number | null; error: any }> => {
-  if (!supabase) return { count: null, error: new Error('Supabase not initialised') };
+  if (!supabase) return { count: null, error: new Error('Cloud neconfigurat') };
   const { count, error } = await supabase
     .from(table)
     .select('id', { count: 'exact' })
@@ -136,7 +136,7 @@ export const countCloudRows = async (table: string): Promise<{ count: number | n
  * 42P01: Relation does not exist (standard Postgres missing table error).
  */
 export const checkConnection = async (): Promise<{ success: boolean; message: string; errorType?: 'auth' | 'table' | 'network' | 'paused' }> => {
-  if (!supabase) return { success: false, message: "Supabase client not initialized.", errorType: 'network' };
+  if (!supabase) return { success: false, message: "Cloud neconfigurat.", errorType: 'network' };
   
   try {
     const { error } = await supabase.from('devices').select('id').limit(1);
@@ -148,26 +148,26 @@ export const checkConnection = async (): Promise<{ success: boolean; message: st
       if (error.code === '42P01' || error.code === 'PGRST205') {
         return { 
           success: false, 
-          message: "The 'devices' table was not found. Please go to Settings and run the SQL migration script in your Supabase SQL Editor.", 
+          message: "Tabelul 'devices' nu exista. Ruleaza scriptul SQL din Configurare in Supabase SQL Editor.", 
           errorType: 'table' 
         };
       }
       
-      if (error.code === 'PGRST301') return { success: false, message: "Authentication failed. Please verify your Project URL and Anon Key in Settings.", errorType: 'auth' };
+      if (error.code === 'PGRST301') return { success: false, message: "Autentificare respinsa. Verifica URL-ul si cheia anon in Configurare.", errorType: 'auth' };
       
       // Detection for paused projects or 503 service unavailable
       if (error.message.includes('Service Unavailable') || 
           error.message.includes('paused') || 
           error.code === '503' || 
           (error as any).status === 503) {
-        return { success: false, message: "Your Supabase project is currently paused or resuming. Please wait a moment and try again.", errorType: 'paused' };
+        return { success: false, message: "Proiectul Supabase este oprit sau reporneste. Asteapta un moment si reincearca.", errorType: 'paused' };
       }
       
       return { success: false, message: error.message, errorType: 'network' };
     }
     
-    return { success: true, message: "Cloud connection healthy." };
+    return { success: true, message: "Conexiune cloud functionala." };
   } catch (err: any) {
-    return { success: false, message: err.message || "An unexpected network error occurred.", errorType: 'network' };
+    return { success: false, message: err.message || "Eroare de retea neasteptata.", errorType: 'network' };
   }
 };

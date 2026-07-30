@@ -79,6 +79,10 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'cloud' | 'local' | 'error' | 'table-missing' | 'paused'>('local');
+  // Why the last sync ended the way it did — without this, a failure is
+  // indistinguishable from "still working" and the button looks dead.
+  const [syncMessage, setSyncMessage] = useState<string>('');
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
   const [devices, setDevices] = useState<MedicalDevice[]>([]);
   const [tasks, setTasks] = useState<MedicalTask[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -186,7 +190,9 @@ const App: React.FC = () => {
 
   const loadAndSync = useCallback(async () => {
     setIsLoading(true);
+    setIsSyncingNow(true);
     setSyncStatus('local');
+    setSyncMessage('Se citesc datele locale...');
     try {
       // 1. Immediate UI from Local Storage
       const [localDevices, localTasks, localInvoices] = await Promise.all([
@@ -220,8 +226,11 @@ const App: React.FC = () => {
           if (connection.errorType === 'paused') setSyncStatus('paused');
           else if (connection.errorType === 'table') setSyncStatus('table-missing');
           else setSyncStatus('error');
+          setSyncMessage(connection.message || 'Conexiunea la cloud a esuat');
+          setIsSyncingNow(false);
           return;
         }
+        setSyncMessage('Se descarca din cloud...');
 
         // 3. Successful Wake-up Sync
         try {
@@ -343,16 +352,23 @@ const App: React.FC = () => {
           }
 
           setSyncStatus('cloud');
+          setSyncMessage('');
           setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        } catch (e) {
+        } catch (e: any) {
           console.error("[App] Cloud sync error:", e);
           setSyncStatus('error');
+          setSyncMessage(e?.message || String(e) || 'Eroare la sincronizare');
         }
+      } else {
+        setSyncMessage('Cloud neconfigurat — datele ramin doar pe acest dispozitiv');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[App] Registry engine failure:", err);
       setSyncStatus('error');
+      setSyncMessage(err?.message || 'Eroare la citirea datelor');
       setIsLoading(false);
+    } finally {
+      setIsSyncingNow(false);
     }
   }, [normalizeDevice]);
 
@@ -551,6 +567,8 @@ const App: React.FC = () => {
           syncStatus={syncStatus}
           lastSyncTime={lastSyncTime}
           loadAndSync={loadAndSync}
+          syncMessage={syncMessage}
+          isSyncingNow={isSyncingNow}
           canFinance={canFinance}
         />
       )}
@@ -733,10 +751,19 @@ const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
   </button>
 ));
 
-const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync, canFinance }: {
+const SYNC_LABELS: Record<string, { text: string; dot: string; tone: string }> = {
+  cloud:           { text: 'Operational',            dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]', tone: 'text-emerald-600' },
+  local:           { text: 'Doar local',             dot: 'bg-amber-500',  tone: 'text-amber-600' },
+  error:           { text: 'Eroare de sincronizare', dot: 'bg-red-500',    tone: 'text-red-600' },
+  'table-missing': { text: 'Schema lipsa in cloud',  dot: 'bg-red-500',    tone: 'text-red-600' },
+  paused:          { text: 'Proiect Supabase oprit', dot: 'bg-red-500',    tone: 'text-red-600' },
+};
+
+const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync, syncMessage, isSyncingNow, canFinance }: {
   isSidebarOpen: boolean; view: string; setView: (v: any) => void;
   setSidebarOpen: (v: boolean) => void; syncStatus: string;
-  lastSyncTime: string; loadAndSync: () => void; canFinance: boolean;
+  lastSyncTime: string; loadAndSync: () => void;
+  syncMessage: string; isSyncingNow: boolean; canFinance: boolean;
 }) => (
   <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
     <div className="h-full flex flex-col relative">
@@ -763,20 +790,50 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
       <div className="p-6 border-t border-slate-100 bg-slate-50/50">
         <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizare Cloud</p>
-            <div className={`w-2 h-2 rounded-full ${syncStatus === 'cloud' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-              {syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <RefreshCw className="w-4 h-4 animate-spin" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-[11px] font-bold text-slate-900">{syncStatus === 'cloud' ? 'Operational' : 'Se sincronizeaza...'}</p>
-              <p className="text-[10px] font-medium text-slate-500">Ultima: {lastSyncTime}</p>
-            </div>
-          </div>
-          <button onClick={loadAndSync} className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95">Re-sincronizare</button>
+          {(() => {
+            const info = SYNC_LABELS[syncStatus] || SYNC_LABELS.local;
+            const isFailure = syncStatus === 'error' || syncStatus === 'table-missing' || syncStatus === 'paused';
+            return (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizare Cloud</p>
+                  <div className={`w-2 h-2 rounded-full ${isSyncingNow ? 'bg-blue-500 animate-pulse' : info.dot}`} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${isSyncingNow ? 'bg-blue-50 text-blue-600' : isFailure ? 'bg-red-50 text-red-600' : syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    {isSyncingNow ? <RefreshCw className="w-4 h-4 animate-spin" />
+                      : isFailure ? <AlertCircle className="w-4 h-4" />
+                      : syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[11px] font-bold ${isSyncingNow ? 'text-blue-600' : isFailure ? 'text-red-600' : 'text-slate-900'}`}>
+                      {isSyncingNow ? 'Se sincronizeaza...' : info.text}
+                    </p>
+                    <p className="text-[10px] font-medium text-slate-500">Ultima: {lastSyncTime}</p>
+                  </div>
+                </div>
+
+                {/* The actual reason — otherwise a failed sync looks like nothing happened */}
+                {!isSyncingNow && syncMessage && (
+                  <p className={`text-[10px] font-bold leading-relaxed ${isFailure ? 'text-red-600' : 'text-amber-600'}`}>
+                    {syncMessage}
+                  </p>
+                )}
+                {isFailure && (
+                  <button onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }}
+                    className="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition">
+                    Vezi diagnosticul
+                  </button>
+                )}
+
+                <button onClick={loadAndSync} disabled={isSyncingNow}
+                  className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isSyncingNow && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isSyncingNow ? 'In curs...' : 'Re-sincronizare'}
+                </button>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
