@@ -5,6 +5,7 @@ import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, Lo
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
+import { buildUploadSet } from '../services/syncMerge';
 
 declare const __BUILD_ID__: string;
 const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
@@ -80,7 +81,23 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     setIsPushing(true);
     setPushProgress(0);
     setPushResult(null);
-    const { error, written, skippedColumns, oversized } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
+    // Never blind-overwrite: read what the cloud has, merge, and send only what
+    // is genuinely newer or missing — otherwise this button can wipe documents
+    // scanned on another device.
+    const { data: cloudRows, error: readErr } = await fetchAllRows<MedicalDevice>('devices');
+    if (readErr) {
+      setIsPushing(false);
+      setPushResult({ ok: false, message: `Nu s-a putut citi cloud-ul inainte de urcare: ${readErr.message || readErr}` });
+      return;
+    }
+    const toUpload = buildUploadSet(devices, cloudRows || []);
+    if (toUpload.length === 0) {
+      setIsPushing(false);
+      setPushResult({ ok: true, message: 'Cloud-ul are deja tot ce exista pe acest dispozitiv — nimic de urcat.' });
+      await refreshCloudCount();
+      return;
+    }
+    const { error, written, skippedColumns, oversized } = await upsertInChunks('devices', toUpload, 100, (w) => setPushProgress(w));
     setIsPushing(false);
     if (error) {
       setPushResult({ ok: false, message: `Urcarea s-a oprit dupa ${written} echipamente: ${error.message || error}` });
@@ -617,7 +634,7 @@ NOTIFY pgrst, 'reload schema';
                   <button onClick={handlePushAll} disabled={isPushing}
                     className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
                     {isPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                    {isPushing ? `Se urca ${pushProgress}/${devices.length}...` : 'Urca toata flota in cloud'}
+                    {isPushing ? `Se urca ${pushProgress}...` : 'Urca toata flota in cloud'}
                   </button>
                   {isPushing && (
                     <div className="h-2 bg-white rounded-full overflow-hidden">

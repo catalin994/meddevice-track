@@ -51,6 +51,7 @@ import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, Dev
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB } from './services/storageService';
 import { getCurrentUser, logout as authLogout } from './services/authService';
+import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import LoginScreen from './components/LoginScreen';
 
 const MOCK_DEVICES: MedicalDevice[] = [
@@ -299,34 +300,22 @@ const App: React.FC = () => {
           if (deviceRes.data && deviceRes.data.length > 0) {
             const cloudDevices: MedicalDevice[] = deviceRes.data.map(normalizeDevice);
             
+            // Merge each side field by field: scalars follow the newer copy,
+            // but documents and history are combined so a scan made on one
+            // phone is never dropped by another phone's older record.
             cloudDevices.forEach((d: MedicalDevice) => {
               if (deletedDeviceIds.has(d.id)) return; // deleted elsewhere
-              const local = deviceMap.get(d.id);
-              // Only overwrite if:
-              // 1. Local doesn't exist
-              // 2. Local doesn't have a timestamp (old data)
-              // 3. Cloud has a strictly newer timestamp
-              const cloudTime = d.updated_at ? new Date(d.updated_at).getTime() : 0;
-              const localTime = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
-
-              if (!local || !local.updated_at || (cloudTime > localTime)) {
-                deviceMap.set(d.id, d);
-              }
+              deviceMap.set(d.id, mergeDeviceRecords(deviceMap.get(d.id), d));
             });
 
             const finalMerged = Array.from(deviceMap.values());
             setDevices(finalMerged);
             await saveDevicesToDB(finalMerged);
-            
-            // If local was newer, push it to cloud
-            const cloudById = new Map(cloudDevices.map(cd => [cd.id, cd]));
-            const newerLocals = Array.from(deviceMap.values()).filter(d => {
-              if (deletedDeviceIds.has(d.id)) return false;
-              const cloud = cloudById.get(d.id);
-              const cloudTime = cloud?.updated_at ? new Date(cloud.updated_at).getTime() : 0;
-              const localTime = d.updated_at ? new Date(d.updated_at).getTime() : 0;
-              return !cloud || (localTime > cloudTime);
-            });
+
+            const newerLocals = buildUploadSet(
+              finalMerged.filter(d => !deletedDeviceIds.has(d.id)),
+              cloudDevices,
+            );
             if (newerLocals.length > 0) {
               const { error: pushErr } = await upsertInChunks('devices', newerLocals);
               if (pushErr) console.warn('[App] Device push incomplete:', pushErr.message);
