@@ -95,23 +95,51 @@ export const fetchAllRows = async <T>(
  * onProgress reports rows written so far, so long uploads can show a bar
  * instead of appearing frozen.
  */
+/** PostgREST names the offending column when the table lacks it. */
+const MISSING_COLUMN = /Could not find the '([^']+)' column/i;
+
 export const upsertInChunks = async (
   table: string,
   rows: any[],
   chunkSize = 100,
   onProgress?: (written: number, total: number) => void,
-): Promise<{ error: any; written: number }> => {
-  if (!supabase) return { error: new Error('Cloud neconfigurat'), written: 0 };
+): Promise<{ error: any; written: number; skippedColumns: string[] }> => {
+  if (!supabase) return { error: new Error('Cloud neconfigurat'), written: 0, skippedColumns: [] };
 
   let written = 0;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
-    if (error) return { error, written };
+  let payload = rows;
+  const skipped = new Set<string>();
+
+  for (let i = 0; i < payload.length; i += chunkSize) {
+    let chunk = payload.slice(i, i + chunkSize);
+
+    // A column the table doesn't have would abort the whole upload. Drop it and
+    // carry on instead — the rest of the data is still worth saving, and the
+    // caller can tell the user which fields need the SQL migration.
+    for (let attempt = 0; ; attempt++) {
+      const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
+      if (!error) break;
+
+      const column = (error.message || '').match(MISSING_COLUMN)?.[1];
+      if (!column || attempt >= 20) {
+        return { error, written, skippedColumns: [...skipped] };
+      }
+
+      skipped.add(column);
+      payload = payload.map(row => {
+        if (!(column in row)) return row;
+        const copy = { ...row };
+        delete copy[column];
+        return copy;
+      });
+      chunk = payload.slice(i, i + chunkSize);
+    }
+
     written += chunk.length;
-    onProgress?.(written, rows.length);
+    onProgress?.(written, payload.length);
   }
-  return { error: null, written };
+
+  return { error: null, written, skippedColumns: [...skipped] };
 };
 
 /**

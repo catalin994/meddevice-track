@@ -77,10 +77,12 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     setIsPushing(true);
     setPushProgress(0);
     setPushResult(null);
-    const { error, written } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
+    const { error, written, skippedColumns } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
     setIsPushing(false);
     if (error) {
       setPushResult({ ok: false, message: `Urcarea s-a oprit dupa ${written} echipamente: ${error.message || error}` });
+    } else if (skippedColumns.length > 0) {
+      setPushResult({ ok: true, message: `${written} echipamente au fost urcate. Atentie: campurile ${skippedColumns.join(', ')} nu exista in tabelul din cloud si au fost omise — ruleaza scriptul SQL de mai sus in Supabase, apoi urca din nou ca sa se salveze si ele.` });
     } else {
       setPushResult({ ok: true, message: `${written} echipamente au fost urcate in cloud. Deschide aplicatia pe celalalt telefon si apasa Re-sincronizare.` });
     }
