@@ -98,48 +98,103 @@ export const fetchAllRows = async <T>(
 /** PostgREST names the offending column when the table lacks it. */
 const MISSING_COLUMN = /Could not find the '([^']+)' column/i;
 
+/** Target request size. Devices carry scanned PDFs as base64, so a fixed row
+ *  count can produce a request of hundreds of megabytes that the server drops. */
+const MAX_BYTES_PER_REQUEST = 1_000_000;
+
+const byteSize = (row: any): number => {
+  try { return JSON.stringify(row).length; } catch { return 0; }
+};
+
 export const upsertInChunks = async (
   table: string,
   rows: any[],
-  chunkSize = 100,
+  maxRowsPerChunk = 100,
   onProgress?: (written: number, total: number) => void,
-): Promise<{ error: any; written: number; skippedColumns: string[] }> => {
-  if (!supabase) return { error: new Error('Cloud neconfigurat'), written: 0, skippedColumns: [] };
+): Promise<{ error: any; written: number; skippedColumns: string[]; oversized: string[] }> => {
+  if (!supabase) return { error: new Error('Cloud neconfigurat'), written: 0, skippedColumns: [], oversized: [] };
 
   let written = 0;
   let payload = rows;
   const skipped = new Set<string>();
+  const oversized: string[] = [];
 
-  for (let i = 0; i < payload.length; i += chunkSize) {
-    let chunk = payload.slice(i, i + chunkSize);
+  // Group by payload size, not just row count
+  const buildChunks = (data: any[]) => {
+    const chunks: any[][] = [];
+    let current: any[] = [];
+    let bytes = 0;
+    for (const row of data) {
+      const size = byteSize(row);
+      if (current.length > 0 && (bytes + size > MAX_BYTES_PER_REQUEST || current.length >= maxRowsPerChunk)) {
+        chunks.push(current);
+        current = [];
+        bytes = 0;
+      }
+      current.push(row);
+      bytes += size;
+    }
+    if (current.length) chunks.push(current);
+    return chunks;
+  };
 
-    // A column the table doesn't have would abort the whole upload. Drop it and
-    // carry on instead — the rest of the data is still worth saving, and the
-    // caller can tell the user which fields need the SQL migration.
-    for (let attempt = 0; ; attempt++) {
-      const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
-      if (!error) break;
+  /** Removes columns we already know the table doesn't have. */
+  const stripKnown = (data: any[]) =>
+    skipped.size === 0 ? data : data.map(row => {
+      const copy = { ...row };
+      skipped.forEach(col => delete copy[col]);
+      return copy;
+    });
 
-      const column = (error.message || '').match(MISSING_COLUMN)?.[1];
-      if (!column || attempt >= 20) {
-        return { error, written, skippedColumns: [...skipped] };
+  /**
+   * Sends one chunk. Returns an error, or null when the chunk was fully
+   * handled — counting `written` itself so no caller double-counts or, worse,
+   * mistakes "handled" for "failed" and skips the remaining half.
+   */
+  const sendChunk = async (input: any[], depth = 0): Promise<any | null> => {
+    let chunk = stripKnown(input);
+
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const { error } = await supabase!.from(table).upsert(chunk, { onConflict: 'id' });
+
+      if (!error) {
+        written += chunk.length;
+        onProgress?.(written, payload.length);
+        return null;
       }
 
-      skipped.add(column);
-      payload = payload.map(row => {
-        if (!(column in row)) return row;
-        const copy = { ...row };
-        delete copy[column];
-        return copy;
-      });
-      chunk = payload.slice(i, i + chunkSize);
-    }
+      const column = (error.message || '').match(MISSING_COLUMN)?.[1];
+      if (column) {
+        skipped.add(column);
+        chunk = stripKnown(chunk);
+        continue;
+      }
 
-    written += chunk.length;
-    onProgress?.(written, payload.length);
+      // Too large or the connection dropped → send it as two smaller requests
+      if (chunk.length > 1 && depth < 14) {
+        const mid = Math.ceil(chunk.length / 2);
+        const firstError = await sendChunk(chunk.slice(0, mid), depth + 1);
+        if (firstError) return firstError;
+        return await sendChunk(chunk.slice(mid), depth + 1);
+      }
+
+      // A single row that still won't fit — record it and keep going
+      if (chunk.length === 1) {
+        oversized.push(String(chunk[0]?.name || chunk[0]?.id || 'necunoscut'));
+        return null;
+      }
+
+      return error;
+    }
+    return new Error('Prea multe reincercari pentru un lot');
+  };
+
+  for (const chunk of buildChunks(payload)) {
+    const err = await sendChunk(chunk);
+    if (err) return { error: err, written, skippedColumns: [...skipped], oversized };
   }
 
-  return { error: null, written, skippedColumns: [...skipped] };
+  return { error: null, written, skippedColumns: [...skipped], oversized };
 };
 
 /**

@@ -43,6 +43,9 @@ export default defineConfig(({ mode }) => {
         chunkSizeWarningLimit: 1000,
       },
       define: {
+        // Lets the UI show which build is actually running — invaluable when a
+        // phone silently serves a cached bundle.
+        '__BUILD_ID__': JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },

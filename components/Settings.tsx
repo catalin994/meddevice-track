@@ -6,6 +6,9 @@ import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupab
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
 
+declare const __BUILD_ID__: string;
+const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+
 interface SettingsProps {
   devices: MedicalDevice[];
   onImport: (devices: MedicalDevice[]) => void;
@@ -77,10 +80,12 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     setIsPushing(true);
     setPushProgress(0);
     setPushResult(null);
-    const { error, written, skippedColumns } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
+    const { error, written, skippedColumns, oversized } = await upsertInChunks('devices', devices, 100, (w) => setPushProgress(w));
     setIsPushing(false);
     if (error) {
       setPushResult({ ok: false, message: `Urcarea s-a oprit dupa ${written} echipamente: ${error.message || error}` });
+    } else if (oversized.length > 0) {
+      setPushResult({ ok: false, message: `${written} echipamente urcate, dar ${oversized.length} nu au incaput (documente atasate prea mari): ${oversized.slice(0, 3).join(', ')}${oversized.length > 3 ? '...' : ''}` });
     } else if (skippedColumns.length > 0) {
       setPushResult({ ok: true, message: `${written} echipamente au fost urcate. Atentie: campurile ${skippedColumns.join(', ')} nu exista in tabelul din cloud si au fost omise — ruleaza scriptul SQL de mai sus in Supabase, apoi urca din nou ca sa se salveze si ele.` });
     } else {
@@ -113,6 +118,24 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     if (!removeUser(id)) alert('Nu poti sterge ultimul administrator.');
     setUsers(getUsers());
   }, [currentUser]);
+
+  /** Clears every browser cache and reloads — the reliable way to escape a
+   *  stale bundle on phones, where a normal refresh often isn't enough. */
+  const handleHardReload = useCallback(async () => {
+    try {
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map(n => caches.delete(n)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+    } catch { /* best effort */ }
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', Date.now().toString());
+    window.location.replace(url.toString());
+  }, []);
 
   const handleResetPin = useCallback((user: AppUser) => {
     const pin = window.prompt(`PIN nou pentru ${user.name} (minim 4 cifre):`);
@@ -655,7 +678,16 @@ NOTIFY pgrst, 'reload schema';
               )}
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-6 font-bold uppercase tracking-widest text-center">Compara ce ai local cu ce exista in cloud</p>
+          <div className="mt-6 pt-4 border-t border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Versiune aplicatie</span>
+              <span className="text-[10px] font-mono font-bold text-slate-600">{BUILD_ID}</span>
+            </div>
+            <button onClick={handleHardReload}
+              className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition flex items-center justify-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5" /> Forteaza reincarcarea aplicatiei
+            </button>
+          </div>
         </div>
       </div>
     </div>
