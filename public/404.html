@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MediTrack — se redirecționează…</title>
+<script>
+  // GitHub Pages serves this for any unknown path under the project site.
+  // Old QR labels and mistyped links carry the right query string but the wrong
+  // path, so forward them into the app instead of showing a dead end.
+  (function () {
+    var base = '/meddevice-track/';
+    var search = window.location.search || '';
+    var hash = window.location.hash || '';
+    window.location.replace(base + search + hash);
+  })();
+</script>
+<p style="font-family:system-ui;padding:2rem;text-align:center">
+  Se deschide MediTrack… dacă nu se întâmplă nimic,
+  <a href="/meddevice-track/">apasă aici</a>.
+</p>
