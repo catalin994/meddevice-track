@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
+import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -749,7 +750,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    <React.Suspense fallback={<div className="w-60 h-60 animate-pulse bg-slate-100 rounded-2xl" />}>
                      <LazyQRCode
                         id="device-qr-code"
-                        value={`${window.location.origin}?view=DEVICE_DETAIL&id=${device.id}&standalone=true`}
+                        value={getDeviceUrl(device.id)}
                         size={240}
                         level="H"
                         includeMargin={true}
@@ -869,7 +870,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               Aceasta este o vizualizare individuala a dispozitivului. Pentru administrarea intregului parc de echipamente, accesati aplicatia principala.
            </p>
            <a 
-              href={window.location.origin}
+              href={getAppBaseUrl()}
               className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10"
            >
               Deschide Aplicatia Completa

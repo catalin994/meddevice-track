@@ -11,8 +11,9 @@ interface QRLabelSheetProps {
   onClose: () => void;
 }
 
-const deviceUrl = (id: string) =>
-  `${window.location.origin}${window.location.pathname}?view=DEVICE_DETAIL&id=${encodeURIComponent(id)}&standalone=true`;
+import { getDeviceUrl } from '../services/appUrl';
+
+const deviceUrl = (id: string) => getDeviceUrl(id);
 
 // Rendering thousands of QR canvases at once would freeze the page —
 // cap one sheet and let the user filter the inventory into batches.

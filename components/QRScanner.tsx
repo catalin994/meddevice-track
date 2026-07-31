@@ -93,17 +93,31 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
         const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
 
         if (code?.data) {
+          const raw = code.data.trim();
+          let id: string | null = null;
+
           try {
-            const url = new URL(code.data);
-            const id = url.searchParams.get('id');
-            const view = url.searchParams.get('view');
-            if (id && view === 'DEVICE_DETAIL') {
-              setStatus('found');
-              stopCamera();
-              setTimeout(() => onScan(id), 600);
-              return;
-            }
-          } catch { /* not a valid URL, keep scanning */ }
+            // Normal case: a MediTrack deep link
+            const url = new URL(raw);
+            id = url.searchParams.get('id');
+          } catch {
+            // Not a URL — fall through to the plain-value forms below
+          }
+
+          // Also accept a bare id / serial, or an "id=..." fragment, so labels
+          // printed by other tools (or older app versions) still work.
+          if (!id) {
+            const match = raw.match(/(?:^|[?&])id=([^&\s]+)/i);
+            if (match) id = decodeURIComponent(match[1]);
+            else if (/^[A-Za-z0-9_\-]{3,64}$/.test(raw)) id = raw;
+          }
+
+          if (id) {
+            setStatus('found');
+            stopCamera();
+            setTimeout(() => onScan(id!), 600);
+            return;
+          }
         }
 
         animFrameRef.current = requestAnimationFrame(tick);

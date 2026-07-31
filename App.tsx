@@ -559,11 +559,18 @@ const App: React.FC = () => {
     await handleUpsertDevices(updated);
   }, [devices, handleUpsertDevices]);
 
-  const handleQRScan = useCallback((deviceId: string) => {
+  const handleQRScan = useCallback((scanned: string) => {
     setShowScanner(false);
-    setSelectedDeviceId(deviceId);
+    const key = String(scanned).trim();
+    // A label may carry the device id or just its serial number — accept both,
+    // and match case-insensitively so a re-typed serial still resolves.
+    const byId = devicesMap.get(key);
+    const resolved = byId
+      || devices.find(d => String(d.serialNumber || '').trim().toLowerCase() === key.toLowerCase())
+      || devices.find(d => String(d.id).trim().toLowerCase() === key.toLowerCase());
+    setSelectedDeviceId(resolved ? resolved.id : key);
     setView('DEVICE_DETAIL');
-  }, []);
+  }, [devices, devicesMap]);
 
   const handleDocScanSave = useCallback(async (deviceId: string, file: import('./types').DeviceFile) => {
     const device = devices.find(d => d.id === deviceId);
@@ -724,6 +731,29 @@ const App: React.FC = () => {
                     invoices={invoices}
                     auditEntries={auditLog}
                   />
+                )}
+                {/* A scanned QR pointing at an unknown id used to render nothing at all */}
+                {view === 'DEVICE_DETAIL' && !selectedDevice && (
+                  <div className="py-24 flex flex-col items-center text-center gap-4 px-6">
+                    <div className="p-5 bg-amber-50 rounded-full"><AlertCircle className="w-12 h-12 text-amber-500" /></div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Dispozitivul nu a fost gasit</p>
+                      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                        Codul QR indica spre <span className="font-mono text-slate-700">{selectedDeviceId || '—'}</span>,
+                        care nu exista in lista de pe acest dispozitiv. Sincronizeaza si incearca din nou.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <button onClick={loadAndSync} disabled={isSyncingNow}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50">
+                        {isSyncingNow ? 'Se sincronizeaza...' : 'Re-sincronizare'}
+                      </button>
+                      <button onClick={() => { setView('INVENTORY'); setSelectedDeviceId(null); }}
+                        className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition">
+                        Inapoi la inventar
+                      </button>
+                    </div>
+                  </div>
                 )}
                 {view === 'TASKS' && (
                   <TaskTracker 
