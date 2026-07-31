@@ -1,0 +1,1 @@
+const n=()=>{const e=window.location.pathname.replace(/index\.html$/i,""),t=e.endsWith("/")?e:`${e}/`;return`${window.location.origin}${t}`},o=(e,t=!0)=>`${n()}?view=DEVICE_DETAIL&id=${encodeURIComponent(e)}${t?"&standalone=true":""}`;export{n as a,o as g};
