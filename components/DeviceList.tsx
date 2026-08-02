@@ -540,7 +540,7 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
       break;
   }
   return (
-    <span className={`px-3 py-1.5 rounded-xl tech-label text-[8px] border flex items-center gap-2 w-fit ${styles}`}>
+    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wide border flex items-center gap-1.5 w-fit whitespace-nowrap ${styles}`}>
       <div className={`w-1.5 h-1.5 rounded-full ${dot} ${status === DeviceStatus.ACTIVE ? 'animate-pulse' : ''}`} />
       {DEVICE_STATUS_RO[status] || status}
     </span>
@@ -575,14 +575,14 @@ const DeviceRow = React.memo(({
       onChange={() => onToggleSelection(device.id)}
     />
 
-    <span className="shrink-0 mt-0.5 md:mt-0 font-mono text-[11px] font-black text-slate-400 tabular-nums md:text-center">
+    <span className="shrink-0 mt-0.5 md:mt-0 font-mono text-xs font-bold text-slate-400 tabular-nums md:text-center">
       {index}
     </span>
 
     {/* On phones the four data columns collapse into one stacked block */}
     <div className="flex-1 min-w-0 md:contents cursor-pointer" onClick={() => onSelect(device)}>
       <div className="min-w-0">
-        <h3 className="font-black text-slate-900 text-sm leading-snug break-words uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+        <h3 className="font-bold text-slate-900 text-[15px] leading-snug break-words group-hover:text-blue-600 transition-colors">
           {device.name || 'Dispozitiv fara nume'}
           {device.isCNCAN && <ShieldAlert className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500" />}
         </h3>
@@ -590,14 +590,19 @@ const DeviceRow = React.memo(({
             keeps the full width of the row instead of a narrow column */}
         <div className="md:hidden mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
-          <span className="text-[10px] font-mono font-bold text-slate-400 break-words">
-            {[device.department, device.model, device.serialNumber].filter(Boolean).join(' · ')}
+          {/* each value stays whole; the line wraps between them, not inside a serial */}
+          <span className="text-xs font-medium text-slate-500 flex flex-wrap items-center gap-x-1.5">
+            <span className="truncate max-w-[10rem]">{device.department}</span>
+            <span className="text-slate-300">·</span>
+            <span className="whitespace-nowrap">{device.model}</span>
+            <span className="text-slate-300">·</span>
+            <span className="font-mono font-semibold whitespace-nowrap">{device.serialNumber}</span>
           </span>
         </div>
       </div>
-      <span className="hidden md:block text-xs font-bold text-slate-500 truncate">{device.department || '—'}</span>
-      <span className="hidden md:block text-xs font-black text-blue-600 truncate">{device.model || '—'}</span>
-      <span className="hidden md:block text-xs font-mono font-black text-slate-900 truncate">{device.serialNumber || '—'}</span>
+      <span className="hidden md:block text-sm font-medium text-slate-600 truncate">{device.department || '—'}</span>
+      <span className="hidden md:block text-sm font-semibold text-blue-600 truncate">{device.model || '—'}</span>
+      <span className="hidden md:block text-sm font-mono font-semibold text-slate-800 truncate">{device.serialNumber || '—'}</span>
       <div className="hidden md:block"><StatusBadge status={device.status || DeviceStatus.ACTIVE} /></div>
     </div>
 
@@ -716,7 +721,7 @@ const DeviceCard = React.memo(({
           checked={isSelected} 
           onChange={() => onToggleSelection(device.id)} 
         />
-        <span className="font-mono text-[11px] font-black text-slate-400 tabular-nums">{index}</span>
+        <span className="font-mono text-xs font-bold text-slate-400 tabular-nums">{index}</span>
       </div>
 
       {/* Asset Image/Icon */}
@@ -740,12 +745,12 @@ const DeviceCard = React.memo(({
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
           {/* No truncation — a long device name wraps and stays fully readable */}
-          <h3 className="font-black text-slate-900 text-lg sm:text-xl md:text-lg leading-tight break-words group-hover:text-blue-600 transition-colors uppercase tracking-tight md:min-w-0">
+          <h3 className="font-bold text-slate-900 text-lg sm:text-xl leading-snug break-words group-hover:text-blue-600 transition-colors md:min-w-0">
             {device.name || 'Dispozitiv fara nume'}
           </h3>
           <div className="flex items-center gap-2">
             <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
-            <span className="px-3 py-1 bg-slate-100 rounded-lg tech-label text-[9px] text-slate-600 border border-slate-200">
+            <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-[11px] font-semibold text-slate-600 border border-slate-200 whitespace-nowrap">
               {device.department || 'N/A'}
             </span>
           </div>
@@ -753,31 +758,31 @@ const DeviceCard = React.memo(({
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
-            <span className="tech-label text-[10px] text-slate-500 uppercase tracking-wider font-bold">MFR:</span>
-            <span className="text-xs font-black text-slate-700">{device.manufacturer || 'Necunoscut'}</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Producator</span>
+            <span className="text-sm font-semibold text-slate-700">{device.manufacturer || 'Necunoscut'}</span>
           </div>
           <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
           <div className="flex items-center gap-2">
-            <span className="tech-label text-[10px] text-slate-500 uppercase tracking-wider font-bold">MODEL:</span>
-            <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{device.model || 'N/A'}</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Model</span>
+            <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">{device.model || 'N/A'}</span>
           </div>
           <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
           <div className="flex items-center gap-2">
-            <span className="tech-label text-[10px] text-slate-500 uppercase tracking-wider font-bold">SN:</span>
-            <span className="text-xs font-mono font-black text-slate-900 tracking-tighter">{device.serialNumber || 'N/A'}</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Serie</span>
+            <span className="text-sm font-mono font-semibold text-slate-800">{device.serialNumber || 'N/A'}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-wider">
-            <Layers className="w-3 h-3" /> {device.category || 'Altele'}
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+            <Layers className="w-3.5 h-3.5" /> {device.category || 'Altele'}
           </span>
           {(device.tags || []).slice(0, 4).map(tag => (
-            <span key={tag} className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 uppercase tracking-wider">
-              <Tag className="w-2.5 h-2.5" /> {tag}
+            <span key={tag} className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+              <Tag className="w-3 h-3" /> {tag}
             </span>
           ))}
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ID: {device.id.slice(0, 12)}...</span>
+          <span className="text-[11px] font-medium text-slate-400">ID: {device.id.slice(0, 12)}…</span>
         </div>
       </div>
 
