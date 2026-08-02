@@ -4,16 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MediTrack</title>
+    <meta name="theme-color" content="#f8fafc" />
     <script>
       // Polyfill process.env to prevent ReferenceError on mobile devices where 'process' is undefined
       window.process = window.process || { env: {} };
+
+      // Set the theme before the bundle loads, otherwise every dark-mode start
+      // flashes a white page until React's first effect runs.
+      try {
+        var t = localStorage.getItem('meditrack_theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0b1120');
+        }
+      } catch (e) {}
     </script>
-    <script type="module" crossorigin src="/meddevice-track/assets/index-Csl-C8vC.js"></script>
-    <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-icons-U6hptByO.js">
+    <script type="module" crossorigin src="/meddevice-track/assets/index-CBkPH6C8.js"></script>
+    <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-icons-CPkAJPZK.js">
     <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-db-CxvqBt6T.js">
-    <link rel="stylesheet" crossorigin href="/meddevice-track/assets/index-CLeqB7aM.css">
+    <link rel="stylesheet" crossorigin href="/meddevice-track/assets/index-6OAPx1PU.css">
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
+  <body class="app-bg text-slate-900 antialiased">
     <div id="root"></div>
   </body>
 </html>
