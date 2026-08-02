@@ -4,7 +4,8 @@ import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermissio
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
-import { getUsers, addUser, removeUser, updateUser } from '../services/authService';
+import { listProfiles, updateProfile } from '../services/authService';
+import { SECURITY_SQL } from '../services/authSql';
 import { buildUploadSet } from '../services/syncMerge';
 
 declare const __BUILD_ID__: string;
@@ -113,28 +114,28 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
 
   // User management (admin only)
   const canManageUsers = hasPermission(currentUser, 'manageUsers');
-  const [users, setUsers] = useState<AppUser[]>(() => getUsers());
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('TEHNICIAN');
-  const [newUserPin, setNewUserPin] = useState('');
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [usersError, setUsersError] = useState('');
 
-  const handleAddUser = useCallback(() => {
-    if (!newUserName.trim() || newUserPin.length < 4) {
-      alert('Completeaza numele si un PIN de minim 4 cifre.');
-      return;
-    }
-    addUser(newUserName, newUserRole, newUserPin);
-    setUsers(getUsers());
-    setNewUserName('');
-    setNewUserPin('');
-  }, [newUserName, newUserRole, newUserPin]);
+  const refreshUsers = useCallback(async () => {
+    const list = await listProfiles();
+    setUsers(list);
+  }, []);
 
-  const handleRemoveUser = useCallback((id: string) => {
-    if (id === currentUser?.id) { alert('Nu iti poti sterge propriul cont.'); return; }
-    if (!window.confirm('Stergi acest utilizator?')) return;
-    if (!removeUser(id)) alert('Nu poti sterge ultimul administrator.');
-    setUsers(getUsers());
-  }, [currentUser]);
+  useEffect(() => { if (canManageUsers) refreshUsers(); }, [canManageUsers, refreshUsers]);
+
+  const handleSetRole = useCallback(async (user: AppUser, role: UserRole) => {
+    setUsersError('');
+    const { error } = await updateProfile(user.id, { role, approved: true });
+    if (error) setUsersError(error); else refreshUsers();
+  }, [refreshUsers]);
+
+  const handleToggleApproved = useCallback(async (user: AppUser) => {
+    setUsersError('');
+    const { error } = await updateProfile(user.id, { approved: !user.approved });
+    if (error) setUsersError(error); else refreshUsers();
+  }, [refreshUsers]);
+
 
   /** Clears every browser cache and reloads — the reliable way to escape a
    *  stale bundle on phones, where a normal refresh often isn't enough. */
@@ -154,13 +155,6 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     window.location.replace(url.toString());
   }, []);
 
-  const handleResetPin = useCallback((user: AppUser) => {
-    const pin = window.prompt(`PIN nou pentru ${user.name} (minim 4 cifre):`);
-    if (pin && pin.length >= 4) {
-      updateUser({ ...user, pin });
-      setUsers(getUsers());
-    }
-  }, []);
 
   const SQL_FIX = `-- MEDITRACK — SCHEMA + MIGRARE (se poate rula de mai multe ori, in siguranta)
 -- 1. Deschide Supabase Dashboard -> SQL Editor
@@ -312,17 +306,9 @@ ALTER TABLE public.invoices   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deletions  ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow all public access" ON public.devices;
-DROP POLICY IF EXISTS "Allow all public access" ON public.tasks;
-DROP POLICY IF EXISTS "Allow all public access" ON public.invoices;
-DROP POLICY IF EXISTS "Allow all public access" ON public.audit_logs;
-DROP POLICY IF EXISTS "Allow all public access" ON public.deletions;
-
-CREATE POLICY "Allow all public access" ON public.devices    FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.tasks      FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.invoices   FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all public access" ON public.deletions  FOR ALL USING (true) WITH CHECK (true);
+-- Politicile de acces sunt create de scriptul "Conturi si acces" de mai jos.
+-- Acest script nu mai acorda acces public: pana rulezi si celalalt script,
+-- tabelele raman inchise.
 
 -- ── 5. Reincarca schema pentru API ──────────────────────────────────────────
 NOTIFY pgrst, 'reload schema';
@@ -359,6 +345,13 @@ NOTIFY pgrst, 'reload schema';
       setIsRepairing(false);
     }
   }, [onImport]);
+
+  const [copiedSec, setCopiedSec] = useState(false);
+  const handleCopySecuritySql = useCallback(() => {
+    navigator.clipboard.writeText(SECURITY_SQL);
+    setCopiedSec(true);
+    setTimeout(() => setCopiedSec(false), 2000);
+  }, []);
 
   const handleCopySql = useCallback(() => {
     navigator.clipboard.writeText(SQL_FIX);
@@ -473,6 +466,37 @@ NOTIFY pgrst, 'reload schema';
               {copied ? 'Copiat' : 'Copiaza SQL'}
             </button>
           </div>
+
+          <div className="flex items-center gap-4 mb-6 pt-4 border-t border-white/10">
+            <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Conturi si acces</h2>
+              <p className="text-[11px] text-emerald-300 font-bold">Ruleaza al doilea, dupa scriptul de schema</p>
+            </div>
+          </div>
+
+          <div className="p-4 mb-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+            <p className="text-[13px] text-amber-200 font-semibold leading-relaxed">
+              Pana rulezi acest script, tabelele nu au nicio politica de acces, deci sincronizarea
+              nu functioneaza. Dupa ce il rulezi, primul cont inregistrat devine automat
+              Administrator aprobat — inregistreaza-te tu primul.
+            </p>
+          </div>
+
+          <div className="bg-black/50 rounded-2xl p-6 shadow-inner relative border border-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
+            <pre className="text-xs font-mono text-emerald-100 break-all whitespace-pre-wrap leading-relaxed">
+              {SECURITY_SQL}
+            </pre>
+            <button
+              onClick={handleCopySecuritySql}
+              className="sticky top-0 float-right -mt-2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
+            >
+              {copiedSec ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedSec ? 'Copiat' : 'Copiaza SQL'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -489,41 +513,69 @@ NOTIFY pgrst, 'reload schema';
             </div>
           </div>
 
+          {usersError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+              <p className="text-xs font-bold text-red-600">{usersError}</p>
+            </div>
+          )}
+
           <div className="space-y-3 mb-8">
+            {users.length === 0 && (
+              <p className="text-sm font-semibold text-slate-400 py-6 text-center">
+                Niciun cont inca. Utilizatorii se inregistreaza singuri din ecranul de autentificare.
+              </p>
+            )}
             {users.map(u => (
-              <div key={u.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className="p-2.5 bg-white text-indigo-600 rounded-xl border border-slate-200"><Users className="w-4 h-4" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-900 truncate">{u.name} {u.id === currentUser?.id && <span className="text-[9px] text-blue-600 font-black uppercase">(tu)</span>}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ROLE_LABELS[u.role]}</p>
+              <div key={u.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className={`p-2.5 rounded-xl border shrink-0 self-start ${u.approved ? 'bg-white text-indigo-600 border-slate-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                  <Users className="w-4 h-4" />
                 </div>
-                <button onClick={() => handleResetPin(u)} className="p-2.5 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-slate-200 transition" title="Schimba PIN">
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleRemoveUser(u.id)} className="p-2.5 bg-white text-slate-400 hover:text-red-600 rounded-xl border border-slate-200 transition" title="Sterge utilizator">
-                  <Trash2 className="w-4 h-4" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-bold text-slate-900 truncate">
+                    {u.name}
+                    {u.id === currentUser?.id && <span className="ml-2 text-[11px] text-blue-600 font-bold">(tu)</span>}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-500 truncate">{u.email}</p>
+                  {!u.approved && (
+                    <p className="text-[11px] font-bold text-amber-600 mt-0.5">Asteapta aprobare</p>
+                  )}
+                </div>
+                <select
+                  value={u.role}
+                  onChange={e => handleSetRole(u, e.target.value as UserRole)}
+                  disabled={u.id === currentUser?.id}
+                  title={u.id === currentUser?.id ? 'Nu iti poti schimba propriul rol' : 'Schimba rolul'}
+                  className="px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-[13px] font-bold text-slate-700 outline-none disabled:opacity-50"
+                >
+                  {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <button
+                  onClick={() => handleToggleApproved(u)}
+                  disabled={u.id === currentUser?.id}
+                  className={`px-4 py-2.5 rounded-xl text-[13px] font-bold transition active:scale-95 disabled:opacity-50 whitespace-nowrap ${
+                    u.approved
+                      ? 'bg-white text-slate-500 border-2 border-slate-200 hover:text-red-600 hover:border-red-200'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  }`}
+                >
+                  {u.approved ? 'Suspenda' : 'Aproba'}
                 </button>
               </div>
             ))}
           </div>
 
-          <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adauga utilizator nou</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Nume complet"
-                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10" />
-              <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as UserRole)}
-                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none">
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-              <input value={newUserPin} onChange={e => setNewUserPin(e.target.value.replace(/\D/g, ''))} placeholder="PIN (min. 4 cifre)" inputMode="numeric" maxLength={6}
-                className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold font-mono outline-none focus:ring-4 focus:ring-indigo-500/10" />
-            </div>
-            <button onClick={handleAddUser} className="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4" /> Creeaza cont
-            </button>
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-              Roluri: Administrator (tot) · Tehnician (fara Financiar) · Contabil (cu Financiar, fara stergere) · Vizualizare (doar citire)
+          <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+            <p className="text-[13px] font-bold text-slate-500">Cum se adauga un utilizator</p>
+            <p className="text-sm font-medium text-slate-600 leading-relaxed">
+              Persoana isi creeaza singura cont din ecranul de autentificare, cu emailul si o parola
+              proprie. Contul apare aici imediat, marcat <span className="font-bold text-amber-600">Asteapta aprobare</span>,
+              si nu vede niciun fel de date pana cand nu ii alegi un rol si apesi <span className="font-bold">Aproba</span>.
+            </p>
+            <p className="text-[13px] font-semibold text-slate-500 leading-relaxed pt-1">
+              Roluri: <span className="text-slate-700">Administrator</span> (tot, inclusiv stergeri) ·
+              <span className="text-slate-700"> Tehnician</span> (fara Financiar) ·
+              <span className="text-slate-700"> Contabil</span> (cu Financiar) ·
+              <span className="text-slate-700"> Vizualizare</span> (doar citire)
             </p>
           </div>
         </div>

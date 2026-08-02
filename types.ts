@@ -221,10 +221,12 @@ export const MAINTENANCE_TYPE_RO: Record<MaintenanceType, string> = {
 export type UserRole = 'ADMIN' | 'TEHNICIAN' | 'CONTABIL' | 'VIZUALIZARE';
 
 export interface AppUser {
-  id: string;
+  id: string;          // the Supabase auth user id
   name: string;
+  email: string;
   role: UserRole;
-  pin: string;
+  /** Set by an administrator. Until then the database returns nothing. */
+  approved: boolean;
 }
 
 export type Permission = 'finance' | 'edit' | 'delete' | 'manageUsers';

@@ -50,7 +50,7 @@ const prefetchModules = () => {
 import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB } from './services/storageService';
-import { getCurrentUser, logout as authLogout } from './services/authService';
+import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import LoginScreen from './components/LoginScreen';
@@ -138,7 +138,11 @@ const App: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showDocScanner, setShowDocScanner] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => getCurrentUser());
+  // 'checking' while the stored session is validated, 'locked' when a session
+  // exists but this phone asks for its PIN first.
+  const [authState, setAuthState] = useState<'checking' | 'anon' | 'locked' | 'ready'>('checking');
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [lockedUser, setLockedUser] = useState<AppUser | null>(null);
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
@@ -161,9 +165,35 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const handleLogout = useCallback(() => {
-    authLogout();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const user = await getCurrentUser();
+      if (cancelled) return;
+      if (!user) { setAuthState('anon'); return; }
+      if (hasDeviceLock()) { setLockedUser(user); setAuthState('locked'); return; }
+      setCurrentUser(user);
+      setAuthState('ready');
+    })();
+
+    // Signing out in another tab, or a refresh token that finally expired
+    const unsubscribe = onAuthChange((signedIn) => {
+      if (!signedIn) { setCurrentUser(null); setLockedUser(null); setAuthState('anon'); }
+    });
+    return () => { cancelled = true; unsubscribe(); };
+  }, []);
+
+  const handleLogin = useCallback((user: AppUser) => {
+    setCurrentUser(user);
+    setLockedUser(null);
+    setAuthState('ready');
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    await authSignOut();
     setCurrentUser(null);
+    setLockedUser(null);
+    setAuthState('anon');
     setView('DASHBOARD');
   }, []);
 
@@ -287,7 +317,7 @@ const App: React.FC = () => {
     const entry: AuditEntry = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      userName: getCurrentUser()?.name || 'Necunoscut',
+      userName: getCachedProfile()?.name || 'Necunoscut',
       action, entity, entityId, entityName, details,
       updated_at: new Date().toISOString(),
     };
@@ -513,7 +543,10 @@ const App: React.FC = () => {
     }
   }, [normalizeDevice]);
 
-  useEffect(() => { loadAndSync(); }, [loadAndSync]);
+  // Syncing before the account is approved would only collect 401s
+  useEffect(() => {
+    if (isStandalone || currentUser?.approved) loadAndSync();
+  }, [loadAndSync, currentUser?.approved, isStandalone]);
 
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
@@ -704,8 +737,20 @@ const App: React.FC = () => {
   }, [isSupabaseConfigured, tasks, logAudit]);
 
   // Login gate — everything below requires an authenticated user
-  if (!currentUser && !isStandalone) {
-    return <LoginScreen onLogin={setCurrentUser} />;
+  if (!isStandalone) {
+    if (authState === 'checking') {
+      return (
+        <div className="theme-static fixed inset-0 bg-slate-950 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        </div>
+      );
+    }
+    if (authState === 'anon' || authState === 'locked') {
+      return <LoginScreen onLogin={handleLogin} lockedUser={authState === 'locked' ? lockedUser : null} />;
+    }
+    if (currentUser && !currentUser.approved) {
+      return <PendingApproval user={currentUser} onSignOut={handleLogout} />;
+    }
   }
 
   return (
@@ -933,6 +978,29 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+/** Shown to an account that exists but has not been given a role yet. */
+const PendingApproval: React.FC<{ user: AppUser; onSignOut: () => void }> = ({ user, onSignOut }) => (
+  <div className="theme-static fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[900]">
+    <div className="w-full max-w-sm text-center space-y-6 animate-slide-up">
+      <div className="w-16 h-16 mx-auto bg-amber-500/15 border border-amber-500/25 rounded-3xl flex items-center justify-center">
+        <ShieldCheck className="w-8 h-8 text-amber-400" />
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-xl font-bold text-white">Contul asteapta aprobarea</h1>
+        <p className="text-sm text-white/50 font-medium leading-relaxed">
+          Salut, {user.name}. Contul tau a fost creat, dar un administrator trebuie sa-ti acorde
+          un rol inainte sa poti vedea datele. Revino dupa ce primesti confirmarea.
+        </p>
+        <p className="text-xs text-white/30 font-semibold pt-1">{user.email}</p>
+      </div>
+      <button onClick={onSignOut}
+        className="w-full py-3.5 bg-white/5 border-2 border-white/10 hover:bg-white/10 text-white/70 rounded-2xl font-bold text-sm transition">
+        Iesi din cont
+      </button>
+    </div>
+  </div>
+);
 
 const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-4 w-full px-4 py-3.5 text-sm font-bold rounded-xl transition-all duration-200 group ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
