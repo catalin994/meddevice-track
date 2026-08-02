@@ -1,4 +1,4 @@
-import{g as is}from"./vendor-icons-kjGeLA4V.js";/*! *****************************************************************************
+import{g as is}from"./vendor-icons-D2ZBp8Ki.js";/*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
 
 Permission to use, copy, modify, and/or distribute this software for any
