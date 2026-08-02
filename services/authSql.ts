@@ -59,7 +59,12 @@ CREATE TRIGGER on_auth_user_created
 
 -- Daca ai deja conturi create inainte de acest script, le aduce in profiles.
 INSERT INTO public.profiles (id, email, name, role, approved)
-SELECT u.id, u.email, split_part(u.email, '@', 1), 'VIZUALIZARE', FALSE
+SELECT
+  u.id,
+  u.email,
+  COALESCE(NULLIF(u.raw_user_meta_data->>'name', ''), split_part(u.email, '@', 1)),
+  'VIZUALIZARE',
+  FALSE
 FROM auth.users u
 WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = u.id);
 
