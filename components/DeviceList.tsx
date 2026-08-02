@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight, LayoutGrid, Rows3 } from 'lucide-react';
 
 import Portal from './Portal';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
@@ -522,6 +522,73 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   );
 });
 
+/** Column track shared by the compact list's header and its rows so they line up. */
+const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_5.5rem] md:items-center md:gap-4';
+
+const DeviceRow = React.memo(({
+  device,
+  isSelected,
+  onToggleSelection,
+  onSelect,
+  onQuickEdit,
+  onDelete
+}: {
+  device: MedicalDevice,
+  isSelected: boolean,
+  onToggleSelection: (id: string) => void,
+  onSelect: (device: MedicalDevice) => void,
+  onQuickEdit: (e: React.MouseEvent, device: MedicalDevice) => void,
+  onDelete: (e: React.MouseEvent, id: string) => void
+}) => (
+  <div className={`group flex md:flex-none items-start md:items-center gap-3 px-3 sm:px-5 py-3 transition-colors ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'} ${LIST_GRID}`}>
+    <input
+      type="checkbox"
+      className="w-5 h-5 mt-0.5 md:mt-0 shrink-0 rounded-md border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500"
+      checked={isSelected}
+      onChange={() => onToggleSelection(device.id)}
+    />
+
+    {/* On phones the four data columns collapse into one stacked block */}
+    <div className="flex-1 min-w-0 md:contents cursor-pointer" onClick={() => onSelect(device)}>
+      <div className="min-w-0">
+        <h3 className="font-black text-slate-900 text-sm leading-snug break-words uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+          {device.name || 'Dispozitiv fara nume'}
+          {device.isCNCAN && <ShieldAlert className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500" />}
+        </h3>
+        {/* Phones get status and the rest of the data stacked here, so the name
+            keeps the full width of the row instead of a narrow column */}
+        <div className="md:hidden mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
+          <span className="text-[10px] font-mono font-bold text-slate-400 break-words">
+            {[device.department, device.model, device.serialNumber].filter(Boolean).join(' · ')}
+          </span>
+        </div>
+      </div>
+      <span className="hidden md:block text-xs font-bold text-slate-500 truncate">{device.department || '—'}</span>
+      <span className="hidden md:block text-xs font-black text-blue-600 truncate">{device.model || '—'}</span>
+      <span className="hidden md:block text-xs font-mono font-black text-slate-900 truncate">{device.serialNumber || '—'}</span>
+      <div className="hidden md:block"><StatusBadge status={device.status || DeviceStatus.ACTIVE} /></div>
+    </div>
+
+    <div className="flex items-center gap-1.5 shrink-0">
+      <button
+        onClick={(e) => onQuickEdit(e, device)}
+        className="p-2.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 rounded-xl transition active:scale-90"
+        title="Editare rapida"
+      >
+        <Edit2 className="w-4 h-4" />
+      </button>
+      <button
+        onClick={(e) => onDelete(e, device.id)}
+        className="p-2.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-xl transition active:scale-90"
+        title="Sterge dispozitiv"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+));
+
 /** Page numbers to show: always first and last, plus a window around the current one. */
 const pageWindow = (page: number, pageCount: number): (number | '…')[] => {
   if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -719,6 +786,16 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   });
   const [page, setPage] = useState(listState.page);
   const listTopRef = useRef<HTMLDivElement>(null);
+
+  // Compact rows drop the photo and the tag/category chips, so far more
+  // devices fit on screen at once.
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>(
+    () => (localStorage.getItem('meditrack_view_mode') === 'list' ? 'list' : 'cards')
+  );
+  const changeViewMode = useCallback((mode: 'cards' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('meditrack_view_mode', mode);
+  }, []);
 
   const changePageSize = useCallback((size: number) => {
     setPageSize(size);
@@ -1004,6 +1081,22 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+              <button
+                onClick={() => changeViewMode('cards')}
+                className={`p-2 rounded-lg transition ${viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Vizualizare carduri"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => changeViewMode('list')}
+                className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Vizualizare lista compacta"
+              >
+                <Rows3 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {selectedIds.size > 0 && (
@@ -1070,7 +1163,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {pageDevices.map((device) => (
+          {viewMode === 'cards' && pageDevices.map((device) => (
             <DeviceCard
               key={device.id}
               device={device}
@@ -1081,6 +1174,33 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onDelete={handleDeleteClick}
             />
           ))}
+
+          {viewMode === 'list' && pageDevices.length > 0 && (
+            <div className="hardware-card rounded-2xl sm:rounded-3xl overflow-hidden">
+              <div className={`hidden px-5 py-3 bg-slate-50/80 border-b border-slate-100 tech-label ${LIST_GRID}`}>
+                <span />
+                <span>Denumire</span>
+                <span>Departament</span>
+                <span>Model</span>
+                <span>Serie</span>
+                <span>Status</span>
+                <span>Actiuni</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {pageDevices.map((device) => (
+                  <DeviceRow
+                    key={device.id}
+                    device={device}
+                    isSelected={selectedIds.has(device.id)}
+                    onToggleSelection={toggleSelection}
+                    onSelect={onSelectDevice}
+                    onQuickEdit={handleOpenQuickEdit}
+                    onDelete={handleDeleteClick}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {filteredDevices.length > 0 && (
             <Pager
