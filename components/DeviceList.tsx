@@ -523,10 +523,11 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
 });
 
 /** Column track shared by the compact list's header and its rows so they line up. */
-const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_5.5rem] md:items-center md:gap-4';
+const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_2.5rem_minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_5.5rem] md:items-center md:gap-4';
 
 const DeviceRow = React.memo(({
   device,
+  index,
   isSelected,
   onToggleSelection,
   onSelect,
@@ -534,6 +535,7 @@ const DeviceRow = React.memo(({
   onDelete
 }: {
   device: MedicalDevice,
+  index: number,
   isSelected: boolean,
   onToggleSelection: (id: string) => void,
   onSelect: (device: MedicalDevice) => void,
@@ -547,6 +549,10 @@ const DeviceRow = React.memo(({
       checked={isSelected}
       onChange={() => onToggleSelection(device.id)}
     />
+
+    <span className="shrink-0 mt-0.5 md:mt-0 font-mono text-[11px] font-black text-slate-400 tabular-nums md:text-center">
+      {index}
+    </span>
 
     {/* On phones the four data columns collapse into one stacked block */}
     <div className="flex-1 min-w-0 md:contents cursor-pointer" onClick={() => onSelect(device)}>
@@ -654,6 +660,7 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
 
 const DeviceCard = React.memo(({
   device, 
+  index,
   isSelected, 
   onToggleSelection, 
   onSelect, 
@@ -661,6 +668,7 @@ const DeviceCard = React.memo(({
   onDelete 
 }: { 
   device: MedicalDevice, 
+  index: number,
   isSelected: boolean, 
   onToggleSelection: (id: string) => void, 
   onSelect: (device: MedicalDevice) => void, 
@@ -675,14 +683,15 @@ const DeviceCard = React.memo(({
       className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
       style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 160px' } as React.CSSProperties}
     >
-      {/* Selection Checkbox */}
-      <div className="absolute top-6 left-6 md:static">
+      {/* Selection checkbox, with the device's position in the list under it */}
+      <div className="absolute top-6 left-6 md:static flex items-center gap-2 md:flex-col md:gap-1.5">
         <input 
           type="checkbox" 
           className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all" 
           checked={isSelected} 
           onChange={() => onToggleSelection(device.id)} 
         />
+        <span className="font-mono text-[11px] font-black text-slate-400 tabular-nums">{index}</span>
       </div>
 
       {/* Asset Image/Icon */}
@@ -1163,10 +1172,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {viewMode === 'cards' && pageDevices.map((device) => (
+          {viewMode === 'cards' && pageDevices.map((device, i) => (
             <DeviceCard
               key={device.id}
               device={device}
+              index={(page - 1) * pageSize + i + 1}
               isSelected={selectedIds.has(device.id)}
               onToggleSelection={toggleSelection}
               onSelect={onSelectDevice}
@@ -1179,6 +1189,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <div className="hardware-card rounded-2xl sm:rounded-3xl overflow-hidden">
               <div className={`hidden px-5 py-3 bg-slate-50/80 border-b border-slate-100 tech-label ${LIST_GRID}`}>
                 <span />
+                <span className="text-center">Nr.</span>
                 <span>Denumire</span>
                 <span>Departament</span>
                 <span>Model</span>
@@ -1187,10 +1198,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 <span>Actiuni</span>
               </div>
               <div className="divide-y divide-slate-100">
-                {pageDevices.map((device) => (
+                {pageDevices.map((device, i) => (
                   <DeviceRow
                     key={device.id}
                     device={device}
+                    index={(page - 1) * pageSize + i + 1}
                     isSelected={selectedIds.has(device.id)}
                     onToggleSelection={toggleSelection}
                     onSelect={onSelectDevice}
