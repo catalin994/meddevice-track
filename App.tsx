@@ -724,7 +724,7 @@ const App: React.FC = () => {
         {!isStandalone && (
           <header className="h-16 sm:h-24 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0"><Menu className="w-5 h-5" /></button>
+               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 sm:p-2.5 bg-slate-50 border-2 border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0"><Menu className="w-5 h-5" /></button>
                <div className="min-w-0">
                  <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{VIEW_LABELS[view] || view.replace('_', ' ')}</h2>
                  <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
@@ -739,7 +739,7 @@ const App: React.FC = () => {
               )}
               <button
                 onClick={() => setShowPalette(true)}
-                className="hidden md:flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:border-blue-300 hover:text-slate-600 transition-colors"
+                className="hidden md:flex items-center gap-3 px-4 py-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:border-blue-300 hover:text-slate-700 transition-colors"
                 title="Cautare globala"
               >
                 <Search className="w-4 h-4" />
@@ -747,7 +747,7 @@ const App: React.FC = () => {
                 <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[9px] font-black">Ctrl K</kbd>
               </button>
               {/* Mobile: compact search icon */}
-              <button onClick={() => setShowPalette(true)} className="md:hidden p-2.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl" title="Cautare">
+              <button onClick={() => setShowPalette(true)} className="md:hidden p-2.5 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl" title="Cautare">
                 <Search className="w-4 h-4" />
               </button>
               <div className="hidden sm:block h-8 w-px bg-slate-200" />
@@ -756,7 +756,7 @@ const App: React.FC = () => {
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
-                <button onClick={handleLogout} className="p-2.5 sm:p-3 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 transition-colors" title="Delogare">
+                <button onClick={handleLogout} className="p-2.5 sm:p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare">
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>

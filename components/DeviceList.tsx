@@ -23,7 +23,7 @@ const FilterSelect = React.memo(({ label, value, onChange, options, labelFor }: 
   <div className="space-y-1 min-w-0">
     <label className="tech-label ml-1">{label}</label>
     <select
-      className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
+      className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -604,14 +604,14 @@ const DeviceRow = React.memo(({
     <div className="flex items-center gap-1.5 shrink-0">
       <button
         onClick={(e) => onQuickEdit(e, device)}
-        className="p-2.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 rounded-xl transition active:scale-90"
+        className="p-2.5 bg-white text-slate-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
         title="Editare rapida"
       >
         <Edit2 className="w-4 h-4" />
       </button>
       <button
         onClick={(e) => onDelete(e, device.id)}
-        className="p-2.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-xl transition active:scale-90"
+        className="p-2.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
         title="Sterge dispozitiv"
       >
         <Trash2 className="w-4 h-4" />
@@ -647,7 +647,7 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
           <button
             onClick={() => onGoTo(page - 1)}
             disabled={page === 1}
-            className="p-3 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
             title="Pagina anterioara"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -661,8 +661,8 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
                 onClick={() => onGoTo(n)}
                 className={`min-w-[2.5rem] px-2 py-2.5 rounded-xl text-[11px] font-black transition active:scale-90 ${
                   n === page
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                    ? 'bg-blue-600 border-2 border-blue-600 text-white shadow-lg shadow-blue-600/20'
+                    : 'bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
                 }`}
               >
                 {n}
@@ -672,7 +672,7 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
           <button
             onClick={() => onGoTo(page + 1)}
             disabled={page === pageCount}
-            className="p-3 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
             title="Pagina urmatoare"
           >
             <ChevronRight className="w-4 h-4" />
@@ -784,7 +784,7 @@ const DeviceCard = React.memo(({
       {/* Actions */}
       <div className="flex md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 w-full md:w-auto justify-center z-[100]">
         <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+          className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onQuickEdit(e, device)}
           title="Editare rapida"
         >
@@ -792,7 +792,7 @@ const DeviceCard = React.memo(({
           <span className="md:hidden tech-label text-[10px]">Editeaza</span>
         </button>
         <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 shadow-sm border border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+          className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
           onClick={(e) => onDelete(e, device.id)}
           title="Sterge dispozitiv"
         >
@@ -1065,14 +1065,14 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <input 
               type="text"
               placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, categorie, serie sau departament...'}
-              className="w-full pl-10 sm:pl-14 pr-3 sm:pr-6 py-3 sm:py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-xl sm:rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
+              className="w-full pl-10 sm:pl-14 pr-3 sm:pr-6 py-3 sm:py-4 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl sm:rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
             />
           </div>
           <button
             onClick={() => setShowFilters(f => !f)}
-            className={`sm:hidden relative shrink-0 p-3 rounded-xl transition-colors ${showFilters || activeFilterCount > 0 ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'}`}
+            className={`sm:hidden relative shrink-0 p-3 rounded-xl border-2 transition-colors ${showFilters || activeFilterCount > 0 ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-50 border-slate-200 text-slate-500'}`}
             title="Filtre"
           >
             <SlidersHorizontal className="w-5 h-5" />
@@ -1084,7 +1084,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           </button>
           <button
             onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); setFilterTag('ALL'); }}
-            className="shrink-0 p-3 sm:px-4 sm:py-4 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
+            className="shrink-0 p-3 sm:px-4 sm:py-4 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl sm:rounded-2xl hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all flex items-center justify-center"
             title="Reseteaza filtrele"
           >
             <RotateCcw className="w-5 h-5" />
@@ -1120,23 +1120,23 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               <select
                 value={pageSize}
                 onChange={(e) => changePageSize(Number(e.target.value))}
-                className="px-3 py-2 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[11px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner cursor-pointer"
+                className="px-3 py-2 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[11px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner cursor-pointer"
                 title="Cate dispozitive se afiseaza pe o pagina"
               >
                 {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
-            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl">
+            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 border-2 border-slate-200 rounded-2xl">
               <button
                 onClick={() => changeViewMode('cards')}
-                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
                 title="Vizualizare carduri"
               >
                 <LayoutGrid className="w-6 h-6" />
               </button>
               <button
                 onClick={() => changeViewMode('list')}
-                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
                 title="Vizualizare lista compacta"
               >
                 <Rows3 className="w-6 h-6" />
