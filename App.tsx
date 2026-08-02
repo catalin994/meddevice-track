@@ -724,7 +724,15 @@ const App: React.FC = () => {
         {!isStandalone && (
           <header className="h-16 sm:h-24 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 sm:p-2.5 bg-slate-50 border-2 border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0"><Menu className="w-5 h-5" /></button>
+               <button
+                 onClick={() => setSidebarOpen(true)}
+                 aria-label="Deschide meniul"
+                 title="Deschide meniul"
+                 className="lg:hidden shrink-0 flex items-center gap-2 pl-3 pr-3.5 py-3 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-900/20 hover:bg-blue-600 active:scale-95 transition-all"
+               >
+                 <Menu className="w-6 h-6 shrink-0" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Meniu</span>
+               </button>
                <div className="min-w-0">
                  <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{VIEW_LABELS[view] || view.replace('_', ' ')}</h2>
                  <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
@@ -938,14 +946,24 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
   <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
     <div className="h-full flex flex-col relative">
       <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
-      <div className="p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
-        <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20">
+      <div className="p-6 lg:p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
+        <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20 shrink-0">
           <Stethoscope className="w-6 h-6 text-blue-400" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">MediTrack</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Fleet Registry v3.1</p>
+          {/* The close button takes this room on phones, and the subtitle
+              wrapped to two lines rather than fitting beside it */}
+          <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Fleet Registry v3.1</p>
         </div>
+        <button
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Inchide meniul"
+          title="Inchide meniul"
+          className="lg:hidden ml-auto shrink-0 p-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 active:scale-95 transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
       <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar bg-white">
         <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operatiuni</p></div>
