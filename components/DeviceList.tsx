@@ -1,12 +1,37 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight, LayoutGrid, Rows3 } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight, LayoutGrid, Rows3, SlidersHorizontal } from 'lucide-react';
 
 import Portal from './Portal';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 const PAGE_SIZES = [10, 20, 50, 100];
+
+/**
+ * One dropdown per filter. The label above says which filter it is, so the
+ * "all" option can stay a short "Toate" and the control fits two-per-row on a
+ * phone instead of taking a full row each.
+ */
+const FilterSelect = React.memo(({ label, value, onChange, options, labelFor }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly string[];
+  labelFor?: (v: string) => string;
+}) => (
+  <div className="space-y-1 min-w-0">
+    <label className="tech-label ml-1">{label}</label>
+    <select
+      className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="ALL">Toate</option>
+      {options.map(o => <option key={o} value={o}>{(labelFor ? labelFor(o) : o).toUpperCase()}</option>)}
+    </select>
+  </div>
+));
 
 /**
  * The list unmounts while you look at a device, so without this every trip into
@@ -801,6 +826,23 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(
     () => (localStorage.getItem('meditrack_view_mode') === 'list' ? 'list' : 'cards')
   );
+  // The four dropdowns take most of a phone screen, so they collapse behind a
+  // toggle — opened automatically when a filter is already applied.
+  const activeFilterCount =
+    (filterDept !== 'ALL' ? 1 : 0) + (filterCategory !== 'ALL' ? 1 : 0) +
+    (filterStatus !== 'ALL' ? 1 : 0) + (filterTag !== 'ALL' ? 1 : 0);
+  const [showFilters, setShowFilters] = useState(() => activeFilterCount > 0);
+
+  // A placeholder can't be shortened with CSS, so track the breakpoint itself
+  // — otherwise rotating the phone leaves the long desktop text in place.
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const onChange = () => setIsNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const changeViewMode = useCallback((mode: 'cards' | 'list') => {
     setViewMode(mode);
     localStorage.setItem('meditrack_view_mode', mode);
@@ -1016,57 +1058,51 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       )}
 
       {/* FILTER CONTROLS */}
-      <div className="hardware-card p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] flex flex-col gap-6">
-        <div className="flex flex-col lg:flex-row items-center gap-4 w-full">
-          <div className="relative flex-1 w-full group">
-            <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />
+      <div className="hardware-card p-3 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col gap-3 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 w-full">
+          <div className="relative flex-1 min-w-0 group">
+            <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />
             <input 
               type="text"
-              placeholder="Cauta dupa nume, categorie, serie sau departament..."
-              className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
+              placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, categorie, serie sau departament...'}
+              className="w-full pl-10 sm:pl-14 pr-3 sm:pr-6 py-3 sm:py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-xl sm:rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
             />
           </div>
           <button
+            onClick={() => setShowFilters(f => !f)}
+            className={`sm:hidden relative shrink-0 p-3 rounded-xl transition-colors ${showFilters || activeFilterCount > 0 ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'}`}
+            title="Filtre"
+          >
+            <SlidersHorizontal className="w-5 h-5" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 bg-slate-900 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => { setLocalSearch(''); setFilterStatus('ALL'); setFilterDept('ALL'); setFilterCategory('ALL'); setFilterTag('ALL'); }}
-            className="px-4 py-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
+            className="shrink-0 p-3 sm:px-4 sm:py-4 bg-slate-50 text-slate-400 rounded-xl sm:rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all shadow-inner flex items-center justify-center"
             title="Reseteaza filtrele"
           >
             <RotateCcw className="w-5 h-5" />
           </button>
         </div>
 
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
-          <div className="space-y-1">
-            <label className="tech-label ml-1">Departament</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-              <option value="ALL">TOATE DEPARTAMENTELE</option>
-              {allAvailableDepartments.map(dept => <option key={dept} value={dept}>{dept.toUpperCase()}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="tech-label ml-1">Categorie</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="ALL">TOATE CATEGORIILE</option>
-              {DEVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="tech-label ml-1">Status</label>
-            <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
-              <option value="ALL">TOATE STATUSURILE</option>
-              {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s].toUpperCase()}</option>)}
-            </select>
-          </div>
+        <div className={`${showFilters ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2 sm:gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
+          <FilterSelect label="Departament" value={filterDept} onChange={setFilterDept} options={allAvailableDepartments} />
+          <FilterSelect label="Categorie" value={filterCategory} onChange={setFilterCategory} options={DEVICE_CATEGORIES as readonly string[]} />
+          <FilterSelect
+            label="Status"
+            value={filterStatus}
+            onChange={(v) => setFilterStatus(v as any)}
+            options={Object.values(DeviceStatus)}
+            labelFor={(s) => DEVICE_STATUS_RO[s as DeviceStatus] || s}
+          />
           {allTags.length > 0 && (
-            <div className="space-y-1">
-              <label className="tech-label ml-1">Eticheta</label>
-              <select className="w-full px-5 py-3.5 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
-                <option value="ALL">TOATE ETICHETELE</option>
-                {allTags.map(tag => <option key={tag} value={tag}>{tag.toUpperCase()}</option>)}
-              </select>
-            </div>
+            <FilterSelect label="Eticheta" value={filterTag} onChange={setFilterTag} options={allTags} />
           )}
         </div>
       </div>
