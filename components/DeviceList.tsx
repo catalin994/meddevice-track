@@ -516,6 +516,7 @@ interface DeviceListProps {
   onAddDevice: () => void;
   onDelete: (id: string) => void;
   searchQuery?: string;
+  canDelete?: boolean;
 }
 
 const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
@@ -557,7 +558,8 @@ const DeviceRow = React.memo(({
   onToggleSelection,
   onSelect,
   onQuickEdit,
-  onDelete
+  onDelete,
+  canDelete
 }: {
   device: MedicalDevice,
   index: number,
@@ -565,7 +567,8 @@ const DeviceRow = React.memo(({
   onToggleSelection: (id: string) => void,
   onSelect: (device: MedicalDevice) => void,
   onQuickEdit: (e: React.MouseEvent, device: MedicalDevice) => void,
-  onDelete: (e: React.MouseEvent, id: string) => void
+  onDelete: (e: React.MouseEvent, id: string) => void,
+  canDelete: boolean
 }) => (
   <div className={`group flex flex-wrap md:flex-none items-start md:items-center gap-x-3 gap-y-2 px-3 sm:px-5 py-3 transition-colors ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'} ${LIST_GRID}`}>
     <input
@@ -608,13 +611,15 @@ const DeviceRow = React.memo(({
       >
         <Edit2 className="w-4 h-4" />
       </button>
-      <button
-        onClick={(e) => onDelete(e, device.id)}
-        className="p-2.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
-        title="Sterge dispozitiv"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {canDelete && (
+        <button
+          onClick={(e) => onDelete(e, device.id)}
+          className="p-2.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
+          title="Sterge dispozitiv"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
 
     {/* Status, sectie, model and serial on one line. As a basis-full sibling it
@@ -708,7 +713,8 @@ const DeviceCard = React.memo(({
   onToggleSelection, 
   onSelect, 
   onQuickEdit, 
-  onDelete 
+  onDelete,
+  canDelete
 }: { 
   device: MedicalDevice, 
   index: number,
@@ -716,7 +722,8 @@ const DeviceCard = React.memo(({
   onToggleSelection: (id: string) => void, 
   onSelect: (device: MedicalDevice) => void, 
   onQuickEdit: (e: React.MouseEvent, device: MedicalDevice) => void, 
-  onDelete: (e: React.MouseEvent, id: string) => void 
+  onDelete: (e: React.MouseEvent, id: string) => void,
+  canDelete: boolean
 }) => {
   // `auto` in containIntrinsicSize lets the browser remember each card's real
   // height, so cards whose name wraps to two lines don't make the scrollbar
@@ -809,20 +816,22 @@ const DeviceCard = React.memo(({
           <Edit2 className="w-4 h-4" />
           <span className="md:hidden tech-label text-[10px]">Editeaza</span>
         </button>
-        <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
-          onClick={(e) => onDelete(e, device.id)}
-          title="Sterge dispozitiv"
-        >
-          <Trash2 className="w-4 h-4" />
-          <span className="md:hidden tech-label text-[10px]">Sterge</span>
-        </button>
+        {canDelete && (
+          <button 
+            className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+            onClick={(e) => onDelete(e, device.id)}
+            title="Sterge dispozitiv"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="md:hidden tech-label text-[10px]">Sterge</span>
+          </button>
+        )}
       </div>
     </div>
   );
 });
 
-const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '' }) => {
+const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '', canDelete = true }) => {
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>(listState.status);
   const [filterDept, setFilterDept] = useState<string | 'ALL'>(listState.dept);
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>(listState.category);
@@ -1236,6 +1245,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onSelect={onSelectDevice}
               onQuickEdit={handleOpenQuickEdit}
               onDelete={handleDeleteClick}
+              canDelete={canDelete}
             />
           ))}
 
@@ -1262,6 +1272,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                     onSelect={onSelectDevice}
                     onQuickEdit={handleOpenQuickEdit}
                     onDelete={handleDeleteClick}
+                    canDelete={canDelete}
                   />
                 ))}
               </div>

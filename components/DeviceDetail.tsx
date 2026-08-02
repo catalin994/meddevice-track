@@ -24,9 +24,10 @@ interface DeviceDetailProps {
   isStandalone?: boolean;
   invoices?: Invoice[];
   auditEntries?: AuditEntry[];
+  canDelete?: boolean;
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [] }) => {
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], canDelete = true }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
   const [tagInput, setTagInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -270,7 +271,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                ) : (
                  <>
                    <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl shadow-lg font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest active:scale-95 transition hover:bg-slate-800"><Edit2 className="w-4 h-4 shrink-0" /> Editeaza</button>
-                   <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
+                   {canDelete && (
+                     <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
+                   )}
                  </>
                )
              )}

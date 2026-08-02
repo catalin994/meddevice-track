@@ -550,6 +550,7 @@ const App: React.FC = () => {
 
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
+    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge echipamente.'); return; }
     const safeId = String(id).trim();
     const target = devicesMap.get(safeId);
     logAudit('delete', 'device', safeId, target?.name || safeId, target ? `SN: ${target.serialNumber}` : undefined);
@@ -572,7 +573,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, devicesMap, logAudit, recordDeletion]);
+  }, [isSupabaseConfigured, devicesMap, logAudit, recordDeletion, canDelete]);
 
   const handleUpsertDevices = useCallback(async (data: MedicalDevice | MedicalDevice[]) => {
     const now = new Date().toISOString();
@@ -662,6 +663,7 @@ const App: React.FC = () => {
   }, [isSupabaseConfigured, invoices, logAudit, recordDeletion]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
+    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge facturi.'); return; }
     if (!id) return;
     const target = invoices.find(i => i.id === id);
     logAudit('delete', 'invoice', id, target?.invoiceNumber || id, target ? `${target.supplier} · ${target.amount} ${target.currency}` : undefined);
@@ -679,7 +681,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, invoices, logAudit]);
+  }, [isSupabaseConfigured, invoices, logAudit, canDelete]);
 
   const handleSaveContract = useCallback(async (contract: Contract, deviceIds: string[]) => {
     const targets = devices.filter(d => deviceIds.includes(d.id));
@@ -717,6 +719,7 @@ const App: React.FC = () => {
 
   const handleDeleteTask = useCallback(async (id: string) => {
     if (!id) return;
+    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge tichete.'); return; }
     const safeId = String(id).trim();
     const target = tasks.find(t => t.id === safeId);
     logAudit('delete', 'task', safeId, target?.title || safeId, target?.deviceName);
@@ -734,7 +737,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, tasks, logAudit]);
+  }, [isSupabaseConfigured, tasks, logAudit, canDelete]);
 
   // Login gate — everything below requires an authenticated user
   if (!isStandalone) {
@@ -874,7 +877,7 @@ const App: React.FC = () => {
                 </div>
               }>
                 {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} />}
-                {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={handleSelectDevice} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={handleAddDevice} />}
+                {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={handleSelectDevice} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={handleAddDevice} canDelete={canDelete} />}
                 {view === 'DEVICE_DETAIL' && selectedDevice && (
                   <DeviceDetail 
                     device={selectedDevice} 
@@ -882,7 +885,8 @@ const App: React.FC = () => {
                     tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())} 
                     onBack={goBack} 
                     onUpdate={handleUpsertDevices} 
-                    onDelete={handleDeleteDevice} 
+                    onDelete={handleDeleteDevice}
+                    canDelete={canDelete}
                     onAddTask={handleUpsertTasks}
                     isStandalone={isStandalone}
                     invoices={invoices}
