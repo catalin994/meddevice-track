@@ -59,14 +59,14 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
-          <div className="flex items-center justify-between mb-10">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
             <div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Starea Flotei</h3>
-              <p className="tech-label mt-1">Distributie status in timp real</p>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea Flotei</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">Distributie status in timp real</p>
             </div>
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-               <span className="tech-label text-[10px]">Timp real</span>
+               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Timp real</span>
             </div>
           </div>
           <Suspense fallback={<div className="h-72 flex items-center justify-center"><div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}>
@@ -75,26 +75,26 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         </div>
 
         <div className="lg:col-span-5 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
             <div>
-              <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Interventii Prioritare</h3>
-              <p className="tech-label mt-1">Operatiuni cu prioritate ridicata</p>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Interventii Prioritare</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">Operatiuni cu prioritate ridicata</p>
             </div>
-            <span className="px-3 py-1 bg-slate-900 text-white rounded-lg tech-label text-[10px]">Prioritate maxima</span>
+            <span className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[11px] font-bold whitespace-nowrap">Prioritate maxima</span>
           </div>
           <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {dispatchTasks.map(task => (
               <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-all duration-300">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{task.title}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                       <span className="tech-label text-[10px]">{task.department}</span>
+                    <p className="text-[15px] font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">{task.title}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+                       <span className="text-xs font-semibold text-slate-500">{task.department}</span>
                        <div className="w-1 h-1 rounded-full bg-slate-300" />
-                       <span className="tech-label text-[10px] font-mono">{task.id}</span>
+                       <span className="text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">{task.id}</span>
                     </div>
                   </div>
-                  <div className={`shrink-0 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
+                  <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
                     {TASK_PRIORITY_RO[task.priority]}
                   </div>
                 </div>
@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
             {tasks.length === 0 && (
               <div className="py-20 text-center">
                  <CheckCircle className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                 <p className="tech-label">Niciun tichet critic activ</p>
+                 <p className="text-sm font-semibold text-slate-400">Niciun tichet critic activ</p>
               </div>
             )}
           </div>
@@ -111,38 +111,38 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       </div>
 
       <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
-        <div className="flex justify-between items-center mb-10">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
           <div>
-            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Monitor Mentenante</h3>
-            <p className="tech-label mt-1">Program preventiv 30 zile</p>
+            <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Monitor Mentenante</h3>
+            <p className="text-[13px] font-semibold text-slate-500 mt-1">Program preventiv 30 zile</p>
           </div>
           <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
             <Wrench className="w-6 h-6" />
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
           {upcomingMaintenance.map(device => (
-            <div key={device.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center gap-5 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
-              <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : device.daysRemaining < 7 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
-                <Clock className="w-6 h-6" />
+            <div key={device.id} className="p-4 sm:p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center gap-3 sm:gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
+              <div className={`p-3 shrink-0 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : device.daysRemaining < 7 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
+                <Clock className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-slate-900 truncate tracking-tight">{device.model}</p>
-                <p className="tech-label text-[10px] mt-1 truncate">{device.department}</p>
+                <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words" title={device.model}>{device.model}</p>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate">{device.department}</p>
               </div>
-              <div className="text-right">
-                <p className={`text-sm font-black font-mono ${device.daysRemaining < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                  {device.daysRemaining < 0 ? 'INTARZIAT' : `T-${device.daysRemaining}Z`}
+              <div className="text-right shrink-0">
+                <p className={`text-[15px] font-bold whitespace-nowrap ${device.daysRemaining < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                  {device.daysRemaining < 0 ? 'Intarziat' : `${device.daysRemaining} zile`}
                 </p>
-                <p className="tech-label text-[10px] mt-1">{device.nextMaintenanceDate}</p>
+                <p className="text-[11px] font-semibold text-slate-500 mt-1 whitespace-nowrap">{device.nextMaintenanceDate}</p>
               </div>
             </div>
           ))}
           {upcomingMaintenance.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
-              <p className="tech-label">Totul operational. Nicio mentenanta programata.</p>
+              <p className="text-sm font-semibold text-slate-400">Totul operational. Nicio mentenanta programata.</p>
             </div>
           )}
         </div>
@@ -157,11 +157,11 @@ const StatCard = React.memo(({ title, value, icon, trend, color, bgColor }: { ti
       <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${bgColor} ${color}`}>
         {icon}
       </div>
-      <span className={`tech-label text-[10px] px-2 py-0.5 rounded-full ${bgColor} ${color}`}>{trend}</span>
+      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${bgColor} ${color}`}>{trend}</span>
     </div>
     <div>
-      <p className="tech-label">{title}</p>
-      <p className="text-3xl font-black text-slate-900 mt-1 font-mono tracking-tighter">{value}</p>
+      <p className="text-[13px] font-bold text-slate-500 leading-snug min-h-[2.1rem]">{title}</p>
+      <p className="text-4xl font-extrabold text-slate-900 mt-1 tabular-nums tracking-tight">{value}</p>
     </div>
   </div>
 ));
