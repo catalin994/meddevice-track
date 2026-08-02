@@ -7,7 +7,8 @@ const STORE_TASKS = 'tasks';
 const STORE_INVOICES = 'invoices';
 const STORE_AUDIT = 'audit';
 const STORE_DELETIONS = 'deletions';
-const DB_VERSION = 6;
+const STORE_BLOBS = 'fileblobs';
+const DB_VERSION = 7;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -41,6 +42,10 @@ export const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_DELETIONS)) {
         db.createObjectStore(STORE_DELETIONS, { keyPath: 'id' });
+      }
+      // Documents fetched from Storage, so they stay readable without signal
+      if (!db.objectStoreNames.contains(STORE_BLOBS)) {
+        db.createObjectStore(STORE_BLOBS);
       }
     };
 
@@ -244,5 +249,47 @@ export const getStorageStats = async () => {
     const store = transaction.objectStore(STORE_DEVICES);
     const countRequest = store.count();
     countRequest.onsuccess = () => resolve({ count: countRequest.result });
+  });
+};
+
+/* ── Local copies of files kept in Supabase Storage ─────────────────────── */
+
+export const cacheBlob = async (path: string, blob: Blob): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_BLOBS, 'readwrite');
+    tx.objectStore(STORE_BLOBS).put(blob, path);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const getCachedBlob = async (path: string): Promise<Blob | null> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_BLOBS, 'readonly');
+    const request = tx.objectStore(STORE_BLOBS).get(path);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const deleteCachedBlob = async (path: string): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_BLOBS, 'readwrite');
+    tx.objectStore(STORE_BLOBS).delete(path);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (event: any) => reject(event.target.error);
+  });
+};
+
+export const getCachedFileStats = async (): Promise<{ count: number }> => {
+  const db = await initDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(STORE_BLOBS, 'readonly');
+    const request = tx.objectStore(STORE_BLOBS).count();
+    request.onsuccess = () => resolve({ count: request.result });
+    request.onerror = () => resolve({ count: 0 });
   });
 };

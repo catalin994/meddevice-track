@@ -76,7 +76,10 @@ export interface TaskAttachment {
   id: string;
   name: string;
   kind: 'image' | 'video' | 'file';
-  url: string;       // data URL
+  /** Key in Supabase Storage. Newer records use this instead of `url`. */
+  path?: string;
+  /** Legacy inline data URL, kept so old records still open. */
+  url?: string;
   size: number;      // bytes
   dateAdded: string;
 }
@@ -123,7 +126,11 @@ export interface DeviceFile {
   id: string;
   name: string;
   type: 'manual' | 'report' | 'image' | 'other' | 'service' | 'achizitie';
-  url: string;
+  /** Key in Supabase Storage. Newer records use this instead of `url`. */
+  path?: string;
+  /** Legacy inline data URL, kept so old records still open. */
+  url?: string;
+  size?: number;
   dateAdded: string;
 }
 
@@ -272,7 +279,10 @@ export interface Invoice {
   contractNumber?: string;   // optional link to a service contract
   deviceIds: string[];       // devices this cost is associated with
   description?: string;
-  fileUrl?: string;          // attached invoice PDF (data URL)
+  /** Key in Supabase Storage for the attached invoice PDF. */
+  filePath?: string;
+  /** Legacy inline data URL, kept so old invoices still open. */
+  fileUrl?: string;
   fileName?: string;
   updated_at?: string;
 }

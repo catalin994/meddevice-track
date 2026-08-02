@@ -53,6 +53,7 @@ import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFr
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
+import { buildPath, uploadDataUrl } from './services/fileStorage';
 import LoginScreen from './components/LoginScreen';
 
 const VIEW_LABELS: Record<string, string> = {
@@ -711,6 +712,80 @@ const App: React.FC = () => {
     await handleUpsertDevices(updated);
   }, [devices, handleUpsertDevices]);
 
+  /**
+   * Moves documents that are still inline base64 into Storage.
+   *
+   * Every one of them is downloaded by every phone on every sync while it sits
+   * in the row, so this is the step that actually makes syncing cheap. Runs one
+   * file at a time and stops at the first failure rather than leaving records
+   * half-rewritten.
+   */
+  const migrateFilesToStorage = useCallback(async (
+    onProgress?: (done: number, total: number, label: string) => void
+  ) => {
+    const jobs: Array<{ kind: 'device' | 'task' | 'invoice'; ownerId: string; id: string; name: string; dataUrl: string }> = [];
+
+    devices.forEach(d => (d.files || []).forEach(f => {
+      if (!f.path && f.url?.startsWith('data:')) {
+        jobs.push({ kind: 'device', ownerId: d.id, id: f.id, name: f.name, dataUrl: f.url });
+      }
+    }));
+    tasks.forEach(t => (t.attachments || []).forEach(a => {
+      if (!a.path && a.url?.startsWith('data:')) {
+        jobs.push({ kind: 'task', ownerId: t.id, id: a.id, name: a.name, dataUrl: a.url });
+      }
+    }));
+    invoices.forEach(inv => {
+      if (!inv.filePath && inv.fileUrl?.startsWith('data:')) {
+        jobs.push({ kind: 'invoice', ownerId: inv.id, id: inv.id, name: inv.fileName || 'factura.pdf', dataUrl: inv.fileUrl });
+      }
+    });
+
+    if (jobs.length === 0) return { moved: 0, total: 0, error: null as string | null };
+
+    const paths = new Map<string, string>();
+    let moved = 0;
+    for (const job of jobs) {
+      onProgress?.(moved, jobs.length, job.name);
+      const folder = job.kind === 'device' ? 'devices' : job.kind === 'task' ? 'tasks' : 'invoices';
+      const { path, error } = await uploadDataUrl(buildPath(folder, job.ownerId, job.id, job.name), job.dataUrl);
+      if (error || !path) return { moved, total: jobs.length, error };
+      paths.set(`${job.kind}:${job.ownerId}:${job.id}`, path);
+      moved++;
+    }
+    onProgress?.(moved, jobs.length, '');
+
+    const touchedDevices = devices
+      .filter(d => (d.files || []).some(f => paths.has(`device:${d.id}:${f.id}`)))
+      .map(d => ({
+        ...d,
+        files: (d.files || []).map(f => {
+          const path = paths.get(`device:${d.id}:${f.id}`);
+          return path ? { ...f, path, url: undefined } : f;
+        }),
+      }));
+
+    const touchedTasks = tasks
+      .filter(t => (t.attachments || []).some(a => paths.has(`task:${t.id}:${a.id}`)))
+      .map(t => ({
+        ...t,
+        attachments: (t.attachments || []).map(a => {
+          const path = paths.get(`task:${t.id}:${a.id}`);
+          return path ? { ...a, path, url: undefined } : a;
+        }),
+      }));
+
+    const touchedInvoices = invoices
+      .filter(inv => paths.has(`invoice:${inv.id}:${inv.id}`))
+      .map(inv => ({ ...inv, filePath: paths.get(`invoice:${inv.id}:${inv.id}`), fileUrl: undefined }));
+
+    if (touchedDevices.length) await handleUpsertDevices(touchedDevices);
+    if (touchedTasks.length) await handleUpsertTasks(touchedTasks);
+    for (const inv of touchedInvoices) await handleUpsertInvoice(inv);
+
+    return { moved, total: jobs.length, error: null as string | null };
+  }, [devices, tasks, invoices, handleUpsertDevices, handleUpsertTasks, handleUpsertInvoice]);
+
   const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
     navigate('DEVICE_DETAIL', d.id);
   }, [navigate]);
@@ -943,7 +1018,7 @@ const App: React.FC = () => {
                     <p className="text-xs text-slate-400 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
                   </div>
                 )}
-                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} />}
+                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} onMigrateFiles={migrateFilesToStorage} />}
               </Suspense>
             </div>
           )}

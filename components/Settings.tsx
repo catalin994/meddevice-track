@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
@@ -16,9 +16,10 @@ interface SettingsProps {
   onImport: (devices: MedicalDevice[]) => void;
   auditLog?: AuditEntry[];
   currentUser?: AppUser | null;
+  onMigrateFiles?: (onProgress?: (done: number, total: number, label: string) => void) => Promise<{ moved: number; total: number; error: string | null }>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], currentUser = null }) => {
+const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], currentUser = null, onMigrateFiles }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
   const [inputUrl, setInputUrl] = useState(config.url || '');
@@ -113,6 +114,36 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   }, [devices, refreshCloudCount]);
 
   // User management (admin only)
+  // How much is still stored as base64 inside the rows themselves
+  const inlineFiles = useMemo(() => {
+    let count = 0, bytes = 0;
+    devices.forEach(d => (d.files || []).forEach(f => {
+      if (!f.path && f.url?.startsWith('data:')) { count++; bytes += Math.round(f.url.length * 0.75); }
+    }));
+    return { count, mb: bytes / (1024 * 1024) };
+  }, [devices]);
+
+  const [migrating, setMigrating] = useState(false);
+  const [migrateProgress, setMigrateProgress] = useState({ done: 0, total: 0, label: '' });
+  const [migrateResult, setMigrateResult] = useState<string | null>(null);
+
+  const handleMigrateFiles = useCallback(async () => {
+    if (!onMigrateFiles) return;
+    setMigrating(true);
+    setMigrateResult(null);
+    setMigrateProgress({ done: 0, total: 0, label: '' });
+    try {
+      const res = await onMigrateFiles((done, total, label) => setMigrateProgress({ done, total, label }));
+      if (res.error) setMigrateResult(`S-au mutat ${res.moved} din ${res.total}, apoi a aparut o eroare: ${res.error}`);
+      else if (res.total === 0) setMigrateResult('Nu mai exista documente de mutat — totul e deja in Storage.');
+      else setMigrateResult(`Gata: ${res.moved} documente mutate in Storage.`);
+    } catch (err: any) {
+      setMigrateResult(`Mutarea a esuat: ${err?.message || err}`);
+    } finally {
+      setMigrating(false);
+    }
+  }, [onMigrateFiles]);
+
   const canManageUsers = hasPermission(currentUser, 'manageUsers');
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersError, setUsersError] = useState('');
@@ -499,6 +530,68 @@ NOTIFY pgrst, 'reload schema';
           </div>
         </div>
       </div>
+
+      {/* FILE STORAGE MIGRATION */}
+      {onMigrateFiles && (
+        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+          <div className="flex items-center gap-5 mb-6">
+            <div className="p-5 bg-emerald-100 text-emerald-600 rounded-3xl">
+              <HardDrive className="w-10 h-10" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Documente in Storage</h2>
+              <p className="text-sm text-slate-500 font-semibold mt-1">Scoate fisierele din interiorul randurilor</p>
+            </div>
+          </div>
+
+          {inlineFiles.count === 0 ? (
+            <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-emerald-800 leading-relaxed">
+                Toate documentele sunt deja in Storage. Sincronizarea nu le mai transporta la fiecare rulare.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="p-5 bg-amber-50 border border-amber-100 rounded-2xl mb-5">
+                <p className="text-sm font-semibold text-amber-900 leading-relaxed">
+                  <span className="font-black">
+                    {inlineFiles.count === 1 ? 'Un document' : `${inlineFiles.count} documente`}
+                  </span>{inlineFiles.mb >= 0.1 ? ` (~${inlineFiles.mb.toFixed(1)} MB)` : ''}
+                  {inlineFiles.count === 1 ? ' este' : ' sunt'} inca salvat
+                  {inlineFiles.count === 1 ? '' : 'e'} in interiorul randurilor dispozitivelor.
+                  Fiecare telefon le descarca integral la fiecare sincronizare.
+                  Mutarea lor in Storage lasa in rand doar o referinta.
+                </p>
+              </div>
+              <button
+                onClick={handleMigrateFiles}
+                disabled={migrating}
+                className="w-full sm:w-auto px-8 py-4 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition shadow-xl shadow-emerald-600/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+              >
+                {migrating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                {migrating ? 'Se muta...' : 'Muta documentele in Storage'}
+              </button>
+            </>
+          )}
+
+          {migrating && migrateProgress.total > 0 && (
+            <div className="mt-5 space-y-2">
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${Math.round((migrateProgress.done / migrateProgress.total) * 100)}%` }} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 truncate">
+                {migrateProgress.done} / {migrateProgress.total} · {migrateProgress.label}
+              </p>
+            </div>
+          )}
+
+          {migrateResult && (
+            <p className="mt-5 text-sm font-semibold text-slate-700">{migrateResult}</p>
+          )}
+        </div>
+      )}
 
       {/* USER MANAGEMENT — admin only */}
       {canManageUsers && (

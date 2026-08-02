@@ -8,6 +8,7 @@ import {
 import { MedicalDevice, Invoice, InvoiceStatus, Contract } from '../types';
 import ContractManager from './ContractManager';
 import { saveFileAs } from '../services/fileService';
+import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
@@ -116,6 +117,14 @@ interface BulkDraft {
   fileUrl: string;
   fileName: string;
 }
+
+/** Invoice PDFs live in Storage now; older ones are still inline. */
+const downloadInvoicePdf = async (inv: Invoice) => {
+  const source = await resolveSource({ path: inv.filePath, url: inv.fileUrl });
+  if (source.blob || source.dataUrl) {
+    await saveFileAs(inv.fileName || `${inv.invoiceNumber}.pdf`, source.blob || source.dataUrl!);
+  }
+};
 
 const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUpsertInvoice, onDeleteInvoice, onSaveContract }) => {
   const [tab, setTab] = useState<FinanceTab>('OVERVIEW');
@@ -341,8 +350,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
     if (toSave.length === 0) return;
     setIsBulkSaving(true);
     for (const d of toSave) {
+      const id = crypto.randomUUID();
+      // Each PDF goes to Storage rather than into the invoice row
+      let filePath: string | undefined;
+      let inlineUrl: string | undefined = d.fileUrl || undefined;
+      if (inlineUrl?.startsWith('data:')) {
+        const uploaded = await uploadDataUrl(buildPath('invoices', id, id, d.fileName || 'factura.pdf'), inlineUrl);
+        if (uploaded.path) { filePath = uploaded.path; inlineUrl = undefined; }
+      }
       await onUpsertInvoice({
-        id: crypto.randomUUID(),
+        id,
         invoiceNumber: d.invoiceNumber.trim(),
         supplier: d.supplier.trim() || 'Necunoscut',
         issueDate: d.issueDate,
@@ -351,7 +368,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         status: InvoiceStatus.UNPAID,
         contractNumber: d.contractNumber || undefined,
         deviceIds: d.deviceIds,
-        fileUrl: d.fileUrl || undefined,
+        filePath,
+        fileUrl: inlineUrl,
         fileName: d.fileName || undefined,
       });
     }
@@ -415,10 +433,21 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
     setIsEditing(true);
   }, []);
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const id = editingId || crypto.randomUUID();
+
+    // The PDF goes to Storage; keeping it inline would put a whole document
+    // inside the invoice row and drag it through every sync.
+    let filePath: string | undefined;
+    let inlineUrl: string | undefined = form.fileUrl || undefined;
+    if (inlineUrl?.startsWith('data:')) {
+      const uploaded = await uploadDataUrl(buildPath('invoices', id, id, form.fileName || 'factura.pdf'), inlineUrl);
+      if (uploaded.path) { filePath = uploaded.path; inlineUrl = undefined; }
+    }
+
     const invoice: Invoice = {
-      id: editingId || crypto.randomUUID(),
+      id,
       invoiceNumber: form.invoiceNumber.trim(),
       supplier: form.supplier.trim(),
       issueDate: form.issueDate,
@@ -429,7 +458,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       contractNumber: form.contractNumber || undefined,
       deviceIds: selectedDeviceIds,
       description: form.description || undefined,
-      fileUrl: form.fileUrl || undefined,
+      filePath,
+      fileUrl: inlineUrl,
       fileName: form.fileName || undefined,
     };
     onUpsertInvoice(invoice);
@@ -630,8 +660,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <p className="text-lg font-black text-slate-900">{fmt(inv.amount)} <span className="text-xs text-slate-400">{inv.currency}</span></p>
-                      {inv.fileUrl && (
-                        <button onClick={() => saveFileAs(inv.fileName || `${inv.invoiceNumber}.pdf`, inv.fileUrl!)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
+                      {(inv.filePath || inv.fileUrl) && (
+                        <button onClick={() => downloadInvoicePdf(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
                           <Download className="w-4 h-4" />
                         </button>
                       )}

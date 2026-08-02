@@ -4,6 +4,7 @@ import { X, Download, FileText, ArrowLeft, AlertCircle, ExternalLink, Loader2 } 
 import Portal from './Portal';
 const PdfCanvasViewer = React.lazy(() => import('./PdfCanvasViewer'));
 import { DeviceFile } from '../types';
+import { resolveSource } from '../services/fileStorage';
 
 interface FileViewerProps {
   file: DeviceFile;
@@ -27,38 +28,63 @@ const toBlobUrl = (dataUrl: string): string | null => {
 
 const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) => {
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+
+  // Stored files come from Storage (or the local cache); legacy ones are inline.
+  // Everything downstream works from one Blob, whichever way it arrived.
+  useEffect(() => {
+    let cancelled = false;
+    let created: string | null = null;
+    setLoading(true); setFailed(false); setLoadError(''); setBlob(null);
+    setBlobUrl(null); setPdfData(null);
+
+    (async () => {
+      const source = await resolveSource(file);
+      if (cancelled) return;
+      if (source.error) { setLoadError(source.error); setLoading(false); return; }
+
+      let data: Blob | null = source.blob || null;
+      if (!data && source.dataUrl) {
+        const url = toBlobUrl(source.dataUrl);
+        if (url?.startsWith('blob:')) {
+          created = url;
+          setBlobUrl(url);
+          data = await fetch(url).then(r => r.blob()).catch(() => null);
+        }
+      } else if (data) {
+        // The URL has to be created inside this effect: React mounts twice in
+        // development and a memoised URL would be revoked and never remade.
+        created = URL.createObjectURL(data);
+        setBlobUrl(created);
+      }
+
+      if (cancelled) return;
+      setBlob(data);
+      if (data && (data.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
+        setPdfData(await data.arrayBuffer().catch(() => null));
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [file.path, file.url, file.name]);
 
   const mime = useMemo(() => {
-    if (file.url.startsWith('data:')) return file.url.match(/data:(.*?);/)?.[1] || '';
+    if (blob?.type) return blob.type;
     if (/\.pdf$/i.test(file.name)) return 'application/pdf';
     if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name)) return 'image/*';
     return '';
-  }, [file]);
+  }, [blob, file.name]);
 
   const isImage = mime.startsWith('image/');
   const isPdf = mime === 'application/pdf';
-
-  // The URL must be created *inside* the effect that revokes it: React 18 dev
-  // mounts twice, and a memoised URL would be revoked by the first unmount and
-  // never recreated, leaving the preview blank.
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const url = toBlobUrl(file.url);
-    setBlobUrl(url);
-    setFailed(false);
-    return () => { if (url?.startsWith('blob:')) URL.revokeObjectURL(url); };
-  }, [file.url]);
-
-  // Raw bytes for the canvas PDF renderer
-  const pdfData = useMemo(() => {
-    if (!isPdf || !file.url.startsWith('data:')) return null;
-    try {
-      const b64 = file.url.split(',')[1];
-      return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-    } catch {
-      return null;
-    }
-  }, [isPdf, file.url]);
 
   // Escape closes the viewer
   useEffect(() => {
@@ -69,7 +95,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
 
   // PDFs are rasterised by pdf.js (works identically on every browser), images
   // render directly. Anything else falls back to the download card.
-  const canPreview = !failed && ((isImage && !!blobUrl) || (isPdf && !!pdfData));
+  const canPreview = !failed && !loading && ((isImage && !!blobUrl) || (isPdf && !!pdfData));
 
   return (
     <Portal>
@@ -111,7 +137,12 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
 
         {/* Content */}
         <div className="flex-1 overflow-auto bg-slate-800 flex items-center justify-center p-2 sm:p-4">
-          {canPreview ? (
+          {loading ? (
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+              <p className="text-white/50 text-xs font-bold">Se descarca fisierul...</p>
+            </div>
+          ) : canPreview ? (
             isImage ? (
               <img src={blobUrl!} alt={file.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onError={() => setFailed(true)} />
             ) : (
@@ -126,9 +157,13 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
               </div>
               <div className="space-y-1">
                 <p className="text-white font-black text-sm uppercase tracking-widest">
-                  {failed ? 'Previzualizare indisponibila' : 'Acest tip de fisier nu poate fi afisat'}
+                  {loadError ? 'Fisierul nu a putut fi descarcat'
+                    : failed ? 'Previzualizare indisponibila'
+                    : 'Acest tip de fisier nu poate fi afisat'}
                 </p>
-                <p className="text-white/50 text-xs max-w-xs">Descarca fisierul pentru a-l deschide cu o aplicatie de pe dispozitivul tau.</p>
+                <p className="text-white/50 text-xs max-w-xs">
+                  {loadError || 'Descarca fisierul pentru a-l deschide cu o aplicatie de pe dispozitivul tau.'}
+                </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => onDownload(file)} className="flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95">

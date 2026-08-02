@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
+import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
@@ -115,11 +116,22 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
   // Save a camera-scanned multi-page PDF into this device's files
   const handleScannedDoc = useCallback(async (pdfDataUrl: string, pageCount: number) => {
+    const id = `FILE-${Date.now()}`;
+    const name = `Scan_${device.serialNumber || device.id}_${new Date().toISOString().split('T')[0]}${pageCount > 1 ? `_${pageCount}pag` : ''}.pdf`;
+
+    setIsUploading(true);
+    const { path, error } = await uploadDataUrl(buildPath('devices', device.id, id, name), pdfDataUrl);
+    setIsUploading(false);
+
+    // Falling back to the inline copy keeps a scan that would otherwise be lost
+    // when the phone drops signal mid-upload. Settings can move it later.
+    if (error) setUploadError(`Documentul a ramas doar pe telefon: ${error}`);
+
     const newFile: DeviceFile = {
-      id: `FILE-${Date.now()}`,
-      name: `Scan_${device.serialNumber || device.id}_${new Date().toISOString().split('T')[0]}${pageCount > 1 ? `_${pageCount}pag` : ''}.pdf`,
+      id,
+      name,
       type: uploadType,
-      url: pdfDataUrl,
+      ...(path ? { path } : { url: pdfDataUrl }),
       dateAdded: new Date().toISOString().split('T')[0]
     };
     const updatedFiles = [...(editForm.files || []), newFile];
@@ -134,39 +146,36 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
     setUploadError(null);
 
-    // 5MB limit to ensure compatibility with cloud sync (base64 increases size)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("Fisier prea mare (max 5MB)");
+    // The old 5MB cap existed because the file was base64-encoded into the
+    // device row. It now goes to Storage, so only Storage's own limit applies.
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError("Fisier prea mare (max 50MB)");
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setIsUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64 = event.target?.result as string;
-        const newFile: DeviceFile = {
-          id: `FILE-${Date.now()}`,
-          name: file.name,
-          type: uploadType,
-          url: base64,
-          dateAdded: new Date().toISOString().split('T')[0]
-        };
+      const id = `FILE-${Date.now()}`;
+      const { path, error } = await uploadFile(buildPath('devices', device.id, id, file.name), file);
+      if (error) {
+        setUploadError(`Incarcarea in cloud a esuat: ${error}`);
+        return;
+      }
 
-        const updatedFiles = [...(editForm.files || []), newFile];
-        setEditForm(prev => ({ ...prev, files: updatedFiles }));
-        
-        // Always save files immediately as they are persistent assets
-        // We merge with current editForm to preserve any other unsaved changes
-        const updatedDevice = { ...device, ...editForm, files: updatedFiles };
-        await onUpdate(updatedDevice);
-        setLastSyncTime(new Date().toLocaleTimeString());
+      const newFile: DeviceFile = {
+        id,
+        name: file.name,
+        type: uploadType,
+        path,
+        size: file.size,
+        dateAdded: new Date().toISOString().split('T')[0]
       };
-      reader.onerror = () => {
-        setUploadError("Citirea fisierului a esuat");
-      };
-      reader.readAsDataURL(file);
+
+      const updatedFiles = [...(editForm.files || []), newFile];
+      setEditForm(prev => ({ ...prev, files: updatedFiles }));
+      await onUpdate({ ...device, ...editForm, files: updatedFiles });
+      setLastSyncTime(new Date().toLocaleTimeString());
     } catch (err) {
       console.error("File upload failed", err);
       setUploadError("Incarcarea a esuat");
@@ -177,6 +186,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   }, [device, editForm, onUpdate, uploadType]);
 
   const handleRemoveFile = useCallback(async (fileId: string) => {
+    const target = editForm.files.find(f => f.id === fileId);
+    if (target?.path) await removeFile(target.path);
     const updatedFiles = editForm.files.filter(f => f.id !== fileId);
     setEditForm(prev => ({ ...prev, files: updatedFiles }));
     // Always save changes immediately
@@ -191,7 +202,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
   const downloadFile = useCallback(async (file: DeviceFile) => {
     setSaveNotice(null);
-    const outcome = await saveFileAs(file.name, file.url);
+    const source = await resolveSource(file);
+    if (source.error) { setUploadError(source.error); return; }
+    const outcome = await saveFileAs(file.name, source.blob || source.dataUrl!);
     if (outcome === 'failed') {
       setUploadError('Descarcarea a esuat');
     } else if (outcome !== 'cancelled') {

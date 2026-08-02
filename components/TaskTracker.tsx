@@ -1,21 +1,47 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
 import IncidentReport from './IncidentReport';
 
 import Portal from './Portal';
-// Opens an attachment in a new tab (data URLs need a blob URL for large media)
-const openAttachment = (a: TaskAttachment) => {
+import { resolveSource } from '../services/fileStorage';
+// Opens an attachment in a new tab. Newer ones come from Storage (or its local
+// cache), older ones are still inline data URLs.
+const openAttachment = async (a: TaskAttachment) => {
+  const source = await resolveSource(a);
+  if (source.blob) {
+    window.open(URL.createObjectURL(source.blob), '_blank');
+    return;
+  }
+  if (!source.dataUrl) return;
   try {
-    const [meta, b64] = a.url.split(',');
+    const [meta, b64] = source.dataUrl.split(',');
     const mime = meta.match(/data:(.*?);/)?.[1] || 'application/octet-stream';
     const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
-    window.open(blobUrl, '_blank');
+    window.open(URL.createObjectURL(new Blob([bytes], { type: mime })), '_blank');
   } catch {
-    window.open(a.url, '_blank');
+    window.open(source.dataUrl, '_blank');
   }
+};
+
+/** Thumbnail that works for both storage-backed and inline attachments. */
+const AttachmentThumb: React.FC<{ attachment: TaskAttachment }> = ({ attachment }) => {
+  const [src, setSrc] = useState<string | null>(attachment.url || null);
+  useEffect(() => {
+    if (!attachment.path) { setSrc(attachment.url || null); return; }
+    let url: string | null = null;
+    let cancelled = false;
+    resolveSource(attachment).then(source => {
+      if (cancelled || !source.blob) return;
+      url = URL.createObjectURL(source.blob);
+      setSrc(url);
+    });
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, [attachment.path, attachment.url]);
+
+  if (!src) return <div className="w-full h-full bg-slate-100 animate-pulse" />;
+  return <img src={src} alt={attachment.name} className="w-full h-full object-cover" />;
 };
 
 type TaskViewMode = 'CARDS' | 'TABLE' | 'KANBAN';
@@ -566,7 +592,7 @@ const TaskCard = React.memo(({
                 a.kind === 'image' ? (
                   <button key={a.id} onClick={() => openAttachment(a)} title={a.name}
                     className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-400 transition shadow-sm">
-                    <img src={a.url} alt={a.name} className="w-full h-full object-cover" />
+                    <AttachmentThumb attachment={a} />
                   </button>
                 ) : (
                   <button key={a.id} onClick={() => openAttachment(a)} title={a.name}

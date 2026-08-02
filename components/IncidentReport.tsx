@@ -1,7 +1,8 @@
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { X, Siren, Search, Camera, Paperclip, Trash2, Loader2, CheckCircle2, Film, FileText, AlertTriangle } from 'lucide-react';
 import { MedicalDevice, MedicalTask, TaskAttachment, TaskPriority, TaskStatus, TASK_PRIORITY_RO, HOSPITAL_DEPARTMENTS } from '../types';
+import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
 interface IncidentReportProps {
@@ -54,6 +55,25 @@ const readAsDataURL = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
+/** The picture just taken, whether it went to Storage or stayed inline. */
+const AttachmentPreview: React.FC<{ attachment: TaskAttachment }> = ({ attachment }) => {
+  const [src, setSrc] = useState<string | null>(attachment.url || null);
+  useEffect(() => {
+    if (!attachment.path) { setSrc(attachment.url || null); return; }
+    let url: string | null = null;
+    let cancelled = false;
+    resolveSource(attachment).then(source => {
+      if (cancelled || !source.blob) return;
+      url = URL.createObjectURL(source.blob);
+      setSrc(url);
+    });
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, [attachment.path, attachment.url]);
+
+  if (!src) return <div className="w-full h-20 bg-slate-100 animate-pulse rounded" />;
+  return <img src={src} alt={attachment.name} className="w-full h-20 object-cover" />;
+};
+
 const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onClose }) => {
   const [deviceSearch, setDeviceSearch] = useState('');
   const [selectedDevice, setSelectedDevice] = useState<MedicalDevice | null>(null);
@@ -62,6 +82,10 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.HIGH);
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  // Attachments are uploaded while the form is still open, so the ticket needs
+  // its id up front rather than at submit time.
+  const ticketIdRef = useRef(`INC-${Date.now()}`);
+  const ticketId = ticketIdRef.current;
   const [attachError, setAttachError] = useState('');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,11 +128,17 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
           url = await readAsDataURL(file);
         }
 
+        // Straight to Storage; the inline copy is only a fallback for a
+        // failed upload, so a photo taken at the bedside is never lost.
+        const id = crypto.randomUUID();
+        const { path, error } = await uploadDataUrl(buildPath('incidents', ticketId, id, file.name), url);
+        if (error) errors.push(`${file.name}: ramane doar pe telefon (${error})`);
+
         setAttachments(prev => [...prev, {
-          id: crypto.randomUUID(),
+          id,
           name: file.name,
           kind,
-          url,
+          ...(path ? { path } : { url }),
           size: file.size,
           dateAdded: new Date().toISOString().split('T')[0],
         }]);
@@ -127,7 +157,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
     setIsSubmitting(true);
 
     const task: MedicalTask = {
-      id: `INC-${Date.now()}`,
+      id: ticketId,
       title,
       description: description.trim() || issue,
       deviceId: selectedDevice?.id,
@@ -142,7 +172,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
     await onSubmit(task);
     setIsSubmitting(false);
     onClose();
-  }, [issue, description, selectedDevice, department, priority, attachments, onSubmit, onClose]);
+  }, [issue, description, selectedDevice, department, priority, attachments, onSubmit, onClose, ticketId]);
 
   const fmtSize = (b: number) => b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${Math.round(b / 1024)}KB`;
 
@@ -275,7 +305,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                 {attachments.map(a => (
                   <div key={a.id} className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                     {a.kind === 'image' ? (
-                      <img src={a.url} alt={a.name} className="w-full h-20 object-cover" />
+                      <AttachmentPreview attachment={a} />
                     ) : (
                       <div className="w-full h-20 flex flex-col items-center justify-center gap-1 text-slate-400">
                         {a.kind === 'video' ? <Film className="w-6 h-6" /> : <FileText className="w-6 h-6" />}

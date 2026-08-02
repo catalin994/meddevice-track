@@ -150,6 +150,36 @@ CREATE POLICY "mt_profile_self_name" ON public.profiles
     AND approved = (SELECT p.approved FROM public.profiles p WHERE p.id = auth.uid())
   );
 
--- ── 6. Reincarca schema pentru API ──────────────────────────────────────────
+-- ── 6. STOCARE FISIERE ──────────────────────────────────────────────────────
+-- Documentele scanate stau aici, nu in interiorul randului dispozitivului.
+-- Bucket privat: se ajunge la fisiere doar cu un cont aprobat.
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('device-files', 'device-files', FALSE, 52428800)
+ON CONFLICT (id) DO UPDATE SET public = FALSE, file_size_limit = 52428800;
+
+DROP POLICY IF EXISTS "mt_files_read"   ON storage.objects;
+DROP POLICY IF EXISTS "mt_files_insert" ON storage.objects;
+DROP POLICY IF EXISTS "mt_files_update" ON storage.objects;
+DROP POLICY IF EXISTS "mt_files_delete" ON storage.objects;
+
+CREATE POLICY "mt_files_read" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'device-files' AND public.app_can_read());
+
+CREATE POLICY "mt_files_insert" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'device-files' AND public.app_can_write());
+
+-- upsert-ul din aplicatie face UPDATE cand fisierul exista deja
+CREATE POLICY "mt_files_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'device-files' AND public.app_can_write())
+  WITH CHECK (bucket_id = 'device-files' AND public.app_can_write());
+
+CREATE POLICY "mt_files_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'device-files' AND public.app_can_write());
+
+-- ── 7. Reincarca schema pentru API ──────────────────────────────────────────
 NOTIFY pgrst, 'reload schema';
 `;
