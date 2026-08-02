@@ -567,7 +567,7 @@ const DeviceRow = React.memo(({
   onQuickEdit: (e: React.MouseEvent, device: MedicalDevice) => void,
   onDelete: (e: React.MouseEvent, id: string) => void
 }) => (
-  <div className={`group flex md:flex-none items-start md:items-center gap-3 px-3 sm:px-5 py-3 transition-colors ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'} ${LIST_GRID}`}>
+  <div className={`group flex flex-wrap md:flex-none items-start md:items-center gap-x-3 gap-y-2 px-3 sm:px-5 py-3 transition-colors ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'} ${LIST_GRID}`}>
     <input
       type="checkbox"
       className="w-5 h-5 mt-0.5 md:mt-0 shrink-0 rounded-md border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500"
@@ -591,20 +591,6 @@ const DeviceRow = React.memo(({
           {device.name || 'Dispozitiv fara nume'}
           {device.isCNCAN && <ShieldAlert className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500" />}
         </h3>
-        {/* On phones the remaining columns stack here, styled like the card
-            view so the details carry the same weight in both modes */}
-        <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5">
-          <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
-          <span className="px-2 py-1 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-600 border border-slate-200 truncate max-w-[9rem]">
-            {device.department || 'N/A'}
-          </span>
-          <span className="px-2 py-1 bg-blue-50 rounded-lg text-[11px] font-bold text-blue-600 border border-blue-100 whitespace-nowrap">
-            {device.model || 'N/A'}
-          </span>
-          <span className="text-[13px] font-mono font-bold text-slate-900 whitespace-nowrap">
-            {device.serialNumber || 'N/A'}
-          </span>
-        </div>
       </div>
       <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate" title={device.department}>{device.department || '—'}</span>
       <span className="hidden md:flex">
@@ -629,6 +615,25 @@ const DeviceRow = React.memo(({
       >
         <Trash2 className="w-4 h-4" />
       </button>
+    </div>
+
+    {/* Status, sectie, model and serial on one line. As a basis-full sibling it
+        wraps below the action buttons and gets the row's full width, rather
+        than fighting for space inside the name column. */}
+    <div
+      className="md:hidden basis-full flex items-center gap-1.5 min-w-0 cursor-pointer"
+      onClick={() => onSelect(device)}
+    >
+      <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
+      <span className="px-2 py-1 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-600 border border-slate-200 truncate">
+        {device.department || 'N/A'}
+      </span>
+      <span className="px-2 py-1 shrink-0 bg-blue-50 rounded-lg text-[11px] font-bold text-blue-600 border border-blue-100 whitespace-nowrap">
+        {device.model || 'N/A'}
+      </span>
+      <span className="shrink-0 text-[13px] font-mono font-bold text-slate-900 whitespace-nowrap">
+        {device.serialNumber || 'N/A'}
+      </span>
     </div>
   </div>
 ));
