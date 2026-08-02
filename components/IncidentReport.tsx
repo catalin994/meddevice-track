@@ -148,7 +148,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
   return (
     <Portal>
-    <div className="fixed inset-0 z-[500] bg-slate-900/80 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
       <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl modal-shell overflow-hidden flex flex-col animate-slide-up">
         {/* Header */}
         <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-red-50/50 shrink-0">

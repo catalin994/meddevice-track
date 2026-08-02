@@ -203,7 +203,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     <div className="bg-white rounded-2xl sm:rounded-[2.5rem] shadow-xl sm:shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-fade-in">
       {showPurgeConfirm && (
         <Portal>
-        <div className="fixed inset-0 z-[600] bg-slate-900/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-4">
            <div className="hardware-card p-6 sm:p-12 max-w-lg w-full text-center rounded-3xl sm:rounded-[3rem] shadow-2xl animate-slide-up">
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-8">
                  <Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />

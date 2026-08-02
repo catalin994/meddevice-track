@@ -131,7 +131,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
   }, [status, onScan, stopCamera]);
 
   return (
-    <div className="fixed inset-0 z-[600] bg-black flex flex-col">
+    <div className="theme-static fixed inset-0 z-[600] bg-black flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-5 bg-black/70 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">

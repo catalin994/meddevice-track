@@ -1008,7 +1008,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       {/* QUICK EDIT OVERLAY */}
       {editingDevice && (
         <Portal>
-        <div className="fixed inset-0 z-[500] bg-slate-900/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
           <div className="hardware-card p-5 sm:p-10 w-full max-w-xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl animate-slide-up modal-shell overflow-y-auto overscroll-contain custom-scrollbar">
              <div className="flex justify-between items-center mb-8">
                 <div>

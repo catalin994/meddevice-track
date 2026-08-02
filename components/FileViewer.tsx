@@ -73,7 +73,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[700] bg-slate-900 flex flex-col">
+      <div className="theme-static fixed inset-0 z-[700] bg-slate-900 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-slate-950 shrink-0">
           <button

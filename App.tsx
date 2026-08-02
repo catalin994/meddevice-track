@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus, Sun, Moon } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -51,6 +51,7 @@ import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, Dev
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB } from './services/storageService';
 import { getCurrentUser, logout as authLogout } from './services/authService';
+import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import LoginScreen from './components/LoginScreen';
 
@@ -139,6 +140,10 @@ const App: React.FC = () => {
   const [showPalette, setShowPalette] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => getCurrentUser());
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  useEffect(() => { applyTheme(theme); }, [theme]);
+  const toggleTheme = useCallback(() => setTheme(t => (t === 'dark' ? 'light' : 'dark')), []);
 
   const canFinance = hasPermission(currentUser, 'finance');
   const canEdit = hasPermission(currentUser, 'edit');
@@ -704,7 +709,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex app-shell bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+    <div className="flex app-shell app-bg overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
       {!isStandalone && (
         <AppSidebar
           isSidebarOpen={isSidebarOpen}
@@ -764,6 +769,14 @@ const App: React.FC = () => {
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2.5 sm:p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-300 transition-colors"
+                  title={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
+                  aria-label={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
                 <button onClick={handleLogout} className="p-2.5 sm:p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare">
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -889,7 +902,7 @@ const App: React.FC = () => {
       </main>
 
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 z-[90] lg:hidden transition-opacity duration-300" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 scrim z-[90] lg:hidden transition-opacity duration-300" onClick={() => setSidebarOpen(false)} />
       )}
 
       {showScanner && (

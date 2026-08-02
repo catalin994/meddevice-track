@@ -425,7 +425,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
       {(isAdding || editingTask) && (
         <Portal>
-        <div className="fixed inset-0 z-[100] bg-slate-900/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] scrim flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl modal-shell flex flex-col animate-fade-in overflow-hidden border-4 border-white">
             <div className="p-5 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                <div>

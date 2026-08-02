@@ -25,7 +25,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-[#F8FAFC] text-slate-900 antialiased selection:bg-brand-500 selection:text-white;
+    @apply text-slate-900 antialiased selection:bg-brand-500 selection:text-white;
+    background-color: #f8fafc;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
@@ -143,4 +144,174 @@
 .animate-scan-line {
   animation: scan-line 2s ease-in-out infinite;
   position: absolute;
+}
+
+/* ─── Dark mode ───────────────────────────────────────────────────────────
+   Every Tailwind colour utility compiles to var(--color-<name>), so swapping
+   those variables re-themes the whole app without touching a single class.
+   The ramps are inverted rather than merely darkened: a `bg-slate-900
+   text-white` pill becomes a light pill with dark text, which is what that
+   pattern should look like on a dark page. */
+.dark {
+  color-scheme: dark;
+  --color-white: #131a2a;
+  --color-slate-50: #1b2334;
+  --color-slate-100: #26314a;
+  --color-slate-200: #33415c;
+  --color-slate-300: #6b7b98;
+  --color-slate-400: #8695ad;
+  --color-slate-500: #a6b3c8;
+  --color-slate-600: #c2ccdb;
+  --color-slate-700: #dbe3ee;
+  --color-slate-800: #e8eef7;
+  --color-slate-900: #f2f6fb;
+  --color-slate-950: #ffffff;
+  --color-blue-50: #16264a;
+  --color-blue-100: #1d3a6e;
+  --color-blue-200: #2b4d86;
+  --color-blue-300: #3b82f6;
+  --color-blue-400: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #6aa9ff;
+  --color-blue-700: #8cc0ff;
+  --color-blue-800: #bfdbfe;
+  --color-blue-900: #dbeafe;
+  --color-emerald-50: #0d2f26;
+  --color-emerald-100: #14513f;
+  --color-emerald-200: #1a6b53;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #059669;
+  --color-emerald-500: #34d399;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-red-50: #3b1214;
+  --color-red-100: #5c1a1d;
+  --color-red-200: #7f2427;
+  --color-red-300: #fca5a5;
+  --color-red-400: #dc2626;
+  --color-red-500: #f87171;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-amber-50: #3a2a08;
+  --color-amber-100: #5a410c;
+  --color-amber-200: #7a5a10;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #d97706;
+  --color-amber-500: #fbbf24;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-indigo-50: #1e1b4b;
+  --color-indigo-100: #312e81;
+  --color-indigo-200: #3730a3;
+  --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #4f46e5;
+  --color-indigo-500: #818cf8;
+  --color-indigo-600: #a5b4fc;
+  --color-indigo-700: #c7d2fe;
+  --color-green-50: #0d2f1a;
+  --color-green-100: #14532d;
+  --color-green-200: #166534;
+  --color-green-300: #86efac;
+  --color-green-400: #16a34a;
+  --color-green-500: #4ade80;
+  --color-green-600: #4ade80;
+  --color-green-700: #86efac;
+  --color-orange-50: #3a1d08;
+  --color-orange-100: #5c2d0c;
+  --color-orange-200: #7c3d10;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #ea580c;
+  --color-orange-500: #fb923c;
+  --color-orange-600: #fb923c;
+  --color-orange-700: #fdba74;
+}
+
+/* Surfaces that must not follow the theme: the camera viewfinders, the file
+   viewer, the login screen and the printable QR sheet are deliberately fixed,
+   so they restore the light palette for their own subtree. */
+.theme-static {
+  color-scheme: light;
+  --color-white: #ffffff;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-200: #c7d2fe;
+  --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+}
+
+/* Modal backdrops. Inverting slate-900 would turn these into white veils. */
+.scrim { background-color: rgb(15 23 42 / 0.5); }
+.dark .scrim { background-color: rgb(2 6 15 / 0.72); }
+
+/* Page background, one step below the card surface in both themes. */
+.app-bg { background-color: #f8fafc; }
+.dark body { background-color: #0b1120; }
+.dark .app-bg { background-color: #0b1120; }
+
+.dark .hardware-card {
+  background-image: radial-gradient(#26314a 0.5px, transparent 0.5px);
 }

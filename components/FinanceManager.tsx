@@ -658,7 +658,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       {/* ============ BULK IMPORT REVIEW MODAL ============ */}
       {bulkDrafts && (
         <Portal>
-        <div className="fixed inset-0 z-[500] bg-slate-900/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
@@ -731,7 +731,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       {/* ============ INVOICE MODAL ============ */}
       {isEditing && (
         <Portal>
-        <div className="fixed inset-0 z-[500] bg-slate-900/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>

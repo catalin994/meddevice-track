@@ -48,7 +48,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[900]">
+    <div className="theme-static fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[900]">
       <div className="w-full max-w-sm space-y-8 animate-slide-up">
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
