@@ -90,8 +90,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     // In auto mode use the detected sheet; otherwise fall back to the guide frame
     const rect = autoMode ? lastRectRef.current : null;
     return rect
-      ? cropVideoToRect(video, rect, canvas, 0.9)
-      : cropVideoToFrame(video, frameRef.current, canvas, 0.9);
+      ? cropVideoToRect(video, rect, canvas)
+      : cropVideoToFrame(video, frameRef.current, canvas);
   }, [autoMode]);
 
   const resetDetection = useCallback((cooldownMs = 1500) => {

@@ -1,4 +1,5 @@
 
+import { encodePage } from '../services/scanQuality';
 export type Orientation = 'portrait' | 'landscape';
 
 /** Normalised rectangle (0..1) in source-video coordinates. */
@@ -108,7 +109,6 @@ export const cropVideoToRect = (
   video: HTMLVideoElement,
   rect: DocRect,
   canvas: HTMLCanvasElement,
-  quality = 0.9,
 ): string => {
   const srcW = video.videoWidth || (video as any).width;
   const srcH = video.videoHeight || (video as any).height;
@@ -124,7 +124,7 @@ export const cropVideoToRect = (
   canvas.width = sw;
   canvas.height = sh;
   canvas.getContext('2d')!.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-  return canvas.toDataURL('image/jpeg', quality);
+  return encodePage(canvas);
 };
 
 // A4 ratio — the guide frame uses it so the captured page matches paper proportions
@@ -147,7 +147,6 @@ export const cropVideoToFrame = (
   video: HTMLVideoElement,
   frame: HTMLElement | null,
   canvas: HTMLCanvasElement,
-  quality = 0.9,
 ): string => {
   const srcW = video.videoWidth;
   const srcH = video.videoHeight;
@@ -161,7 +160,7 @@ export const cropVideoToFrame = (
     canvas.width = srcW;
     canvas.height = srcH;
     ctx.drawImage(video, 0, 0);
-    return canvas.toDataURL('image/jpeg', quality);
+    return encodePage(canvas);
   }
 
   // object-cover: the source is scaled by the larger of the two ratios, then centred
@@ -186,11 +185,11 @@ export const cropVideoToFrame = (
     canvas.width = srcW;
     canvas.height = srcH;
     ctx.drawImage(video, 0, 0);
-    return canvas.toDataURL('image/jpeg', quality);
+    return encodePage(canvas);
   }
 
   canvas.width = sw;
   canvas.height = sh;
   ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-  return canvas.toDataURL('image/jpeg', quality);
+  return encodePage(canvas);
 };

@@ -1,11 +1,12 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
-import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil } from 'lucide-react';
+import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { listProfiles, updateProfile } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
+import { SCAN_QUALITIES, getScanQuality, setScanQuality, ScanQualityId } from '../services/scanQuality';
 import { buildUploadSet } from '../services/syncMerge';
 
 declare const __BUILD_ID__: string;
@@ -122,6 +123,12 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
     }));
     return { count, mb: bytes / (1024 * 1024) };
   }, [devices]);
+
+  const [scanQuality, setScanQualityState] = useState<ScanQualityId>(() => getScanQuality().id);
+  const chooseScanQuality = useCallback((id: ScanQualityId) => {
+    setScanQuality(id);
+    setScanQualityState(id);
+  }, []);
 
   const [migrating, setMigrating] = useState(false);
   const [migrateProgress, setMigrateProgress] = useState({ done: 0, total: 0, label: '' });
@@ -592,6 +599,49 @@ NOTIFY pgrst, 'reload schema';
           )}
         </div>
       )}
+
+      {/* SCAN QUALITY */}
+      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="flex items-center gap-5 mb-6">
+          <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl">
+            <Camera className="w-10 h-10" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Calitatea scanarilor</h2>
+            <p className="text-sm text-slate-500 font-semibold mt-1">Cat de mult se comprima paginile scanate</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {SCAN_QUALITIES.map(q => {
+            const active = q.id === scanQuality;
+            return (
+              <button
+                key={q.id}
+                onClick={() => chooseScanQuality(q.id)}
+                className={`text-left p-5 rounded-2xl border-2 transition ${
+                  active ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className={`text-[15px] font-bold ${active ? 'text-blue-700' : 'text-slate-900'}`}>{q.label}</span>
+                  {active && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                </div>
+                <p className="text-xs font-medium text-slate-500 leading-relaxed mb-3">{q.description}</p>
+                <p className="text-[11px] font-bold text-slate-400">~{q.approxKb} KB / pagina</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="mt-5 text-[13px] font-medium text-slate-500 leading-relaxed">
+          Cu 1 GB de spatiu, alegerea inseamna aproximativ{' '}
+          <span className="font-bold text-slate-700">
+            {SCAN_QUALITIES.map(q => `${q.label}: ${Math.round(1024 * 1024 / q.approxKb / 3).toLocaleString('ro-RO')}`).join(' · ')}
+          </span>{' '}
+          documente de cate 3 pagini. Setarea se aplica scanarilor viitoare; cele existente raman neschimbate.
+        </p>
+      </div>
 
       {/* USER MANAGEMENT — admin only */}
       {canManageUsers && (
