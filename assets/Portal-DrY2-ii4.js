@@ -1,0 +1,1 @@
+import{a as t}from"./vendor-icons-C2n_LnoV.js";import{a}from"./vendor-recharts-B81_Sljn.js";const u=({children:e})=>{const[o,r]=t.useState(!1);return t.useEffect(()=>{r(!0)},[]),!o||typeof document>"u"?null:a.createPortal(e,document.body)};export{u as P};
