@@ -1,10 +1,26 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import Portal from './Portal';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
+
+const PAGE_SIZES = [10, 20, 50, 100];
+
+/**
+ * The list unmounts while you look at a device, so without this every trip into
+ * a device and back would drop you at the top of page 1 with the filters reset.
+ * Kept in module scope (not storage) so it lasts the session and no more.
+ */
+const listState = {
+  search: '',
+  status: 'ALL' as DeviceStatus | 'ALL',
+  dept: 'ALL' as string,
+  category: 'ALL' as string,
+  tag: 'ALL' as string,
+  page: 1,
+};
 
 const exportToExcel = async (devices: MedicalDevice[]) => {
   const ExcelJS = (await import('exceljs')).default;
@@ -506,7 +522,70 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   );
 });
 
-const DeviceCard = React.memo(({ 
+/** Page numbers to show: always first and last, plus a window around the current one. */
+const pageWindow = (page: number, pageCount: number): (number | '…')[] => {
+  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
+  const around = [page - 1, page, page + 1].filter(n => n > 1 && n < pageCount);
+  const out: (number | '…')[] = [1];
+  if (around[0] > 2) out.push('…');
+  out.push(...around);
+  if (around[around.length - 1] < pageCount - 1) out.push('…');
+  out.push(pageCount);
+  return out;
+};
+
+const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
+  page: number; pageCount: number; pageSize: number; total: number; onGoTo: (p: number) => void;
+}) => {
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  return (
+    <div className="hardware-card rounded-3xl px-4 py-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <span className="tech-label text-center sm:text-left">
+        {from}–{to} din {total}{pageCount > 1 ? ` · pagina ${page} / ${pageCount}` : ''}
+      </span>
+      {pageCount > 1 && (
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => onGoTo(page - 1)}
+            disabled={page === 1}
+            className="p-3 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            title="Pagina anterioara"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          {pageWindow(page, pageCount).map((n, i) =>
+            n === '…' ? (
+              <span key={`gap-${i}`} className="px-1 text-slate-300 font-black">…</span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => onGoTo(n)}
+                className={`min-w-[2.5rem] px-2 py-2.5 rounded-xl text-[11px] font-black transition active:scale-90 ${
+                  n === page
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {n}
+              </button>
+            )
+          )}
+          <button
+            onClick={() => onGoTo(page + 1)}
+            disabled={page === pageCount}
+            className="p-3 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            title="Pagina urmatoare"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const DeviceCard = React.memo(({
   device, 
   isSelected, 
   onToggleSelection, 
@@ -521,10 +600,13 @@ const DeviceCard = React.memo(({
   onQuickEdit: (e: React.MouseEvent, device: MedicalDevice) => void, 
   onDelete: (e: React.MouseEvent, id: string) => void 
 }) => {
+  // `auto` in containIntrinsicSize lets the browser remember each card's real
+  // height, so cards whose name wraps to two lines don't make the scrollbar
+  // jump around as they mount.
   return (
     <div
       className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 160px' } as React.CSSProperties}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 160px' } as React.CSSProperties}
     >
       {/* Selection Checkbox */}
       <div className="absolute top-6 left-6 md:static">
@@ -556,7 +638,8 @@ const DeviceCard = React.memo(({
       {/* Asset Info */}
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-          <h3 className="font-black text-slate-900 text-xl md:text-lg leading-tight truncate group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+          {/* No truncation — a long device name wraps and stays fully readable */}
+          <h3 className="font-black text-slate-900 text-lg sm:text-xl md:text-lg leading-tight break-words group-hover:text-blue-600 transition-colors uppercase tracking-tight md:min-w-0">
             {device.name || 'Dispozitiv fara nume'}
           </h3>
           <div className="flex items-center gap-2">
@@ -621,29 +704,26 @@ const DeviceCard = React.memo(({
 });
 
 const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '' }) => {
-  const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>('ALL');
-  const [filterDept, setFilterDept] = useState<string | 'ALL'>('ALL');
-  const [filterCategory, setFilterCategory] = useState<string | 'ALL'>('ALL');
-  const [filterTag, setFilterTag] = useState<string | 'ALL'>('ALL');
-  const [localSearch, setLocalSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>(listState.status);
+  const [filterDept, setFilterDept] = useState<string | 'ALL'>(listState.dept);
+  const [filterCategory, setFilterCategory] = useState<string | 'ALL'>(listState.category);
+  const [filterTag, setFilterTag] = useState<string | 'ALL'>(listState.tag);
+  const [localSearch, setLocalSearch] = useState(listState.search);
   const [showQRSheet, setShowQRSheet] = useState(false);
 
-  // Incremental rendering: keep the DOM small by mounting cards in batches
-  // as the user scrolls, instead of mounting the whole fleet at once.
-  const BATCH_SIZE = 48;
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  // Paged rendering: the user picks how many devices a page holds, which also
+  // keeps the DOM small instead of mounting the whole fleet at once.
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const stored = Number(localStorage.getItem('meditrack_page_size'));
+    return PAGE_SIZES.includes(stored) ? stored : 20;
+  });
+  const [page, setPage] = useState(listState.page);
+  const listTopRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(entries => {
-      if (entries[0]?.isIntersecting) {
-        setVisibleCount(c => c + BATCH_SIZE);
-      }
-    }, { rootMargin: '600px' });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+  const changePageSize = useCallback((size: number) => {
+    setPageSize(size);
+    setPage(1);
+    localStorage.setItem('meditrack_page_size', String(size));
   }, []);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -666,7 +746,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     return combined;
   }, [devices]);
 
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(listState.search);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(localSearch), 200);
     return () => clearTimeout(t);
@@ -701,10 +781,40 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     });
   }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
 
-  // Restart batching whenever the visible set changes (filters/search)
+  const pageCount = Math.max(1, Math.ceil(filteredDevices.length / pageSize));
+
+  // A narrowed filter can leave the current page past the end of the results
   useEffect(() => {
-    setVisibleCount(BATCH_SIZE);
+    setPage(p => Math.min(p, Math.max(1, Math.ceil(filteredDevices.length / pageSize))));
+  }, [filteredDevices.length, pageSize]);
+
+  // Back to page 1 whenever the visible set changes (filters/search) — but not
+  // on the first render, which would throw away the page we just came back to.
+  const filtersSettled = useRef(false);
+  useEffect(() => {
+    if (!filtersSettled.current) { filtersSettled.current = true; return; }
+    setPage(1);
   }, [effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
+
+  useEffect(() => {
+    listState.search = localSearch;
+    listState.status = filterStatus;
+    listState.dept = filterDept;
+    listState.category = filterCategory;
+    listState.tag = filterTag;
+    listState.page = page;
+  }, [localSearch, filterStatus, filterDept, filterCategory, filterTag, page]);
+
+  const pageDevices = useMemo(
+    () => filteredDevices.slice((page - 1) * pageSize, page * pageSize),
+    [filteredDevices, page, pageSize]
+  );
+
+  // Jumping pages without this leaves you halfway down the previous page
+  const goToPage = useCallback((next: number) => {
+    setPage(next);
+    listTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, []);
 
   // All tags used across the fleet, for the filter dropdown
   const allTags = useMemo(() => {
@@ -876,12 +986,24 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       </div>
 
       <div className="space-y-4">
+        <div ref={listTopRef} className="scroll-mt-4" />
         <div className="flex items-center justify-between px-2 sm:px-8 py-2 flex-wrap gap-3">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
               {filteredDevices.length}
             </div>
             <span className="tech-label">Dispozitive gasite</span>
+            <label className="flex items-center gap-2">
+              <span className="tech-label">Pe pagina</span>
+              <select
+                value={pageSize}
+                onChange={(e) => changePageSize(Number(e.target.value))}
+                className="px-3 py-2 bg-slate-50 border-2 border-transparent focus:border-blue-500/20 rounded-xl text-[11px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner cursor-pointer"
+                title="Cate dispozitive se afiseaza pe o pagina"
+              >
+                {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {selectedIds.size > 0 && (
@@ -948,7 +1070,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {filteredDevices.slice(0, visibleCount).map((device) => (
+          {pageDevices.map((device) => (
             <DeviceCard
               key={device.id}
               device={device}
@@ -960,13 +1082,14 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             />
           ))}
 
-          {/* Sentinel — mounts the next batch when scrolled near */}
-          <div ref={sentinelRef} className="h-1" />
-          {visibleCount < filteredDevices.length && (
-            <div className="py-6 flex items-center justify-center gap-3 text-slate-400">
-              <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-              <span className="tech-label">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
-            </div>
+          {filteredDevices.length > 0 && (
+            <Pager
+              page={page}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              total={filteredDevices.length}
+              onGoTo={goToPage}
+            />
           )}
 
           {filteredDevices.length === 0 && (

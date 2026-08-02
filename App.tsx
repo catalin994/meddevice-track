@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
 import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
@@ -119,6 +119,43 @@ const App: React.FC = () => {
     setView('DASHBOARD');
   }, []);
 
+  // Every in-app navigation pushes a real history entry, so the phone's Back
+  // button and the back-swipe gesture step back through the app instead of
+  // leaving it. `historyDepth` tracks how many entries we own, so the in-app
+  // back control can reuse the same history when there is one.
+  const historyDepth = useRef(0);
+
+  const navigate = useCallback((nextView: ViewState, deviceId: string | null = null) => {
+    setView(nextView);
+    setSelectedDeviceId(deviceId);
+    try {
+      window.history.pushState({ mtView: nextView, mtDeviceId: deviceId }, '');
+      historyDepth.current += 1;
+    } catch { /* history unavailable — the view still changed */ }
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (historyDepth.current > 0) {
+      window.history.back();
+    } else {
+      // Opened straight into a device (QR deep link), so there is nothing to
+      // pop — land on the inventory instead of falling out of the app.
+      setView('INVENTORY');
+      setSelectedDeviceId(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      historyDepth.current = Math.max(0, historyDepth.current - 1);
+      const state = e.state as { mtView?: ViewState; mtDeviceId?: string | null } | null;
+      setView(state?.mtView || 'DASHBOARD');
+      setSelectedDeviceId(state?.mtDeviceId ?? null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   // Deep Linking & Standalone Mode
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -130,10 +167,20 @@ const App: React.FC = () => {
       setIsStandalone(true);
     }
 
-    if (viewParam === 'DEVICE_DETAIL' && idParam) {
+    const deepLinked = viewParam === 'DEVICE_DETAIL' && !!idParam;
+    if (deepLinked) {
       setSelectedDeviceId(idParam);
       setView('DEVICE_DETAIL');
     }
+
+    // Stamp the entry we started on, so popping back to it restores the right
+    // view rather than dumping the user on the dashboard.
+    try {
+      window.history.replaceState(
+        { mtView: deepLinked ? 'DEVICE_DETAIL' : 'DASHBOARD', mtDeviceId: deepLinked ? idParam : null },
+        ''
+      );
+    } catch { /* ignore */ }
 
     // Prefetch other modules after initial load
     prefetchModules();
@@ -427,6 +474,9 @@ const App: React.FC = () => {
     logAudit('delete', 'device', safeId, target?.name || safeId, target ? `SN: ${target.serialNumber}` : undefined);
     setSelectedDeviceId(null);
     setView('INVENTORY');
+    // Rewrite the current entry rather than pushing: pressing Back after a
+    // delete must not return to the device that no longer exists.
+    try { window.history.replaceState({ mtView: 'INVENTORY', mtDeviceId: null }, ''); } catch { /* ignore */ }
     setDevices(prev => prev.filter(d => d.id !== safeId));
 
     setIsSyncing(true);
@@ -568,9 +618,8 @@ const App: React.FC = () => {
     const resolved = byId
       || devices.find(d => String(d.serialNumber || '').trim().toLowerCase() === key.toLowerCase())
       || devices.find(d => String(d.id).trim().toLowerCase() === key.toLowerCase());
-    setSelectedDeviceId(resolved ? resolved.id : key);
-    setView('DEVICE_DETAIL');
-  }, [devices, devicesMap]);
+    navigate('DEVICE_DETAIL', resolved ? resolved.id : key);
+  }, [devices, devicesMap, navigate]);
 
   const handleDocScanSave = useCallback(async (deviceId: string, file: import('./types').DeviceFile) => {
     const device = devices.find(d => d.id === deviceId);
@@ -580,11 +629,10 @@ const App: React.FC = () => {
   }, [devices, handleUpsertDevices]);
 
   const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
-    setSelectedDeviceId(d.id);
-    setView('DEVICE_DETAIL');
-  }, []);
+    navigate('DEVICE_DETAIL', d.id);
+  }, [navigate]);
 
-  const handleAddDevice = useCallback(() => setView('ADD_DEVICE'), []);
+  const handleAddDevice = useCallback(() => navigate('ADD_DEVICE'), [navigate]);
 
   const handleDeleteTask = useCallback(async (id: string) => {
     if (!id) return;
@@ -618,7 +666,7 @@ const App: React.FC = () => {
         <AppSidebar
           isSidebarOpen={isSidebarOpen}
           view={view}
-          setView={setView}
+          setView={navigate}
           setSidebarOpen={setSidebarOpen}
           syncStatus={syncStatus}
           lastSyncTime={lastSyncTime}
@@ -677,7 +725,7 @@ const App: React.FC = () => {
                 <QrCode className="w-5 h-5 sm:w-7 sm:h-7" />
               </button>
               {view === 'INVENTORY' && canEdit && (
-                <button onClick={() => setView('ADD_DEVICE')} className="bg-blue-600 text-white p-2.5 sm:px-6 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700" title="Inregistreaza Dispozitiv">
+                <button onClick={() => navigate('ADD_DEVICE')} className="bg-blue-600 text-white p-2.5 sm:px-6 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700" title="Inregistreaza Dispozitiv">
                   <span className="hidden sm:inline">+ Inregistreaza Dispozitiv</span>
                   <span className="sm:hidden text-base leading-none font-black">+</span>
                 </button>
@@ -723,7 +771,7 @@ const App: React.FC = () => {
                     device={selectedDevice} 
                     allDevices={devices} 
                     tasks={tasks.filter(t => String(t.deviceId).trim() === String(selectedDevice.id).trim())} 
-                    onBack={() => { setView('INVENTORY'); setSelectedDeviceId(null); }} 
+                    onBack={goBack} 
                     onUpdate={handleUpsertDevices} 
                     onDelete={handleDeleteDevice} 
                     onAddTask={handleUpsertTasks}
@@ -748,7 +796,7 @@ const App: React.FC = () => {
                         className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50">
                         {isSyncingNow ? 'Se sincronizeaza...' : 'Re-sincronizare'}
                       </button>
-                      <button onClick={() => { setView('INVENTORY'); setSelectedDeviceId(null); }}
+                      <button onClick={goBack}
                         className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition">
                         Inapoi la inventar
                       </button>
@@ -764,7 +812,7 @@ const App: React.FC = () => {
                     onDeleteTask={handleDeleteTask} 
                   />
                 )}
-                {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); setView('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); setView('INVENTORY'); }} onCancel={() => setView('INVENTORY')} />}
+                {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); navigate('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); navigate('INVENTORY'); }} onCancel={goBack} />}
                 {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} onSelectDevice={handleSelectDevice} />}
                 {view === 'FINANCE' && canFinance && (
                   <FinanceManager
@@ -812,8 +860,8 @@ const App: React.FC = () => {
             tasks={tasks}
             invoices={invoices}
             canFinance={canFinance}
-            onNavigate={setView}
-            onSelectDevice={(id) => { setSelectedDeviceId(id); setView('DEVICE_DETAIL'); }}
+            onNavigate={navigate}
+            onSelectDevice={(id) => navigate('DEVICE_DETAIL', id)}
             onClose={() => setShowPalette(false)}
           />
         </Suspense>

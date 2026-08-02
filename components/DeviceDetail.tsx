@@ -7,7 +7,7 @@ import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
-  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer, Wallet, ShieldCheck, Receipt
+  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer, Wallet, ShieldCheck, Receipt
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
@@ -233,8 +233,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           </div>
           <div className="min-w-0 flex-1">
             {!isStandalone && (
-              <button onClick={onBack} className="tech-label mb-3 sm:mb-4 flex items-center gap-2 transition group hover:text-slate-900 cursor-pointer">
-                <span className="group-hover:-translate-x-1 transition-transform font-bold">←</span> INAPOI / DISPOZITIVE
+              <button
+                onClick={onBack}
+                className="mb-3 sm:mb-4 inline-flex items-center gap-2 pl-2.5 pr-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[11px] uppercase tracking-widest transition active:scale-95 hover:bg-slate-900 hover:text-white group"
+              >
+                <ArrowLeft className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                Inapoi la inventar
               </button>
             )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
