@@ -770,7 +770,7 @@ const App: React.FC = () => {
               <PrimaryAction
                 icon={<Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
                 label="Dispozitiv nou"
-                shortLabel="Adauga"
+                shortLabel="Dispozitiv nou"
                 hint="Inregistreaza un dispozitiv nou in inventar"
                 variant="blue"
                 onClick={() => navigate('ADD_DEVICE')}
@@ -779,21 +779,11 @@ const App: React.FC = () => {
             <PrimaryAction
               icon={<QrCode className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
               label="Scaneaza cod QR"
-              shortLabel="Cod QR"
+              shortLabel="Scaneaza QR"
               hint="Scaneaza eticheta QR a unui dispozitiv ca sa-i deschizi fisa"
               variant="dark"
               onClick={() => setShowScanner(true)}
             />
-            {canEdit && (
-              <PrimaryAction
-                icon={<ScanLine className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
-                label="Scaneaza document"
-                shortLabel="Document"
-                hint="Scaneaza un document cu camera si ataseaza-l unui dispozitiv"
-                variant="green"
-                onClick={() => setShowDocScanner(true)}
-              />
-            )}
           </div>
         )}
 
