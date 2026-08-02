@@ -26,6 +26,10 @@ const RO_ERRORS: Array<[RegExp, string]> = [
   [/user already registered|already been registered/i, 'Exista deja un cont cu acest email.'],
   [/password should be at least/i, 'Parola trebuie sa aiba cel putin 6 caractere.'],
   [/unable to validate email|invalid format/i, 'Adresa de email nu pare valida.'],
+  [/email signups are disabled|email provider.*disabled|email logins are disabled/i,
+    'Furnizorul Email e oprit in Supabase. Authentication -> Sign In / Providers -> Email -> porneste-l (lasa oprit doar "Confirm email").'],
+  [/signups not allowed|signup.*disabled/i,
+    'Inregistrarile noi sunt oprite in Supabase. Authentication -> Sign In / Providers -> porneste "Allow new users to sign up".'],
   [/rate limit|too many/i, 'Prea multe incercari. Reincearca peste un minut.'],
   [/failed to fetch|network/i, 'Nu am putut contacta serverul. Verifica internetul.'],
 ];
