@@ -656,16 +656,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 {tasks.length > 0 ? tasks.map(task => (
                   <div key={task.id} className="hardware-card p-4 sm:p-6 rounded-3xl sm:rounded-[2rem] flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6 hover:shadow-xl transition-all group">
                      <div className={`w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
-                        task.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
-                        task.status === 'in-progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'
+                        task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-600' : 
+                        task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'
                      }`}>
-                        {task.status === 'completed' ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+                        {task.status === TaskStatus.COMPLETED ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
                      </div>
                      <div className="flex-1 min-w-0 text-left">
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border ${
-                              task.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
-                              task.status === 'in-progress' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'
+                              task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
+                              task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'
                            }`}>
                               {TASK_STATUS_RO[task.status] || task.status}
                            </span>

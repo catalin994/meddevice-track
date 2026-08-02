@@ -143,7 +143,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    const imageData = cropVideoToFrame(video, frameRef.current, canvas, 0.92);
+    const imageData = cropVideoToFrame(video, frameRef.current, canvas);
     if (imageData) setPages(prev => [...prev, imageData]);
   }, []);
 
