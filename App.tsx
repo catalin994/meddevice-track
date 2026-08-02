@@ -613,7 +613,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+    <div className="flex app-shell bg-[#F8FAFC] overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
       {!isStandalone && (
         <AppSidebar
           isSidebarOpen={isSidebarOpen}
@@ -696,7 +696,7 @@ const App: React.FC = () => {
           </header>
         )}
 
-        <div className={`flex-1 overflow-y-auto relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-3 sm:p-6 lg:p-10'}`}>
+        <div className={`flex-1 overflow-y-auto overscroll-y-contain relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-3 pb-12 sm:p-6 sm:pb-10 lg:p-10'}`}>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-fade-in">
               <div className="relative">

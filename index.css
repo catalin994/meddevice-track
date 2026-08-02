@@ -59,6 +59,27 @@
   .status-glow-active:hover::after {
     @apply opacity-100;
   }
+
+  /* Mobile browsers report 100vh as the *tall* viewport — the height the page
+     would have with the address bar collapsed. Because this app never scrolls
+     the document itself, the bar never collapses, so a 100vh shell keeps its
+     bottom edge permanently under the browser chrome and the last rows of any
+     list can't be scrolled into view. dvh tracks the height actually visible.
+     The plain vh line stays as a fallback for browsers without dvh. */
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .modal-shell {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+
+  .palette-shell {
+    max-height: 50vh;
+    max-height: 50dvh;
+  }
 }
 
 /* Custom scrollbar */

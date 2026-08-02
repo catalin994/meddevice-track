@@ -130,7 +130,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
           <kbd className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase">Esc</kbd>
         </div>
 
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
+        <div ref={listRef} className="palette-shell overflow-y-auto overscroll-contain p-2">
           {items.length === 0 && (
             <p className="py-10 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Niciun rezultat</p>
           )}

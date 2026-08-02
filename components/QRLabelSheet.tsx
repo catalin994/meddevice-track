@@ -65,7 +65,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
   return (
     <Portal>
     <div className="fixed inset-0 z-[650] bg-slate-900/60 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-up">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl modal-shell overflow-hidden flex flex-col animate-slide-up">
         <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-slate-900 text-white rounded-2xl"><QrCode className="w-6 h-6" /></div>

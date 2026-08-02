@@ -426,8 +426,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
       {(isAdding || editingTask) && (
         <Portal>
         <div className="fixed inset-0 z-[100] bg-slate-900/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-fade-in overflow-hidden border-4 border-white">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl modal-shell flex flex-col animate-fade-in overflow-hidden border-4 border-white">
+            <div className="p-5 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
                     {editingTask ? 'Editeaza Tichet' : 'Deschide Tichet Service'}
@@ -438,7 +438,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                </div>
                <button onClick={() => { setIsAdding(false); setEditingTask(null); }} className="p-3 text-slate-400 hover:bg-white hover:text-slate-900 rounded-2xl transition border border-slate-200 shadow-sm"><X className="w-6 h-6" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Titlu / Tip Defectiune</label>
                 <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="ex: Defectiune sonda ecograf" />

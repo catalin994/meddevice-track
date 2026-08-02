@@ -175,7 +175,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
       {isAdding && (
         <Portal>
         <div className="fixed inset-0 z-[100] bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in border border-white">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in border border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Adauga Contract</h3>
