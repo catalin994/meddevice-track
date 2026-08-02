@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -53,6 +53,49 @@ import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFr
 import { getCurrentUser, logout as authLogout } from './services/authService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import LoginScreen from './components/LoginScreen';
+
+const VIEW_LABELS: Record<string, string> = {
+  DASHBOARD: 'Panou',
+  INVENTORY: 'Inventar',
+  DEVICE_DETAIL: 'Fisa dispozitivului',
+  ADD_DEVICE: 'Dispozitiv nou',
+  SETTINGS: 'Configurare',
+  PLANNER: 'Mentenanta',
+  CONTRACTS: 'Contracte',
+  TASKS: 'Tichete service',
+  FINANCE: 'Financiar',
+};
+
+/**
+ * The three actions people reach for constantly. They sit in their own bar
+ * under the header rather than as unlabelled dark icons among the utility
+ * controls, so they read the same way on every page.
+ */
+const PrimaryAction: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  shortLabel: string;
+  hint: string;
+  variant: 'blue' | 'dark' | 'green';
+  onClick: () => void;
+}> = ({ icon, label, shortLabel, hint, variant, onClick }) => {
+  const styles = {
+    blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20',
+    dark: 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20',
+    green: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20',
+  }[variant];
+  return (
+    <button
+      onClick={onClick}
+      title={hint}
+      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-3.5 text-white rounded-xl shadow-lg font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition active:scale-95`}
+    >
+      {icon}
+      <span className="sm:hidden">{shortLabel}</span>
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+};
 
 const MOCK_DEVICES: MedicalDevice[] = [
   {
@@ -683,7 +726,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 sm:p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0"><Menu className="w-5 h-5" /></button>
                <div className="min-w-0">
-                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{view.replace('_', ' ')}</h2>
+                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{VIEW_LABELS[view] || view.replace('_', ' ')}</h2>
                  <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
@@ -708,29 +751,6 @@ const App: React.FC = () => {
                 <Search className="w-4 h-4" />
               </button>
               <div className="hidden sm:block h-8 w-px bg-slate-200" />
-              {canEdit && (
-                <button
-                  onClick={() => setShowDocScanner(true)}
-                  className="p-2.5 sm:p-4 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-colors active:scale-95 shadow-lg"
-                  title="Scaneaza document"
-                >
-                  <ScanLine className="w-5 h-5 sm:w-7 sm:h-7" />
-                </button>
-              )}
-              <button
-                onClick={() => setShowScanner(true)}
-                className="p-2.5 sm:p-4 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-colors active:scale-95 shadow-lg"
-                title="Scaneaza cod QR dispozitiv"
-              >
-                <QrCode className="w-5 h-5 sm:w-7 sm:h-7" />
-              </button>
-              {view === 'INVENTORY' && canEdit && (
-                <button onClick={() => navigate('ADD_DEVICE')} className="bg-blue-600 text-white p-2.5 sm:px-6 sm:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-700" title="Inregistreaza Dispozitiv">
-                  <span className="hidden sm:inline">+ Inregistreaza Dispozitiv</span>
-                  <span className="sm:hidden text-base leading-none font-black">+</span>
-                </button>
-              )}
-              <div className="hidden sm:block h-8 w-px bg-slate-200" />
               <div className="flex items-center gap-3">
                 <div className="hidden md:block text-right">
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
@@ -742,6 +762,39 @@ const App: React.FC = () => {
               </div>
             </div>
           </header>
+        )}
+
+        {!isStandalone && (
+          <div className="shrink-0 flex items-stretch gap-2 sm:gap-3 px-3 sm:px-6 lg:px-10 py-2.5 sm:py-3 bg-white border-b border-slate-200 z-40">
+            {canEdit && (
+              <PrimaryAction
+                icon={<Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
+                label="Dispozitiv nou"
+                shortLabel="Adauga"
+                hint="Inregistreaza un dispozitiv nou in inventar"
+                variant="blue"
+                onClick={() => navigate('ADD_DEVICE')}
+              />
+            )}
+            <PrimaryAction
+              icon={<QrCode className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
+              label="Scaneaza cod QR"
+              shortLabel="Cod QR"
+              hint="Scaneaza eticheta QR a unui dispozitiv ca sa-i deschizi fisa"
+              variant="dark"
+              onClick={() => setShowScanner(true)}
+            />
+            {canEdit && (
+              <PrimaryAction
+                icon={<ScanLine className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
+                label="Scaneaza document"
+                shortLabel="Document"
+                hint="Scaneaza un document cu camera si ataseaza-l unui dispozitiv"
+                variant="green"
+                onClick={() => setShowDocScanner(true)}
+              />
+            )}
+          </div>
         )}
 
         <div className={`flex-1 overflow-y-auto overscroll-y-contain relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-3 pb-12 sm:p-6 sm:pb-10 lg:p-10'}`}>
