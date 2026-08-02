@@ -1,1 +1,0 @@
-import{a as t}from"./vendor-icons-D2ZBp8Ki.js";import{a}from"./vendor-recharts-C3TaS0gC.js";const u=({children:e})=>{const[o,r]=t.useState(!1);return t.useEffect(()=>{r(!0)},[]),!o||typeof document>"u"?null:a.createPortal(e,document.body)};export{u as P};
