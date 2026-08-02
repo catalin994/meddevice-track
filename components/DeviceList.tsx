@@ -1081,20 +1081,20 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl">
               <button
                 onClick={() => changeViewMode('cards')}
-                className={`p-2 rounded-lg transition ${viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 title="Vizualizare carduri"
               >
-                <LayoutGrid className="w-4 h-4" />
+                <LayoutGrid className="w-6 h-6" />
               </button>
               <button
                 onClick={() => changeViewMode('list')}
-                className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 title="Vizualizare lista compacta"
               >
-                <Rows3 className="w-4 h-4" />
+                <Rows3 className="w-6 h-6" />
               </button>
             </div>
           </div>
