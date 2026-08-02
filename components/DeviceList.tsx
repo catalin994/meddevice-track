@@ -548,7 +548,7 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
 });
 
 /** Column track shared by the compact list's header and its rows so they line up. */
-const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_2.5rem_minmax(0,2.4fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_5.5rem] md:items-center md:gap-4';
+const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_2.25rem_minmax(0,3fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_6.5rem_5.5rem] md:items-center md:gap-3 lg:md:gap-4';
 
 const DeviceRow = React.memo(({
   device,
@@ -582,26 +582,34 @@ const DeviceRow = React.memo(({
     {/* On phones the four data columns collapse into one stacked block */}
     <div className="flex-1 min-w-0 md:contents cursor-pointer" onClick={() => onSelect(device)}>
       <div className="min-w-0">
-        <h3 className="font-extrabold text-slate-900 text-base md:text-[17px] leading-snug break-words group-hover:text-blue-600 transition-colors">
+        {/* Two lines at most: a long name would otherwise stretch the row to
+            three or four while every other column stays on one. */}
+        <h3
+          title={device.name}
+          className="font-extrabold text-slate-900 text-[15px] md:text-[17px] leading-snug line-clamp-2 break-words group-hover:text-blue-600 transition-colors"
+        >
           {device.name || 'Dispozitiv fara nume'}
           {device.isCNCAN && <ShieldAlert className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500" />}
         </h3>
-        {/* Phones get status and the rest of the data stacked here, so the name
-            keeps the full width of the row instead of a narrow column */}
-        <div className="md:hidden mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        {/* On phones the remaining columns stack here, styled like the card
+            view so the details carry the same weight in both modes */}
+        <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5">
           <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
-          {/* each value stays whole; the line wraps between them, not inside a serial */}
-          <span className="text-[13px] font-semibold text-slate-600 flex flex-wrap items-center gap-x-1.5">
-            <span className="truncate max-w-[10rem]">{device.department}</span>
-            <span className="text-slate-300">·</span>
-            <span className="whitespace-nowrap">{device.model}</span>
-            <span className="text-slate-300">·</span>
-            <span className="font-mono font-semibold whitespace-nowrap">{device.serialNumber}</span>
+          <span className="px-2 py-1 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-600 border border-slate-200 truncate max-w-[9rem]">
+            {device.department || 'N/A'}
+          </span>
+          <span className="px-2 py-1 bg-blue-50 rounded-lg text-[11px] font-bold text-blue-600 border border-blue-100 whitespace-nowrap">
+            {device.model || 'N/A'}
+          </span>
+          <span className="text-[13px] font-mono font-bold text-slate-900 whitespace-nowrap">
+            {device.serialNumber || 'N/A'}
           </span>
         </div>
       </div>
-      <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate">{device.department || '—'}</span>
-      <span className="hidden md:block text-[15px] font-bold text-blue-600 truncate">{device.model || '—'}</span>
+      <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate" title={device.department}>{device.department || '—'}</span>
+      <span className="hidden md:flex">
+        <span className="px-2.5 py-1 bg-blue-50 rounded-lg text-[13px] font-bold text-blue-600 border border-blue-100 truncate max-w-full">{device.model || '—'}</span>
+      </span>
       <span className="hidden md:block text-[15px] font-mono font-bold text-slate-900 truncate">{device.serialNumber || '—'}</span>
       <div className="hidden md:block"><StatusBadge status={device.status || DeviceStatus.ACTIVE} /></div>
     </div>
@@ -1228,15 +1236,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
 
           {viewMode === 'list' && pageDevices.length > 0 && (
             <div className="hardware-card rounded-2xl sm:rounded-3xl overflow-hidden">
-              <div className={`hidden px-5 py-3.5 bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase tracking-wider text-slate-500 ${LIST_GRID}`}>
+              <div className={`hidden px-5 py-3.5 bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase tracking-wide text-slate-500 ${LIST_GRID}`}>
                 <span />
                 <span className="text-center">Nr.</span>
-                <span>Denumire</span>
-                <span>Departament</span>
-                <span>Model</span>
-                <span>Serie</span>
-                <span>Status</span>
-                <span>Actiuni</span>
+                <span className="truncate">Denumire</span>
+                <span className="truncate">Departament</span>
+                <span className="truncate">Model</span>
+                <span className="truncate">Serie</span>
+                <span className="truncate">Status</span>
+                <span className="truncate">Actiuni</span>
               </div>
               <div className="divide-y divide-slate-100">
                 {pageDevices.map((device, i) => (
