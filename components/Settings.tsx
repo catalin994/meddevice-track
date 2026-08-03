@@ -801,7 +801,7 @@ NOTIFY pgrst, 'reload schema';
                  <span className="text-sm font-black text-slate-900">{dbCount ?? '...'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Flota activa in aplicatie</span>
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Dispozitive active in aplicatie</span>
                  <span className="text-sm font-black text-blue-600">{devices.length}</span>
               </div>
               <div className={`flex items-center justify-between p-4 rounded-2xl border ${cloudCount !== null && cloudCount < devices.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-100'}`}>
@@ -824,12 +824,12 @@ NOTIFY pgrst, 'reload schema';
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
                   <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
                     In cloud lipsesc <strong>{devices.length - cloudCount}</strong> echipamente. Pe alt telefon vor aparea doar cele {cloudCount} existente in cloud.
-                    Apasa mai jos pentru a urca toata flota.
+                    Apasa mai jos pentru a urca toate dispozitivele.
                   </p>
                   <button onClick={handlePushAll} disabled={isPushing}
                     className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
                     {isPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                    {isPushing ? `Se urca ${pushProgress}...` : 'Urca toata flota in cloud'}
+                    {isPushing ? `Se urca ${pushProgress}...` : 'Urca toate dispozitivele in cloud'}
                   </button>
                   {isPushing && (
                     <div className="h-2 bg-white rounded-full overflow-hidden">
@@ -861,7 +861,7 @@ NOTIFY pgrst, 'reload schema';
                               <li key={x} className="text-[10px] font-mono text-slate-600 truncate">{x}</li>
                             ))}
                           </ul>
-                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Urca toata flota" ca sa ajunga si in cloud.</p>
+                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Urca toate dispozitivele" ca sa ajunga si in cloud.</p>
                         </div>
                       )}
                       {diffResult.cloudOnly.length > 0 && (

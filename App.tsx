@@ -1114,7 +1114,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
           <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">MediTrack</h1>
           {/* The close button takes this room on phones, and the subtitle
               wrapped to two lines rather than fitting beside it */}
-          <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Fleet Registry v3.1</p>
+          <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em] leading-relaxed mt-1.5">Registru echipamente medicale</p>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}

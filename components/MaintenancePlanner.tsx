@@ -230,7 +230,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       XLSX.utils.book_append_sheet(workbook, worksheet, "Raport");
       
       const fileDate = now.toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `MediTrack_Fleet_Report_${fileDate}.xlsx`);
+      XLSX.writeFile(workbook, `MediTrack_Raport_Echipamente_${fileDate}.xlsx`);
     } catch (err) {
       console.error("Export error:", err);
       alert("Generarea raportului a esuat. Verificati daca pop-up-urile sunt permise in browser.");
@@ -250,7 +250,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
           id: `SCHED-${Math.floor(Math.random() * 90000)}`,
           date: new Date().toISOString().split('T')[0],
           type: MaintenanceType.PREVENTIVE,
-          technician: 'Fleet Planner',
+          technician: 'Planificator mentenanta',
           description: `[${draft.frequency}] ${draft.tasks}`,
           nextScheduledDate: draft.nextScheduledDate,
           completed: false

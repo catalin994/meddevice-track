@@ -61,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
         <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
             <div>
-              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea Flotei</h3>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea dispozitivelor medicale</h3>
               <p className="text-[13px] font-semibold text-slate-500 mt-1">Distributie status in timp real</p>
             </div>
             <div className="flex items-center gap-2">
