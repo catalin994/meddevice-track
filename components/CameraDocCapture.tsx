@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check } from 'lucide-react';
 
 import Portal from './Portal';
-import { cropVideoToFrame, cropVideoToRect, detectDocumentRect, rectIoU, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
+import { cropVideoToFrame, cropVideoToRect, analyzeFrame, rectIoU, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
 
 interface CameraDocCaptureProps {
   title?: string;
@@ -27,11 +27,17 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   const [autoMode, setAutoMode] = useState(true);
   const [detected, setDetected] = useState<DocRect | null>(null);
   const [holdProgress, setHoldProgress] = useState(0); // 0..1 while framing settles
+  const [isBlurry, setIsBlurry] = useState(false);
   const [justCaptured, setJustCaptured] = useState(false);
   // Auto-captured page awaiting the user's keep/retake decision
   const [pendingPage, setPendingPage] = useState<string | null>(null);
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastRectRef = useRef<DocRect | null>(null);
+  const smoothRectRef = useRef<DocRect | null>(null);
+  // Sharpness is compared against the best seen recently rather than a fixed
+  // number: a blank sheet has little detail even when perfectly still, so an
+  // absolute floor would refuse to photograph it.
+  const sharpPeakRef = useRef<number>(0);
   const stableSinceRef = useRef<number>(0);
   const cooldownUntilRef = useRef<number>(0);
   const detectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -98,7 +104,10 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     cooldownUntilRef.current = Date.now() + cooldownMs;
     stableSinceRef.current = 0;
     lastRectRef.current = null;
+    smoothRectRef.current = null;
+    sharpPeakRef.current = 0;
     setHoldProgress(0);
+    setIsBlurry(false);
     setDetected(null);
   }, []);
 
@@ -144,7 +153,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
       return;
     }
     if (!workCanvasRef.current) workCanvasRef.current = document.createElement('canvas');
-    const HOLD_MS = 900;
+    const HOLD_MS = 800;
 
     detectTimerRef.current = setInterval(() => {
       const video = videoRef.current;
@@ -153,15 +162,45 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
 
       if (Date.now() < cooldownUntilRef.current) { setDetected(null); setHoldProgress(0); return; }
 
-      const rect = detectDocumentRect(video, work);
-      setDetected(rect);
+      const { rect, sharpness } = analyzeFrame(video, work);
 
-      if (!rect) { lastRectRef.current = null; stableSinceRef.current = 0; setHoldProgress(0); return; }
+      if (!rect) {
+        lastRectRef.current = null;
+        smoothRectRef.current = null;
+        stableSinceRef.current = 0;
+        setDetected(null);
+        setHoldProgress(0);
+        setIsBlurry(false);
+        return;
+      }
+
+      // Smooth the outline. The raw rectangle wobbles by a pixel or two every
+      // frame, which both looks nervous and keeps the stability test from ever
+      // being satisfied.
+      const prevSmooth = smoothRectRef.current;
+      const smooth: DocRect = prevSmooth
+        ? {
+            x: prevSmooth.x + (rect.x - prevSmooth.x) * 0.4,
+            y: prevSmooth.y + (rect.y - prevSmooth.y) * 0.4,
+            w: prevSmooth.w + (rect.w - prevSmooth.w) * 0.4,
+            h: prevSmooth.h + (rect.h - prevSmooth.h) * 0.4,
+          }
+        : rect;
+      smoothRectRef.current = smooth;
+      setDetected(smooth);
+
+      // Peak decays, so moving to a genuinely less detailed page re-baselines
+      // instead of blocking capture forever.
+      sharpPeakRef.current = Math.max(sharpness, sharpPeakRef.current * 0.94);
+      const blurry = sharpness < sharpPeakRef.current * 0.55;
+      setIsBlurry(blurry);
 
       const prev = lastRectRef.current;
-      lastRectRef.current = rect;
+      lastRectRef.current = smooth;
 
-      if (prev && rectIoU(prev, rect) > 0.9) {
+      if (blurry) { stableSinceRef.current = 0; setHoldProgress(0); return; }
+
+      if (prev && rectIoU(prev, smooth) > 0.93) {
         if (!stableSinceRef.current) stableSinceRef.current = Date.now();
         const held = Date.now() - stableSinceRef.current;
         setHoldProgress(Math.min(1, held / HOLD_MS));
@@ -276,7 +315,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                 )}
                 <p className="absolute bottom-40 left-0 right-0 text-center text-white/80 text-xs font-bold tracking-widest uppercase px-6">
                   {detected
-                    ? (holdProgress > 0 ? 'Tine telefonul nemiscat...' : 'Document detectat')
+                    ? (isBlurry ? 'Imagine neclara — tine telefonul nemiscat'
+                       : holdProgress > 0 ? 'Tine telefonul nemiscat...' : 'Document detectat')
                     : 'Aseaza documentul pe o suprafata contrastanta'}
                 </p>
               </div>

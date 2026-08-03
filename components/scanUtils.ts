@@ -7,92 +7,225 @@ export interface DocRect { x: number; y: number; w: number; h: number }
 
 const DETECT_WIDTH = 160;
 
+/** What one look at the camera frame tells us. */
+export interface FrameAnalysis {
+  /** The sheet, in normalised video coordinates, or null if none is convincing. */
+  rect: DocRect | null;
+  /** Laplacian variance inside the sheet. Motion blur drives it toward zero. */
+  sharpness: number;
+  /** Share of the bounding box the sheet actually fills — low means we merged
+   *  two separate bright things and the box is meaningless. */
+  fill: number;
+}
+
+/** Otsu: picks the brightness that best separates the frame into two groups.
+ *  A fixed offset from the mean cannot cope with a bright window in shot or a
+ *  sheet lying on a pale desk; this adapts to whatever the histogram shows. */
+const otsuThreshold = (hist: Int32Array, total: number): number => {
+  let sum = 0;
+  for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sumB = 0, wB = 0, best = 0, bestVar = -1;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t];
+    if (wB === 0) continue;
+    const wF = total - wB;
+    if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB;
+    const mF = (sum - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > bestVar) { bestVar = between; best = t; }
+  }
+  return best;
+};
+
+const erode = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const out = new Uint8Array(mask.length);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const q = y * w + x;
+      out[q] = (mask[q] && mask[q - 1] && mask[q + 1] && mask[q - w] && mask[q + w]) ? 1 : 0;
+    }
+  }
+  return out;
+};
+
+const dilate = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const out = new Uint8Array(mask.length);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const q = y * w + x;
+      out[q] = (mask[q] || mask[q - 1] || mask[q + 1] || mask[q - w] || mask[q + w]) ? 1 : 0;
+    }
+  }
+  return out;
+};
+
+/**
+ * Cleans the mask before anything is measured on it, in this order:
+ *
+ *   close  — dilate then erode: fills the dark holes the page punches in its
+ *            own mask, namely the lines of text. Skipping this and eroding
+ *            first cuts the sheet into horizontal strips along its own text.
+ *   open   — erode then dilate: removes thin bridges, so a sheet joined to a
+ *            lit window by a seam of noise stops counting as one object.
+ */
+const cleanMask = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const closed = erode(dilate(mask, w, h), w, h);
+  return dilate(erode(closed, w, h), w, h);
+};
+
+interface Blob { area: number; x0: number; x1: number; y0: number; y1: number }
+
+/** The biggest connected run of set pixels, with its bounding box. */
+const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
+  const seen = new Uint8Array(mask.length);
+  const stack = new Int32Array(mask.length);
+  let best: Blob = { area: 0, x0: 0, x1: 0, y0: 0, y1: 0 };
+
+  for (let seed = 0; seed < mask.length; seed++) {
+    if (seen[seed] || !mask[seed]) continue;
+    let sp = 0;
+    stack[sp++] = seed;
+    seen[seed] = 1;
+    let area = 0, x0 = w, x1 = -1, y0 = h, y1 = -1;
+
+    while (sp > 0) {
+      const q = stack[--sp];
+      const qx = q % w, qy = (q / w) | 0;
+      area++;
+      if (qx < x0) x0 = qx;
+      if (qx > x1) x1 = qx;
+      if (qy < y0) y0 = qy;
+      if (qy > y1) y1 = qy;
+
+      if (qx > 0     && !seen[q - 1] && mask[q - 1]) { seen[q - 1] = 1; stack[sp++] = q - 1; }
+      if (qx < w - 1 && !seen[q + 1] && mask[q + 1]) { seen[q + 1] = 1; stack[sp++] = q + 1; }
+      if (qy > 0     && !seen[q - w] && mask[q - w]) { seen[q - w] = 1; stack[sp++] = q - w; }
+      if (qy < h - 1 && !seen[q + w] && mask[q + w]) { seen[q + w] = 1; stack[sp++] = q + w; }
+    }
+    if (area > best.area) best = { area, x0, x1, y0, y1 };
+  }
+  return best;
+};
+
 /**
  * Finds the sheet of paper in the current video frame.
  *
- * Paper is almost always brighter than whatever it lies on, so we downscale the
- * frame, mark pixels well above the average brightness, then take row/column
- * projections to get the dominant bright block. That is far cheaper than full
- * contour detection and holds up well for documents on a desk.
+ * Downscale, split light from dark with Otsu, then keep the largest connected
+ * blob rather than the bounding box of every bright pixel. That distinction is
+ * the whole point: projecting rows and columns cannot tell one sheet from a
+ * sheet plus a lit window, and quietly returns a box containing both.
  *
- * Returns null when nothing plausible is found (too small, too large, or an
- * implausible aspect ratio) so the caller can keep showing the manual frame.
+ * Returns null when nothing plausible is found, so the caller keeps showing
+ * the manual frame instead of a confident wrong answer.
  */
-export const detectDocumentRect = (
+export const analyzeFrame = (
   video: HTMLVideoElement,
   work: HTMLCanvasElement,
-): DocRect | null => {
+): FrameAnalysis => {
+  const empty: FrameAnalysis = { rect: null, sharpness: 0, fill: 0 };
   const srcW = video.videoWidth || (video as any).width;
   const srcH = video.videoHeight || (video as any).height;
-  if (!srcW || !srcH) return null;
+  if (!srcW || !srcH) return empty;
 
   const w = DETECT_WIDTH;
   const h = Math.max(1, Math.round((srcH / srcW) * w));
   work.width = w;
   work.height = h;
   const ctx = work.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return null;
+  if (!ctx) return empty;
   ctx.drawImage(video, 0, 0, w, h);
 
   const { data } = ctx.getImageData(0, 0, w, h);
-  const lum = new Float32Array(w * h);
-  let sum = 0;
+  const lum = new Uint8ClampedArray(w * h);
+  const hist = new Int32Array(256);
   for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    const l = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    const l = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) | 0;
     lum[p] = l;
-    sum += l;
+    hist[l]++;
   }
-  const mean = sum / (w * h);
 
-  // Spread tells us whether there is a real light/dark separation at all
-  let variance = 0;
-  for (let p = 0; p < lum.length; p++) variance += (lum[p] - mean) ** 2;
-  const std = Math.sqrt(variance / lum.length);
-  if (std < 12) return null; // flat frame — nothing to lock on to
+  const threshold = otsuThreshold(hist, w * h);
 
-  const threshold = mean + std * 0.35;
-
-  const colCount = new Int32Array(w);
-  const rowCount = new Int32Array(h);
-  let bright = 0;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (lum[y * w + x] > threshold) {
-        colCount[x]++;
-        rowCount[y]++;
-        bright++;
-      }
-    }
+  // Otsu always returns something, even for a blank wall. Reject frames where
+  // the two groups are not actually far apart.
+  let sumLow = 0, nLow = 0, sumHigh = 0, nHigh = 0;
+  for (let t = 0; t < 256; t++) {
+    if (t <= threshold) { sumLow += t * hist[t]; nLow += hist[t]; }
+    else { sumHigh += t * hist[t]; nHigh += hist[t]; }
   }
-  if (bright < w * h * 0.08) return null;
+  if (!nLow || !nHigh) return empty;
+  if (sumHigh / nHigh - sumLow / nLow < 22) return empty;
 
-  // Keep rows/cols where a good share of pixels are paper-bright
-  const firstAbove = (arr: Int32Array, total: number, frac: number) => {
-    const need = total * frac;
-    for (let i = 0; i < arr.length; i++) if (arr[i] >= need) return i;
-    return -1;
-  };
-  const lastAbove = (arr: Int32Array, total: number, frac: number) => {
-    const need = total * frac;
-    for (let i = arr.length - 1; i >= 0; i--) if (arr[i] >= need) return i;
-    return -1;
+  // ── largest connected bright region ────────────────────────────────────
+  const buildMask = (level: number) => {
+    const m = new Uint8Array(w * h);
+    for (let p = 0; p < lum.length; p++) m[p] = lum[p] > level ? 1 : 0;
+    return cleanMask(m, w, h);
   };
 
-  const x0 = firstAbove(colCount, h, 0.3);
-  const x1 = lastAbove(colCount, h, 0.3);
-  const y0 = firstAbove(rowCount, w, 0.3);
-  const y1 = lastAbove(rowCount, w, 0.3);
-  if (x0 < 0 || y0 < 0 || x1 <= x0 || y1 <= y0) return null;
+  let level = threshold;
+  let best = largestBlob(buildMask(level), w, h);
 
-  const rw = (x1 - x0 + 1) / w;
-  const rh = (y1 - y0 + 1) / h;
+  // A blob covering almost the whole frame means the split failed — paper on a
+  // pale desk, where the sheet is barely brighter than what it lies on.
+  //
+  // Re-thresholding the bright half once is not enough: the anti-aliased edges
+  // of the text spread thinly across the middle of the histogram, and Otsu
+  // happily separates *those* from everything else, leaving desk and paper
+  // still together. So walk the threshold up until the blob stops filling the
+  // frame, at most a few times.
+  for (let pass = 0; pass < 3 && best.area > w * h * 0.8; pass++) {
+    const brightHist = new Int32Array(256);
+    let brightTotal = 0;
+    for (let t = level + 1; t < 256; t++) { brightHist[t] = hist[t]; brightTotal += hist[t]; }
+    if (brightTotal < w * h * 0.03) break;
+
+    const next = otsuThreshold(brightHist, brightTotal);
+    if (next <= level) break;
+    level = next;
+
+    const retry = largestBlob(buildMask(level), w, h);
+    if (retry.area === 0) break;
+    best = retry;
+  }
+
+  if (best.area === 0) return empty;
+
+  const rw = (best.x1 - best.x0 + 1) / w;
+  const rh = (best.y1 - best.y0 + 1) / h;
+  const fill = best.area / ((best.x1 - best.x0 + 1) * (best.y1 - best.y0 + 1));
+
+  // A sheet nearly fills its own bounding box. Much less means the blob is an
+  // odd shape — a desk edge, a shadow, a hand — not a page.
+  if (fill < 0.62) return { rect: null, sharpness: 0, fill };
+
   const area = rw * rh;
-  if (area < 0.15 || area > 0.97) return null;
+  // The old floor of 0.15 refused a page simply held further away.
+  if (area < 0.05 || area > 0.98) return { rect: null, sharpness: 0, fill };
 
   const ratio = (rw * srcW) / (rh * srcH);
-  if (ratio < 0.35 || ratio > 3) return null;
+  if (ratio < 0.3 || ratio > 3.4) return { rect: null, sharpness: 0, fill };
 
-  return { x: x0 / w, y: y0 / h, w: rw, h: rh };
+  // ── sharpness, measured inside the sheet only ──────────────────────────
+  let lapSum = 0, lapSq = 0, lapN = 0;
+  for (let y = Math.max(1, best.y0); y <= Math.min(h - 2, best.y1); y++) {
+    for (let x = Math.max(1, best.x0); x <= Math.min(w - 2, best.x1); x++) {
+      const q = y * w + x;
+      const lap = 4 * lum[q] - lum[q - 1] - lum[q + 1] - lum[q - w] - lum[q + w];
+      lapSum += lap;
+      lapSq += lap * lap;
+      lapN++;
+    }
+  }
+  const variance = lapN > 1 ? lapSq / lapN - (lapSum / lapN) ** 2 : 0;
+
+  return {
+    rect: { x: best.x0 / w, y: best.y0 / h, w: rw, h: rh },
+    sharpness: variance,
+    fill,
+  };
 };
 
 /** Overlap ratio between two rects — used to tell when the framing has settled. */
