@@ -1,11 +1,11 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-SXp3DWUK.js","assets/vendor-icons-DYsySoSs.js"])))=>i.map(i=>d[i]);
-import{j as e,P as b,_ as v}from"./index-CrTBzCw2.js";import{a as c,Q as j,d as x,ac as w,X as N,h as y}from"./vendor-icons-DYsySoSs.js";import{g as k}from"./appUrl-CDk6lMwk.js";import"./vendor-recharts-dcygYFoA.js";import"./vendor-db-CxvqBt6T.js";const z=y.lazy(()=>v(()=>import("./index-SXp3DWUK.js"),__vite__mapDeps([0,1])).then(t=>({default:t.QRCodeCanvas}))),R=t=>k(t),P=150,U=({devices:t,onClose:h})=>{const a=t.slice(0,P),o=t.length-a.length,l=c.useRef(null),[m,r]=c.useState(!1),g=()=>{if(!l.current)return;r(!0);const s=l.current.querySelectorAll("canvas"),u=a.map((n,f)=>{const p=s[f];return`
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/index-C70Oq0am.js","assets/vendor-icons-BVIxtwfw.js"])))=>i.map(i=>d[i]);
+import{j as e,P as b,_ as v}from"./index-DKhEo7q4.js";import{a as c,Q as j,d as x,ab as w,X as N,f as y}from"./vendor-icons-BVIxtwfw.js";import{g as k}from"./appUrl-CDk6lMwk.js";import"./vendor-recharts-ClnRgv5x.js";import"./vendor-db-CxvqBt6T.js";const z=y.lazy(()=>v(()=>import("./index-C70Oq0am.js"),__vite__mapDeps([0,1])).then(t=>({default:t.QRCodeCanvas}))),R=t=>k(t),P=150,U=({devices:t,onClose:h})=>{const a=t.slice(0,P),o=t.length-a.length,l=c.useRef(null),[m,r]=c.useState(!1),g=()=>{if(!l.current)return;r(!0);const s=l.current.querySelectorAll("canvas"),u=a.map((n,f)=>{const p=s[f];return`
         <div class="label">
           <img src="${p?p.toDataURL("image/png"):""}" alt="QR" />
           <p class="name">${d(n.name)}</p>
           <p class="sn">SN: ${d(n.serialNumber)}</p>
           <p class="dept">${d(n.department)}</p>
-        </div>`}).join(""),i=window.open("","_blank");if(!i){r(!1),alert("Browserul a blocat fereastra de printare. Permite pop-up-urile si incearca din nou.");return}i.document.write(`<!DOCTYPE html><html><head><title>Etichete QR MediTrack</title>
+        </div>`}).join(""),i=window.open("","_blank");if(!i){r(!1),alert("Browserul a blocat fereastra de printare. Permite pop-up-urile si incearca din nou.");return}i.document.write(`<!DOCTYPE html><html><head><title>Etichete QR Biomedic</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: system-ui, sans-serif; padding: 8mm; }
