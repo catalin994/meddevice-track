@@ -6,6 +6,9 @@ export type Orientation = 'portrait' | 'landscape';
 export interface DocRect { x: number; y: number; w: number; h: number }
 
 const DETECT_WIDTH = 160;
+// Wide enough to place an edge within a pixel, and the last width that still
+// costs almost nothing: past ~200 the per-frame time jumps four-fold.
+const REFINE_WIDTH = 192;
 
 /**
  * The slice of the sensor frame an object-cover <video> actually shows.
@@ -149,6 +152,195 @@ const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
   return best;
 };
 
+/** Brightness below which p of the samples fall, read off a histogram. */
+const percentile = (hist: Int32Array, total: number, p: number): number => {
+  let seen = 0;
+  for (let t = 0; t < 256; t++) {
+    seen += hist[t];
+    if (seen >= total * p) return t;
+  }
+  return 255;
+};
+
+/**
+ * Re-measures the four edges of a coarse detection on the full-resolution frame.
+ *
+ * The search runs at 160 pixels wide, so one detection pixel is four to six
+ * sensor pixels and the morphology rounds the corners of whatever it finds:
+ * the box lands within a few pixels of the sheet, never on it. Cropping on that
+ * shaves a strip of text off one side and leaves a band of desk on the other.
+ *
+ * So look again, only around the edges the coarse pass proposed and at real
+ * resolution. Paper and desk are separated by a level derived from both — the
+ * bright three-quarters of the sheet's own interior against the median of the
+ * surrounding ring — and each edge is placed where the profile across it
+ * crosses halfway, interpolated between samples. Any edge that cannot be found
+ * that way keeps its coarse value rather than inventing one.
+ */
+const refineRect = (
+  video: HTMLVideoElement | HTMLCanvasElement,
+  srcW: number,
+  srcH: number,
+  coarse: DocRect,
+  view: DocRect,
+  work: HTMLCanvasElement,
+): DocRect => {
+  // Look a little outside the coarse box, but never outside the preview
+  const mx = coarse.w * 0.08, my = coarse.h * 0.08;
+  const rx0 = Math.max(view.x, coarse.x - mx);
+  const ry0 = Math.max(view.y, coarse.y - my);
+  const rx1 = Math.min(view.x + view.w, coarse.x + coarse.w + mx);
+  const ry1 = Math.min(view.y + view.h, coarse.y + coarse.h + my);
+  const regW = Math.round((rx1 - rx0) * srcW);
+  const regH = Math.round((ry1 - ry0) * srcH);
+  if (regW < 32 || regH < 32) return coarse;
+
+  const w = Math.min(REFINE_WIDTH, regW);
+  const h = Math.max(1, Math.round(regH * (w / regW)));
+  work.width = w;
+  work.height = h;
+  const ctx = work.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return coarse;
+  ctx.drawImage(video as CanvasImageSource,
+    Math.round(rx0 * srcW), Math.round(ry0 * srcH), regW, regH, 0, 0, w, h);
+
+  const { data } = ctx.getImageData(0, 0, w, h);
+  const lum = new Uint8ClampedArray(w * h);
+  const wholeHist = new Int32Array(256);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    const l = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) | 0;
+    lum[p] = l;
+    wholeHist[l]++;
+  }
+
+  // The coarse box, in this region's own pixels
+  const kx = w / regW, ky = h / regH;
+  const cx0 = (coarse.x - rx0) * srcW * kx;
+  const cy0 = (coarse.y - ry0) * srcH * ky;
+  const cx1 = cx0 + coarse.w * srcW * kx;
+  const cy1 = cy0 + coarse.h * srcH * ky;
+  const cw = cx1 - cx0, ch = cy1 - cy0;
+  if (cw < 8 || ch < 8) return coarse;
+
+  /** Brightness histogram of a box of the region, clipped to it. */
+  const sample = (x0: number, x1: number, y0: number, y1: number) => {
+    const hist = new Int32Array(256);
+    let n = 0;
+    const ax0 = Math.max(0, Math.round(x0)), ax1 = Math.min(w - 1, Math.round(x1));
+    const ay0 = Math.max(0, Math.round(y0)), ay1 = Math.min(h - 1, Math.round(y1));
+    for (let y = ay0; y <= ay1; y++) {
+      for (let x = ax0; x <= ax1; x++) { hist[lum[y * w + x]]++; n++; }
+    }
+    return { hist, n };
+  };
+
+  // Paper against desk over the whole sheet: the bright three-quarters of the
+  // interior, so the text is ignored, against the median of everything outside.
+  const inside = sample(cx0 + cw * 0.2, cx1 - cw * 0.2, cy0 + ch * 0.2, cy1 - ch * 0.2);
+  const outside = new Int32Array(256);
+  let outN = 0;
+  for (let t = 0; t < 256; t++) {
+    const n = wholeHist[t] - inside.hist[t];
+    if (n > 0) { outside[t] = n; outN += n; }
+  }
+  if (inside.n < 64 || outN < 64) return coarse;
+
+  const paper = percentile(inside.hist, inside.n, 0.75);
+  const desk = percentile(outside, outN, 0.5);
+  if (paper - desk < 18) return coarse; // too little contrast to place an edge
+  const wholeLevel = desk + (paper - desk) * 0.5;
+
+  // Profiles are taken across the middle half of each edge: the corners are
+  // where a rounded or lifted sheet misleads, and where a shadow pools.
+  const bandY0 = Math.max(0, Math.round(cy0 + ch * 0.25));
+  const bandY1 = Math.min(h - 1, Math.round(cy1 - ch * 0.25));
+  const bandX0 = Math.max(0, Math.round(cx0 + cw * 0.25));
+  const bandX1 = Math.min(w - 1, Math.round(cx1 - cw * 0.25));
+  if (bandY1 - bandY0 < 4 || bandX1 - bandX0 < 4) return coarse;
+
+  /**
+   * Each edge gets its own paper/desk split, read from the strips either side
+   * of it. One number for the whole sheet cannot survive a shadow across one
+   * half: the shaded margin then reads darker than the desk does in the light,
+   * and that edge is cut off inside the page. Falls back to the sheet-wide
+   * level whenever a strip is too small or too flat to say anything.
+   */
+  const levelAt = (pb: [number, number, number, number], db: [number, number, number, number]) => {
+    const pi = sample(...pb), di = sample(...db);
+    if (pi.n < 32 || di.n < 32) return wholeLevel;
+    const pl = percentile(pi.hist, pi.n, 0.75);
+    const dl = percentile(di.hist, di.n, 0.5);
+    if (pl - dl < 18) return wholeLevel;
+    return dl + (pl - dl) * 0.5;
+  };
+
+  const colFrac = (x: number, level: number) => {
+    let n = 0;
+    for (let y = bandY0; y <= bandY1; y++) if (lum[y * w + x] > level) n++;
+    return n / (bandY1 - bandY0 + 1);
+  };
+  const rowFrac = (y: number, level: number) => {
+    let n = 0;
+    for (let x = bandX0; x <= bandX1; x++) if (lum[y * w + x] > level) n++;
+    return n / (bandX1 - bandX0 + 1);
+  };
+
+  // How many samples past the crossing must stay on paper before it counts —
+  // otherwise a bright speck on the desk reads as the edge of the sheet.
+  const run = Math.max(2, Math.round(Math.min(w, h) * 0.015));
+
+  const findEdge = (
+    frac: (i: number, level: number) => number,
+    level: number, from: number, to: number, last: number,
+  ) => {
+    const step = to > from ? 1 : -1;
+    let prev = frac(from, level);
+    for (let i = from + step; step > 0 ? i <= to : i >= to; i += step) {
+      const cur = frac(i, level);
+      if (cur >= 0.5 && prev < 0.5) {
+        let solid = true;
+        for (let k = 1; k <= run; k++) {
+          const j = i + step * k;
+          if (j < 0 || j > last) break;
+          if (frac(j, level) < 0.5) { solid = false; break; }
+        }
+        if (solid) {
+          const t = cur > prev ? (0.5 - prev) / (cur - prev) : 0;
+          return (i - step) + step * t;
+        }
+      }
+      prev = cur;
+    }
+    return null;
+  };
+
+  const left = findEdge(colFrac,
+    levelAt([cx0 + cw * 0.02, cx0 + cw * 0.14, bandY0, bandY1], [cx0 - cw * 0.07, cx0 - cw * 0.02, bandY0, bandY1]),
+    0, Math.min(w - 1, Math.round(cx1)), w - 1);
+  const right = findEdge(colFrac,
+    levelAt([cx1 - cw * 0.14, cx1 - cw * 0.02, bandY0, bandY1], [cx1 + cw * 0.02, cx1 + cw * 0.07, bandY0, bandY1]),
+    w - 1, Math.max(0, Math.round(cx0)), w - 1);
+  const top = findEdge(rowFrac,
+    levelAt([bandX0, bandX1, cy0 + ch * 0.02, cy0 + ch * 0.14], [bandX0, bandX1, cy0 - ch * 0.07, cy0 - ch * 0.02]),
+    0, Math.min(h - 1, Math.round(cy1)), h - 1);
+  const bottom = findEdge(rowFrac,
+    levelAt([bandX0, bandX1, cy1 - ch * 0.14, cy1 - ch * 0.02], [bandX0, bandX1, cy1 + ch * 0.02, cy1 + ch * 0.07]),
+    h - 1, Math.max(0, Math.round(cy0)), h - 1);
+
+  const nx0 = left != null ? rx0 + (left / kx) / srcW : coarse.x;
+  const nx1 = right != null ? rx0 + (right / kx) / srcW : coarse.x + coarse.w;
+  const ny0 = top != null ? ry0 + (top / ky) / srcH : coarse.y;
+  const ny1 = bottom != null ? ry0 + (bottom / ky) / srcH : coarse.y + coarse.h;
+
+  const nw = nx1 - nx0, nh = ny1 - ny0;
+  if (nw <= 0 || nh <= 0) return coarse;
+  // A refinement is a correction of a few pixels. Anything larger means the
+  // profile latched onto something else, and the coarse box was the better bet.
+  if (Math.abs(nw - coarse.w) > coarse.w * 0.3 || Math.abs(nh - coarse.h) > coarse.h * 0.3) return coarse;
+
+  return { x: nx0, y: ny0, w: nw, h: nh };
+};
+
 /**
  * Finds the sheet of paper in the current video frame.
  *
@@ -266,15 +458,17 @@ export const analyzeFrame = (
   }
   const variance = lapN > 1 ? lapSq / lapN - (lapSum / lapN) ** 2 : 0;
 
+  // Back to source coordinates: the capture crops the sensor frame, not the
+  // preview, so it must be told where the sheet is on the sensor.
+  const coarse: DocRect = {
+    x: view.x + (best.x0 / w) * view.w,
+    y: view.y + (best.y0 / h) * view.h,
+    w: rw * view.w,
+    h: rh * view.h,
+  };
+
   return {
-    // Back to source coordinates: the capture crops the sensor frame, not the
-    // preview, so it must be told where the sheet is on the sensor.
-    rect: {
-      x: view.x + (best.x0 / w) * view.w,
-      y: view.y + (best.y0 / h) * view.h,
-      w: rw * view.w,
-      h: rh * view.h,
-    },
+    rect: refineRect(video, srcW, srcH, coarse, view, work),
     sharpness: variance,
     fill,
   };
@@ -299,11 +493,14 @@ export const cropVideoToRect = (
   const srcH = video.videoHeight || (video as any).height;
   if (!srcW || !srcH) return '';
 
-  const pad = 0.01; // a hair of margin so edges aren't shaved off
-  const sx = Math.max(0, Math.round((rect.x - pad) * srcW));
-  const sy = Math.max(0, Math.round((rect.y - pad) * srcH));
-  const sw = Math.min(srcW - sx, Math.round((rect.w + pad * 2) * srcW));
-  const sh = Math.min(srcH - sy, Math.round((rect.h + pad * 2) * srcH));
+  // A margin of the same few pixels on all four sides. Taking a percentage of
+  // the frame instead made it wider than it was tall, and on a page held close
+  // it added a fat band of desk to keep a hairline of paper.
+  const pad = Math.round(Math.min(rect.w * srcW, rect.h * srcH) * 0.012);
+  const sx = Math.max(0, Math.round(rect.x * srcW) - pad);
+  const sy = Math.max(0, Math.round(rect.y * srcH) - pad);
+  const sw = Math.min(srcW - sx, Math.round(rect.w * srcW) + pad * 2);
+  const sh = Math.min(srcH - sy, Math.round(rect.h * srcH) + pad * 2);
   if (sw <= 0 || sh <= 0) return '';
 
   canvas.width = sw;

@@ -92,16 +92,38 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     return () => { active = false; stopCamera(); };
   }, [stopCamera]);
 
+  /**
+   * Where the sheet is *now*, not where the outline says it is.
+   *
+   * The outline is smoothed over several readings so it doesn't jitter, which
+   * means it trails the sheet by up to a couple of frames — enough, on a hand
+   * that is still settling, to crop the page where it used to be. Measure once
+   * more at the moment of the shot and use that, unless it disagrees so badly
+   * that it must have found something else.
+   */
+  const rectForCapture = useCallback((): DocRect | null => {
+    const video = videoRef.current;
+    const held = lastRectRef.current;
+    if (!video || !held || video.readyState < 2) return held;
+    if (!workCanvasRef.current) workCanvasRef.current = document.createElement('canvas');
+    const view = visibleSourceRect(
+      video.videoWidth, video.videoHeight,
+      video.clientWidth, video.clientHeight,
+    );
+    const { rect } = analyzeFrame(video, workCanvasRef.current, view);
+    return rect && rectIoU(rect, held) > 0.6 ? rect : held;
+  }, []);
+
   const grabFrame = useCallback((): string => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return '';
     // In auto mode use the detected sheet; otherwise fall back to the guide frame
-    const rect = autoMode ? lastRectRef.current : null;
+    const rect = autoMode ? rectForCapture() : null;
     return rect
       ? cropVideoToRect(video, rect, canvas)
       : cropVideoToFrame(video, frameRef.current, canvas);
-  }, [autoMode]);
+  }, [autoMode, rectForCapture]);
 
   const resetDetection = useCallback((cooldownMs = 1500) => {
     cooldownUntilRef.current = Date.now() + cooldownMs;
