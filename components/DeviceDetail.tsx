@@ -6,6 +6,7 @@ import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import { LogoTile } from './Logo';
+import DepartmentPicker from './DepartmentPicker';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -87,6 +88,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
   const allAvailableDepartments = useMemo(() => {
     return getUniqueDepartments(allDevices);
+  }, [allDevices]);
+
+  const deviceCountByDepartment = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (allDevices || []).forEach(d => {
+      const key = (d.department || '').trim();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
   }, [allDevices]);
 
   const handleFinalPurge = useCallback(async () => {
@@ -343,15 +353,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            <label className="tech-label ml-1">Model</label>
                            <input name="model" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.model} onChange={handleEditChange} />
                         </div>
-                        <div className="space-y-1">
-                           <label className="tech-label ml-1">Departament</label>
-                           <div className="relative">
-                              <select name="department" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 transition-colors" value={editForm.department} onChange={handleEditChange}>
-                                {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-                              </select>
-                              <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none" />
-                           </div>
-                        </div>
+                        <DepartmentPicker
+                           value={editForm.department}
+                           onChange={(v) => setEditForm(prev => ({ ...prev, department: v }))}
+                           options={allAvailableDepartments}
+                           counts={deviceCountByDepartment}
+                           label="Departament"
+                        />
                         <div className="space-y-1 md:col-span-2">
                            <label className="tech-label ml-1">Status</label>
                            <select name="status" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.status} onChange={handleEditChange}>

@@ -5,6 +5,7 @@ import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw,
 
 import Portal from './Portal';
 import Pager, { PAGE_SIZES, PageSizePicker } from './Pager';
+import DepartmentPicker from './DepartmentPicker';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 /**
@@ -908,6 +909,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   }, []);
 
   // All tags used across the fleet, for the filter dropdown
+  const deviceCountByDepartment = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (devices || []).forEach(d => {
+      const key = (d.department || '').trim();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [devices]);
+
   const allTags = useMemo(() => {
     const set = new Set<string>();
     (devices || []).forEach(d => (d.tags || []).forEach(t => set.add(t)));
@@ -991,15 +1001,13 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                    <input name="serialNumber" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.serialNumber} onChange={handleQuickEditChange} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="tech-label ml-1">Departament</label>
-                    <div className="relative">
-                      <select name="department" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold appearance-none outline-none focus:border-blue-500 transition-colors" value={quickEditForm.department} onChange={handleQuickEditChange}>
-                          {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                      <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none" />
-                    </div>
-                  </div>
+                  <DepartmentPicker
+                    value={quickEditForm.department}
+                    onChange={(v) => setQuickEditForm(prev => ({ ...prev, department: v }))}
+                    options={allAvailableDepartments}
+                    counts={deviceCountByDepartment}
+                    label="Departament"
+                  />
                   <div className="space-y-1">
                     <label className="tech-label ml-1">Status</label>
                     <select name="status" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.status} onChange={handleQuickEditChange}>

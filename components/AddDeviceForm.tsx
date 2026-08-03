@@ -2,6 +2,7 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
 import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert } from 'lucide-react';
+import DepartmentPicker from './DepartmentPicker';
 
 interface AddDeviceFormProps {
   devices: MedicalDevice[];
@@ -47,6 +48,17 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     return getUniqueDepartments(devices);
   }, [devices]);
 
+  // Shown beside each option: "Radiologie — 12 aparate" tells you at a glance
+  // whether you are about to file this device somewhere nobody uses.
+  const deviceCountByDepartment = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (devices || []).forEach(d => {
+      const key = (d.department || '').trim();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [devices]);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as any;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
@@ -88,7 +100,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
   const handleSingleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Nealocat') : formData.department).trim();
+    const finalDept = (formData.department || 'Nealocat').trim();
     
     const newDevice: MedicalDevice = {
       // FIX: Ensure every new device gets a truly unique identifier
@@ -118,7 +130,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
   const handleGenerateBatch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const batch: MedicalDevice[] = [];
-    const finalDept = (formData.department === 'NEW_DEPT' ? (formData.customDepartment || 'Nealocat') : formData.department).trim();
+    const finalDept = (formData.department || 'Nealocat').trim();
     for (let i = 0; i < batchData.quantity; i++) {
       batch.push({
         id: `DEV-B-${crypto.randomUUID()}`,
@@ -218,15 +230,14 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
               <FormField label="Model" name="model" value={formData.model} onChange={handleChange} required />
               {activeTab === 'single' && <FormField label="Numar serie" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required />}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400">Departament</label>
-                <select name="department" value={formData.department} onChange={handleChange} className="w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none">
-                  {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
-                  <option value="NEW_DEPT">+ Adauga departament nou</option>
-                </select>
+                <DepartmentPicker
+                  value={formData.department}
+                  onChange={(v) => setFormData(prev => ({ ...prev, department: v }))}
+                  options={allAvailableDepartments}
+                  counts={deviceCountByDepartment}
+                  required
+                />
               </div>
-              {formData.department === 'NEW_DEPT' && (
-                <FormField label="Nume departament nou" name="customDepartment" value={formData.customDepartment} onChange={handleChange} required />
-              )}
             </div>
             <div className="flex justify-end gap-4 pt-6">
               <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase">Anuleaza</button>
