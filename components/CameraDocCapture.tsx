@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check } from 'lucide-react';
 
 import Portal from './Portal';
-import { cropVideoToFrame, cropVideoToRect, analyzeFrame, rectIoU, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
+import { cropVideoToFrame, cropVideoToRect, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
 
 interface CameraDocCaptureProps {
   title?: string;
@@ -25,7 +25,10 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
 
   // Auto page detection
   const [autoMode, setAutoMode] = useState(true);
+  // Two rectangles for the same sheet: one on the sensor (used for the crop),
+  // one over the preview (used for the outline). object-cover makes them differ.
   const [detected, setDetected] = useState<DocRect | null>(null);
+  const [detectedOnScreen, setDetectedOnScreen] = useState<DocRect | null>(null);
   const [holdProgress, setHoldProgress] = useState(0); // 0..1 while framing settles
   const [isBlurry, setIsBlurry] = useState(false);
   const [justCaptured, setJustCaptured] = useState(false);
@@ -109,6 +112,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     setHoldProgress(0);
     setIsBlurry(false);
     setDetected(null);
+    setDetectedOnScreen(null);
   }, []);
 
   // Manual shutter — commits straight away, the press is the confirmation
@@ -162,13 +166,19 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
 
       if (Date.now() < cooldownUntilRef.current) { setDetected(null); setHoldProgress(0); return; }
 
-      const { rect, sharpness } = analyzeFrame(video, work);
+      // Look only where the user is looking
+      const view = visibleSourceRect(
+        video.videoWidth, video.videoHeight,
+        video.clientWidth, video.clientHeight,
+      );
+      const { rect, sharpness } = analyzeFrame(video, work, view);
 
       if (!rect) {
         lastRectRef.current = null;
         smoothRectRef.current = null;
         stableSinceRef.current = 0;
         setDetected(null);
+        setDetectedOnScreen(null);
         setHoldProgress(0);
         setIsBlurry(false);
         return;
@@ -188,6 +198,11 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         : rect;
       smoothRectRef.current = smooth;
       setDetected(smooth);
+      setDetectedOnScreen(sourceRectToDisplay(
+        smooth,
+        video.videoWidth, video.videoHeight,
+        video.clientWidth, video.clientHeight,
+      ));
 
       // Peak decays, so moving to a genuinely less detailed page re-baselines
       // instead of blocking capture forever.
@@ -290,14 +305,14 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
             {/* AUTO: live outline around the detected sheet */}
             {autoMode && (
               <div className="absolute inset-0 pointer-events-none">
-                {detected ? (
+                {detectedOnScreen ? (
                   <div
                     className="absolute border-4 rounded-lg transition-all duration-150 border-emerald-400"
                     style={{
-                      left: `${detected.x * 100}%`,
-                      top: `${detected.y * 100}%`,
-                      width: `${detected.w * 100}%`,
-                      height: `${detected.h * 100}%`,
+                      left: `${detectedOnScreen.x * 100}%`,
+                      top: `${detectedOnScreen.y * 100}%`,
+                      width: `${detectedOnScreen.w * 100}%`,
+                      height: `${detectedOnScreen.h * 100}%`,
                       boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
                       opacity: 0.4 + holdProgress * 0.6,
                     }}

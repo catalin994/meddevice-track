@@ -7,6 +7,46 @@ export interface DocRect { x: number; y: number; w: number; h: number }
 
 const DETECT_WIDTH = 160;
 
+/**
+ * The slice of the sensor frame an object-cover <video> actually shows.
+ *
+ * The preview fills its box by scaling the frame up and cropping the overflow,
+ * so the sensor sees more than the user does. Detecting over the whole frame
+ * means locking onto things outside the preview, and drawing the result over
+ * the preview puts the outline in the wrong place — the two coordinate systems
+ * are not the same one.
+ */
+export const visibleSourceRect = (
+  srcW: number,
+  srcH: number,
+  displayW: number,
+  displayH: number,
+): DocRect => {
+  if (!srcW || !srcH || !displayW || !displayH) return { x: 0, y: 0, w: 1, h: 1 };
+  const scale = Math.max(displayW / srcW, displayH / srcH);
+  const w = Math.min(1, displayW / scale / srcW);
+  const h = Math.min(1, displayH / scale / srcH);
+  return { x: (1 - w) / 2, y: (1 - h) / 2, w, h };
+};
+
+/** Source-frame rectangle to a position over the preview, both normalised. */
+export const sourceRectToDisplay = (
+  rect: DocRect,
+  srcW: number,
+  srcH: number,
+  displayW: number,
+  displayH: number,
+): DocRect => {
+  const view = visibleSourceRect(srcW, srcH, displayW, displayH);
+  if (!view.w || !view.h) return rect;
+  return {
+    x: (rect.x - view.x) / view.w,
+    y: (rect.y - view.y) / view.h,
+    w: rect.w / view.w,
+    h: rect.h / view.h,
+  };
+};
+
 /** What one look at the camera frame tells us. */
 export interface FrameAnalysis {
   /** The sheet, in normalised video coordinates, or null if none is convincing. */
@@ -123,19 +163,24 @@ const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
 export const analyzeFrame = (
   video: HTMLVideoElement,
   work: HTMLCanvasElement,
+  /** Restricts the search to what the preview shows. Defaults to the whole frame. */
+  view: DocRect = { x: 0, y: 0, w: 1, h: 1 },
 ): FrameAnalysis => {
   const empty: FrameAnalysis = { rect: null, sharpness: 0, fill: 0 };
   const srcW = video.videoWidth || (video as any).width;
   const srcH = video.videoHeight || (video as any).height;
   if (!srcW || !srcH) return empty;
 
+  // Sample only the visible slice, at its own aspect ratio
+  const viewW = Math.max(1, Math.round(view.w * srcW));
+  const viewH = Math.max(1, Math.round(view.h * srcH));
   const w = DETECT_WIDTH;
-  const h = Math.max(1, Math.round((srcH / srcW) * w));
+  const h = Math.max(1, Math.round((viewH / viewW) * w));
   work.width = w;
   work.height = h;
   const ctx = work.getContext('2d', { willReadFrequently: true });
   if (!ctx) return empty;
-  ctx.drawImage(video, 0, 0, w, h);
+  ctx.drawImage(video, Math.round(view.x * srcW), Math.round(view.y * srcH), viewW, viewH, 0, 0, w, h);
 
   const { data } = ctx.getImageData(0, 0, w, h);
   const lum = new Uint8ClampedArray(w * h);
@@ -205,7 +250,7 @@ export const analyzeFrame = (
   // The old floor of 0.15 refused a page simply held further away.
   if (area < 0.05 || area > 0.98) return { rect: null, sharpness: 0, fill };
 
-  const ratio = (rw * srcW) / (rh * srcH);
+  const ratio = (rw * viewW) / (rh * viewH);
   if (ratio < 0.3 || ratio > 3.4) return { rect: null, sharpness: 0, fill };
 
   // ── sharpness, measured inside the sheet only ──────────────────────────
@@ -222,7 +267,14 @@ export const analyzeFrame = (
   const variance = lapN > 1 ? lapSq / lapN - (lapSum / lapN) ** 2 : 0;
 
   return {
-    rect: { x: best.x0 / w, y: best.y0 / h, w: rw, h: rh },
+    // Back to source coordinates: the capture crops the sensor frame, not the
+    // preview, so it must be told where the sheet is on the sensor.
+    rect: {
+      x: view.x + (best.x0 / w) * view.w,
+      y: view.y + (best.y0 / h) * view.h,
+      w: rw * view.w,
+      h: rh * view.h,
+    },
     sharpness: variance,
     fill,
   };
