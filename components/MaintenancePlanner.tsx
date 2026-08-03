@@ -271,11 +271,11 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       {/* Header & Global Controls */}
-      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col xl:flex-row items-center justify-between gap-8">
+      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-6 sm:gap-8">
         <div className="flex-1">
-          <h2 className="text-3xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tight">
-            <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
-              <CalendarDays className="w-8 h-8" />
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center gap-4 tracking-tight">
+            <div className="p-3 sm:p-4 shrink-0 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
+              <CalendarDays className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
             Planificator Mentenanta
           </h2>
@@ -284,18 +284,18 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full xl:w-auto">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch gap-3 sm:gap-4 w-full 2xl:w-auto">
           <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl shrink-0">
             <button onClick={() => setViewMode('LIST')}
-              className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
               Lista
             </button>
             <button onClick={() => setViewMode('CALENDAR')}
-              className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
               Calendar
             </button>
           </div>
-          <div className="relative flex-1 sm:min-w-[300px]">
+          <div className="relative flex-1 sm:min-w-[240px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
             <input 
               type="text"
@@ -305,17 +305,17 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold shadow-inner"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button 
               onClick={handleExportSchedule}
-              className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition shadow-sm flex items-center gap-2"
+              className="px-4 sm:px-6 py-3.5 sm:py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-bold text-[13px] hover:bg-slate-50 transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <FileSpreadsheet className="w-5 h-5" /> Exporta Program
             </button>
             <button 
               onClick={commitAllSchedules}
               disabled={modifiedCount === 0}
-              className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95 ${
+              className={`px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-2xl active:scale-95 whitespace-nowrap ${
                 modifiedCount > 0 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
@@ -353,7 +353,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         {visibleCount < filteredDevices.length && (
           <div className="col-span-full py-6 flex items-center justify-center gap-3 text-slate-400">
             <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
+            <span className="text-[11px] font-bold">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
           </div>
         )}
 
@@ -362,7 +362,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <div className="p-8 bg-slate-50 rounded-full mb-6">
               <ClipboardList className="w-16 h-16 text-slate-200" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Niciun dispozitiv gasit</h3>
+            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Niciun dispozitiv gasit</h3>
             <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs">Ajusteaza cautarea sau adauga dispozitive noi in inventar pentru a incepe planificarea.</p>
           </div>
         )}
@@ -377,7 +377,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               {modifiedCount}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-none mb-1">Modificari in asteptare</p>
+              <p className="text-[11px] font-bold text-slate-400 leading-none mb-1">Modificari in asteptare</p>
               <p className="text-sm font-bold leading-none">Modificari pregatite</p>
             </div>
           </div>
@@ -439,13 +439,13 @@ const MaintenanceCard = React.memo(({
         <div className="flex-1">
           <h4 className="font-black text-slate-900 text-lg leading-tight break-words">{device.name}</h4>
           <div className="flex flex-col gap-1 mt-2">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-md uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-md uppercase tracking-widest">
               <Box className="w-3 h-3" /> Model: {device.model || 'N/A'}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{device.department || 'Necunoscut'}</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{device.department || 'Necunoscut'}</span>
               <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-              <span className="text-[9px] font-mono text-slate-400 font-bold">SN: {device.serialNumber || 'N/A'}</span>
+              <span className="text-[11px] font-mono text-slate-400 font-bold">SN: {device.serialNumber || 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -458,7 +458,7 @@ const MaintenanceCard = React.memo(({
 
       <div className="space-y-6 flex-1">
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Data Programata</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block ml-1">Data Programata</label>
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
               <select 
@@ -484,7 +484,7 @@ const MaintenanceCard = React.memo(({
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Frecventa</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block ml-1">Frecventa</label>
           <div className="relative">
             <select 
               value={draft.frequency}
@@ -498,7 +498,7 @@ const MaintenanceCard = React.memo(({
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Protocol Service / Sarcini</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block ml-1">Protocol Service / Sarcini</label>
           <textarea
             value={draft.tasks}
             onChange={(e) => onUpdateDraft(device.id, { tasks: e.target.value })}
@@ -511,10 +511,10 @@ const MaintenanceCard = React.memo(({
       <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-blue-400" />
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
         </div>
         {!draft.isModified && (
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">Nemodificat</span>
+          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest italic">Nemodificat</span>
         )}
       </div>
     </div>

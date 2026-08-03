@@ -1,12 +1,11 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, ChevronLeft, ChevronRight, LayoutGrid, Rows3, SlidersHorizontal } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal } from 'lucide-react';
 
 import Portal from './Portal';
+import Pager, { PAGE_SIZES, PageSizePicker } from './Pager';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
-
-const PAGE_SIZES = [10, 20, 50, 100];
 
 /**
  * One dropdown per filter. The label above says which filter it is, so the
@@ -643,69 +642,6 @@ const DeviceRow = React.memo(({
   </div>
 ));
 
-/** Page numbers to show: always first and last, plus a window around the current one. */
-const pageWindow = (page: number, pageCount: number): (number | '…')[] => {
-  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
-  const around = [page - 1, page, page + 1].filter(n => n > 1 && n < pageCount);
-  const out: (number | '…')[] = [1];
-  if (around[0] > 2) out.push('…');
-  out.push(...around);
-  if (around[around.length - 1] < pageCount - 1) out.push('…');
-  out.push(pageCount);
-  return out;
-};
-
-const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
-  page: number; pageCount: number; pageSize: number; total: number; onGoTo: (p: number) => void;
-}) => {
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  return (
-    <div className="hardware-card rounded-3xl px-4 py-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <span className="tech-label text-center sm:text-left">
-        {from}–{to} din {total}{pageCount > 1 ? ` · pagina ${page} / ${pageCount}` : ''}
-      </span>
-      {pageCount > 1 && (
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            onClick={() => onGoTo(page - 1)}
-            disabled={page === 1}
-            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
-            title="Pagina anterioara"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          {pageWindow(page, pageCount).map((n, i) =>
-            n === '…' ? (
-              <span key={`gap-${i}`} className="px-1 text-slate-300 font-black">…</span>
-            ) : (
-              <button
-                key={n}
-                onClick={() => onGoTo(n)}
-                className={`min-w-[2.5rem] px-2 py-2.5 rounded-xl text-[11px] font-black transition active:scale-90 ${
-                  n === page
-                    ? 'bg-blue-600 border-2 border-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
-                }`}
-              >
-                {n}
-              </button>
-            )
-          )}
-          <button
-            onClick={() => onGoTo(page + 1)}
-            disabled={page === pageCount}
-            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
-            title="Pagina urmatoare"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-});
-
 const DeviceCard = React.memo(({
   device, 
   index,
@@ -1142,17 +1078,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               {filteredDevices.length}
             </div>
             <span className="tech-label">Dispozitive gasite</span>
-            <label className="flex items-center gap-2">
-              <span className="tech-label">Pe pagina</span>
-              <select
-                value={pageSize}
-                onChange={(e) => changePageSize(Number(e.target.value))}
-                className="px-3 py-2 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[11px] font-black text-slate-700 outline-none uppercase tracking-wider shadow-inner cursor-pointer"
-                title="Cate dispozitive se afiseaza pe o pagina"
-              >
-                {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
+            <PageSizePicker value={pageSize} onChange={changePageSize} />
             <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 border-2 border-slate-200 rounded-2xl">
               <button
                 onClick={() => changeViewMode('cards')}

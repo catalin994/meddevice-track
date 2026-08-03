@@ -11,6 +11,7 @@ import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
+import Pager, { usePagination, PageSizePicker } from './Pager';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 
 interface FinanceManagerProps {
@@ -218,9 +219,19 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       .filter(inv => !q ||
         inv.invoiceNumber.toLowerCase().includes(q) ||
         inv.supplier.toLowerCase().includes(q) ||
-        (inv.contractNumber || '').toLowerCase().includes(q))
+        (inv.contractNumber || '').toLowerCase().includes(q) ||
+        (inv.description || '').toLowerCase().includes(q) ||
+        // also by the devices the cost is attached to, which is how someone
+        // usually arrives here: from a piece of equipment, not from a number
+        (inv.deviceIds || []).some(id => {
+          const d = devices.find(x => x.id === id);
+          return !!d && (d.name.toLowerCase().includes(q) || (d.serialNumber || '').toLowerCase().includes(q));
+        }))
       .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
-  }, [invoices, listSearch, statusFilter]);
+  }, [invoices, listSearch, statusFilter, devices]);
+
+  const { pageItems: pagedInvoices, page, pageSize, setPageSize, pageCount, goToPage, topRef } =
+    usePagination(filteredInvoices, 'meditrack_invoices_page_size');
 
   // ---- PDF auto-detection ----
   const handlePdfUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,7 +503,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
               <Wallet className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">Financiar</h2>
+              <h2 className="text-2xl sm:text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Financiar</h2>
               <p className="text-sm text-slate-400 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
             </div>
           </div>
@@ -536,7 +547,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Cheltuieli lunare</h3>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ultimele 12 luni · {dominantCurrency}</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Ultimele 12 luni · {dominantCurrency}</span>
             </div>
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
               <FinanceCharts monthlyData={monthlyData} currency={dominantCurrency} />
@@ -557,11 +568,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     <div key={c.contractNumber} className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
                       <div>
                         <p className="text-sm font-black text-slate-900">{c.provider}</p>
-                        <p className="text-[10px] font-mono text-slate-400">{c.contractNumber}</p>
+                        <p className="text-[11px] font-mono text-slate-400">{c.contractNumber}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-black text-amber-600">{c.endDate}</p>
-                        <p className="text-[10px] font-bold text-slate-400">{fmt(c.annualCost)}/an</p>
+                        <p className="text-[11px] font-bold text-slate-400">{fmt(c.annualCost)}/an</p>
                       </div>
                     </div>
                   ))}
@@ -580,10 +591,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 <div className="space-y-3">
                   {topDevicesByCost.map(({ device, total }, i) => (
                     <div key={device!.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                      <span className="w-7 h-7 shrink-0 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black">{i + 1}</span>
+                      <span className="w-7 h-7 shrink-0 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[11px] font-black">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900 truncate">{device!.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400">SN: {device!.serialNumber}</p>
+                        <p className="text-[11px] font-mono text-slate-400">SN: {device!.serialNumber}</p>
                       </div>
                       <p className="text-sm font-black text-blue-600 shrink-0">{fmt(total)} {dominantCurrency}</p>
                     </div>
@@ -598,8 +609,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       {/* ============ INVOICES ============ */}
       {tab === 'INVOICES' && (
         <div className="space-y-4">
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1 min-w-[15rem]">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
               <input
                 value={listSearch}
@@ -608,20 +619,23 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               {(['ALL', InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE] as const).map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
-                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-900'}`}>
+                  className={`px-4 py-3 rounded-xl text-[11px] font-bold transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-900'}`}>
                   {s === 'ALL' ? 'Toate' : STATUS_LABELS[s]}
                 </button>
               ))}
               <button onClick={handleExportExcel} disabled={invoices.length === 0}
-                className="px-4 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-40 shadow-lg shadow-emerald-600/20"
+                className="px-4 py-3 bg-emerald-600 text-white rounded-xl text-[11px] font-bold hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-40 shadow-lg shadow-emerald-600/20"
                 title="Exporta centralizatorul facturilor in Excel">
                 <FileSpreadsheet className="w-4 h-4" /> Centralizator
               </button>
+              <PageSizePicker value={pageSize} onChange={setPageSize} />
             </div>
           </div>
+
+          <div ref={topRef} className="scroll-mt-4" />
 
           {filteredInvoices.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
@@ -631,7 +645,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredInvoices.map(inv => {
+              {pagedInvoices.map(inv => {
                 const st = effectiveStatus(inv);
                 return (
                   <div key={inv.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-lg transition-all flex flex-col lg:flex-row lg:items-center gap-4">
@@ -642,16 +656,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                       <div className="min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
                           <p className="text-sm font-black text-slate-900">{inv.invoiceNumber}</p>
-                          <span className={`px-2.5 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-widest ${STATUS_STYLES[st]}`}>{STATUS_LABELS[st]}</span>
+                          <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${STATUS_STYLES[st]}`}>{STATUS_LABELS[st]}</span>
                           {inv.contractNumber && (
-                            <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                            <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[11px] font-bold flex items-center gap-1">
                               <ShieldCheck className="w-3 h-3" />{inv.contractNumber}
                             </span>
                           )}
                         </div>
                         <p className="text-xs font-bold text-slate-500 mt-1 truncate">{inv.supplier} · {inv.issueDate}{inv.dueDate ? ` · scadenta ${inv.dueDate}` : ''}</p>
                         {inv.deviceIds.length > 0 && (
-                          <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">
+                          <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">
                             {inv.deviceIds.slice(0, 3).map(id => devicesMap.get(id)?.name || id).join(', ')}
                             {inv.deviceIds.length > 3 ? ` +${inv.deviceIds.length - 3}` : ''}
                           </p>
@@ -675,6 +689,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   </div>
                 );
               })}
+              <Pager page={page} pageCount={pageCount} pageSize={pageSize}
+                total={filteredInvoices.length} onGoTo={goToPage} />
             </div>
           )}
         </div>
@@ -692,8 +708,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Centralizare Facturi PDF</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Centralizare Facturi PDF</h3>
+                <p className="text-[11px] text-slate-400 font-black uppercase mt-1 tracking-widest">
                   {bulkDrafts.length} fisiere procesate · {bulkDrafts.filter(d => d.include).length} selectate pentru salvare
                   {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} duplicate detectate</span>}
                 </p>
@@ -705,7 +721,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
               {/* Column headers */}
               <div className="hidden lg:grid grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 px-4 pb-1">
                 {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri'].map((h, i) => (
-                  <p key={i} className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{h}</p>
+                  <p key={i} className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{h}</p>
                 ))}
               </div>
               {bulkDrafts.map((d, i) => (
@@ -717,8 +733,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   <div className="min-w-0">
                     <input value={d.invoiceNumber} onChange={e => updateBulkDraft(i, { invoiceNumber: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
-                    {d.isDuplicate && <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
-                    <p className="text-[9px] text-slate-300 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
+                    {d.isDuplicate && <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
+                    <p className="text-[11px] text-slate-300 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
                   </div>
                   <input value={d.supplier} onChange={e => updateBulkDraft(i, { supplier: e.target.value })} placeholder="Furnizor"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
@@ -732,16 +748,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   </select>
                   <div className="flex flex-col gap-1">
                     {d.deviceIds.length > 0
-                      ? <span className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-center">{d.deviceIds.length} dispozitiv{d.deviceIds.length > 1 ? 'e' : ''}</span>
-                      : <span className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest text-center">fara disp.</span>}
-                    {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
+                      ? <span className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[11px] font-bold text-center">{d.deviceIds.length} dispozitiv{d.deviceIds.length > 1 ? 'e' : ''}</span>
+                      : <span className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[11px] font-bold text-center">fara disp.</span>}
+                    {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[11px] font-bold text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                 Facturile se salveaza cu status "Neplatita" — le poti actualiza ulterior
               </p>
               <div className="flex gap-3">
@@ -765,8 +781,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">{editingId ? 'Editeaza Factura' : 'Factura Noua'}</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">Asociaza cu contracte si dispozitive</p>
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">{editingId ? 'Editeaza Factura' : 'Factura Noua'}</h3>
+                <p className="text-[11px] text-slate-400 font-black uppercase mt-1 tracking-widest">Asociaza cu contracte si dispozitive</p>
               </div>
               <button onClick={() => setIsEditing(false)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
             </div>
@@ -780,13 +796,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     <div className="p-2.5 bg-blue-600 rounded-xl"><FileText className="w-5 h-5" /></div>
                     <div>
                       <p className="text-xs font-black uppercase tracking-widest">Import PDF factura</p>
-                      <p className="text-[10px] text-white/50 font-bold mt-0.5">
+                      <p className="text-[11px] text-white/50 font-bold mt-0.5">
                         {form.fileName || 'Detecteaza automat numarul, suma, dispozitivele si contractul'}
                       </p>
                     </div>
                   </div>
                   <button type="button" onClick={() => pdfInputRef.current?.click()} disabled={isExtracting}
-                    className="px-6 py-3 bg-white text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition flex items-center gap-2 disabled:opacity-50 shrink-0">
+                    className="px-6 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 disabled:opacity-50 shrink-0">
                     {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     {isExtracting ? 'Se analizeaza...' : 'Incarca PDF'}
                   </button>
@@ -844,7 +860,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Dispozitive asociate</p>
-                  <span className="text-[10px] font-black text-blue-600 uppercase">{selectedDeviceIds.length} selectate</span>
+                  <span className="text-[11px] font-black text-blue-600 uppercase">{selectedDeviceIds.length} selectate</span>
                 </div>
                 <div className="relative mb-4">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
@@ -894,7 +910,7 @@ const KpiCard = ({ icon, label, value, tone }: { icon: React.ReactNode; label: s
   return (
     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
       <div className={`inline-flex p-2.5 rounded-xl mb-4 ${tones[tone]}`}>{icon}</div>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{label}</p>
       <p className="text-xl font-black text-slate-900 mt-1 truncate">{value}</p>
     </div>
   );
@@ -908,14 +924,14 @@ const DeviceRow = ({ device, selected, onToggle }: { device: MedicalDevice; sele
     </div>
     <div className="flex-1 min-w-0">
       <p className={`text-xs font-black truncate ${selected ? 'text-white' : 'text-slate-900'}`}>{device.name}</p>
-      <p className={`text-[10px] font-mono ${selected ? 'text-white/60' : 'text-slate-400'}`}>SN: {device.serialNumber} · {device.department}</p>
+      <p className={`text-[11px] font-mono ${selected ? 'text-white/60' : 'text-slate-400'}`}>SN: {device.serialNumber} · {device.department}</p>
     </div>
   </div>
 );
 
 const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}{required && ' *'}</label>
+    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{label}{required && ' *'}</label>
     {children}
   </div>
 );
