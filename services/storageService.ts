@@ -14,61 +14,120 @@ const DB_VERSION = 7;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-export const initDB = (): Promise<IDBDatabase> => {
-  if (dbPromise) return dbPromise;
+/** Reported when the local database cannot be opened, so the UI can say so
+ *  instead of quietly starting with no data. */
+export type StorageProblem = { kind: 'blocked' | 'timeout' | 'error'; message: string };
+let storageProblem: StorageProblem | null = null;
+const problemListeners = new Set<(p: StorageProblem | null) => void>();
 
-  dbPromise = new Promise((resolve, reject) => {
+export const getStorageProblem = () => storageProblem;
+export const onStorageProblem = (cb: (p: StorageProblem | null) => void) => {
+  problemListeners.add(cb);
+  return () => problemListeners.delete(cb);
+};
+const setProblem = (p: StorageProblem | null) => {
+  storageProblem = p;
+  problemListeners.forEach(cb => cb(p));
+};
+
+const OPEN_TIMEOUT_MS = 15000;
+
+/**
+ * One attempt at opening the database.
+ *
+ * The timeout must not simply walk away from the request: the browser carries
+ * on opening, and the connection it eventually hands over would be held by
+ * nobody and closed by nobody. Every later attempt then contends with that
+ * orphan, which is why a single slow start used to poison the whole session.
+ */
+const openOnce = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    let settled = false;
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    // If an old tab holds the DB at a previous version, the upgrade blocks
-    // forever and the whole app would hang on the loading screen.
-    // Fail after 5s instead so the UI can start with empty data and retry later.
-    const timeout = setTimeout(() => {
-      dbPromise = null;
-      reject(new Error('IndexedDB open timed out — close other tabs running this app and reload.'));
-    }, 5000);
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      // Whatever arrives later belongs to no one — close it on arrival.
+      request.onsuccess = (event: any) => { try { event.target.result.close(); } catch { /* ignore */ } };
+      reject(Object.assign(new Error('timeout'), { kind: 'timeout' }));
+    }, OPEN_TIMEOUT_MS);
 
     request.onupgradeneeded = (event: any) => {
       const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_DEVICES)) {
-        db.createObjectStore(STORE_DEVICES, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_TASKS)) {
-        db.createObjectStore(STORE_TASKS, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_INVOICES)) {
-        db.createObjectStore(STORE_INVOICES, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_AUDIT)) {
-        db.createObjectStore(STORE_AUDIT, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_DELETIONS)) {
-        db.createObjectStore(STORE_DELETIONS, { keyPath: 'id' });
-      }
+      if (!db.objectStoreNames.contains(STORE_DEVICES))   db.createObjectStore(STORE_DEVICES, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_TASKS))     db.createObjectStore(STORE_TASKS, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_INVOICES))  db.createObjectStore(STORE_INVOICES, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_AUDIT))     db.createObjectStore(STORE_AUDIT, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_DELETIONS)) db.createObjectStore(STORE_DELETIONS, { keyPath: 'id' });
       // Documents fetched from Storage, so they stay readable without signal
-      if (!db.objectStoreNames.contains(STORE_BLOBS)) {
-        db.createObjectStore(STORE_BLOBS);
-      }
+      if (!db.objectStoreNames.contains(STORE_BLOBS))     db.createObjectStore(STORE_BLOBS);
     };
 
+    // Another window still holds an older version. Waiting for the timeout
+    // here only delays a message the user could act on straight away.
     request.onblocked = () => {
-      console.warn('[Storage] DB upgrade blocked — another tab has the app open with an older version.');
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      request.onsuccess = (event: any) => { try { event.target.result.close(); } catch { /* ignore */ } };
+      reject(Object.assign(new Error('blocked'), { kind: 'blocked' }));
     };
 
     request.onsuccess = (event: any) => {
-      clearTimeout(timeout);
-      const db = event.target.result;
-      // When a future version wants to upgrade, release our connection
-      // so THIS tab never blocks other tabs.
-      db.onversionchange = () => db.close();
+      if (settled) { try { event.target.result.close(); } catch { /* ignore */ } return; }
+      settled = true;
+      clearTimeout(timer);
+      const db: IDBDatabase = event.target.result;
+
+      // Another tab is upgrading: let go, and forget the handle. Keeping the
+      // resolved promise would hand every later write a closed connection.
+      db.onversionchange = () => {
+        try { db.close(); } catch { /* ignore */ }
+        if (dbPromise) dbPromise = null;
+      };
+      db.onclose = () => { dbPromise = null; };
+
       resolve(db);
     };
+
     request.onerror = (event: any) => {
-      clearTimeout(timeout);
-      dbPromise = null; // Reset on error so next call can retry
-      reject(event.target.error);
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(Object.assign(event.target.error || new Error('error'), { kind: 'error' }));
     };
   });
+
+export const initDB = (): Promise<IDBDatabase> => {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = (async () => {
+    try {
+      const db = await openOnce();
+      setProblem(null);
+      return db;
+    } catch (first: any) {
+      // A phone waking the browser up can be slow enough to miss the first
+      // attempt; a second one usually lands.
+      if (first?.kind === 'timeout') {
+        try {
+          const db = await openOnce();
+          setProblem(null);
+          return db;
+        } catch { /* fall through to the report below */ }
+      }
+      dbPromise = null;
+      const problem: StorageProblem =
+        first?.kind === 'blocked'
+          ? { kind: 'blocked', message: 'Aplicatia e deschisa si in alta fereastra. Inchide-o si reincarca.' }
+          : first?.kind === 'timeout'
+            ? { kind: 'timeout', message: 'Baza de date locala nu raspunde. Reincarca aplicatia.' }
+            : { kind: 'error', message: `Baza de date locala nu a putut fi deschisa: ${first?.message || first}` };
+      setProblem(problem);
+      throw Object.assign(new Error(problem.message), { kind: problem.kind });
+    }
+  })();
 
   return dbPromise;
 };
