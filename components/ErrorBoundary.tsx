@@ -28,14 +28,14 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('[MediTrack] Eroare neasteptata:', error, info);
+    console.error('[Biomedic] Eroare neasteptata:', error, info);
     this.setState({ info: info.componentStack || '' });
   }
 
   private report = () => {
     const { error, info } = this.state;
     const text = [
-      `MediTrack — raport eroare`,
+      `Biomedic — raport eroare`,
       `Versiune: ${typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'necunoscuta'}`,
       `Adresa: ${window.location.href}`,
       `Browser: ${navigator.userAgent}`,

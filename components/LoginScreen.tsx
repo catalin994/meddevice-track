@@ -1,12 +1,13 @@
 
 import React, { useState, useCallback } from 'react';
-import { Stethoscope, Lock, Delete, Mail, KeyRound, Loader2, UserPlus, ArrowLeft, ShieldAlert, LogOut, Terminal, Copy, Check, X } from 'lucide-react';
+import { Lock, Delete, Mail, KeyRound, Loader2, UserPlus, ArrowLeft, ShieldAlert, LogOut, Terminal, Copy, Check, X } from 'lucide-react';
 import { AppUser } from '../types';
 import {
   signIn, signUp, signOut,
   hasDeviceLock, setDeviceLock, verifyDeviceLock,
 } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
+import { LogoTile } from './Logo';
 
 interface LoginScreenProps {
   onLogin: (user: AppUser) => void;
@@ -20,11 +21,9 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="theme-static fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[900] overflow-y-auto">
     <div className="w-full max-w-sm space-y-8 animate-slide-up py-8">
       <div className="flex flex-col items-center gap-4">
-        <div className="bg-blue-600 p-4 rounded-3xl shadow-2xl shadow-blue-600/30">
-          <Stethoscope className="w-10 h-10 text-white" />
-        </div>
+        <LogoTile className="p-4 rounded-3xl shadow-2xl shadow-blue-600/30" markClassName="w-10 h-10" />
         <div className="text-center">
-          <h1 className="text-2xl font-black tracking-tight text-white uppercase">MediTrack</h1>
+          <h1 className="text-2xl font-black tracking-tight text-white uppercase">Biomedic</h1>
           <p className="text-[11px] font-bold text-white/40 tracking-[0.2em] mt-1">Management echipamente medicale</p>
         </div>
       </div>

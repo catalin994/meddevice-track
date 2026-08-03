@@ -45,7 +45,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
 
     const win = window.open('', '_blank');
     if (!win) { setIsPrinting(false); alert('Browserul a blocat fereastra de printare. Permite pop-up-urile si incearca din nou.'); return; }
-    win.document.write(`<!DOCTYPE html><html><head><title>Etichete QR MediTrack</title>
+    win.document.write(`<!DOCTYPE html><html><head><title>Etichete QR Biomedic</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: system-ui, sans-serif; padding: 8mm; }

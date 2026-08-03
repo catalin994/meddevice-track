@@ -174,7 +174,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
 
     // 2. Construct Aesthetic AOA (Array of Arrays) with detailed summary
     const aoa = [
-      ['MEDITRACK - SISTEM DE MANAGEMENT AL DISPOZITIVELOR MEDICALE'],
+      ['BIOMEDIC - SISTEM DE MANAGEMENT AL DISPOZITIVELOR MEDICALE'],
       ['PROGRAM DE MENTENANTA SI SERVICE'],
       [''],
       ['SUMAR'],
@@ -190,7 +190,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       ['--- SFARSITUL RAPORTULUI DE SERVICE ---'],
       [''],
       ['NOTA DE CONFIDENTIALITATE: Acest document contine date despre dispozitive medicale. Accesul este restrictionat personalului autorizat.'],
-      ['MediTrack v2.5 | Date proprietare infrastructura clinica']
+      ['Biomedic | Date proprietare infrastructura clinica']
     ];
 
     try {
@@ -230,7 +230,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       XLSX.utils.book_append_sheet(workbook, worksheet, "Raport");
       
       const fileDate = now.toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `MediTrack_Raport_Echipamente_${fileDate}.xlsx`);
+      XLSX.writeFile(workbook, `Biomedic_Raport_Echipamente_${fileDate}.xlsx`);
     } catch (err) {
       console.error("Export error:", err);
       alert("Generarea raportului a esuat. Verificati daca pop-up-urile sunt permise in browser.");

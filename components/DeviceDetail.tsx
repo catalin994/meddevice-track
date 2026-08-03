@@ -5,10 +5,11 @@ import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
+import { LogoTile } from './Logo';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
-  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Stethoscope, Calendar, Printer, Wallet, ShieldCheck, Receipt
+  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
@@ -895,8 +896,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       {isStandalone && (
         <div className="p-6 sm:p-8 bg-slate-900 text-white flex flex-col items-center gap-4 text-center">
            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg"><Stethoscope className="w-5 h-5 text-white" /></div>
-              <h1 className="text-lg font-black tracking-tight text-white uppercase">MediTrack</h1>
+              <LogoTile className="p-2 rounded-lg" markClassName="w-5 h-5" />
+              <h1 className="text-lg font-black tracking-tight text-white uppercase">Biomedic</h1>
            </div>
            <p className="text-xs text-slate-400 font-medium max-w-xs">
               Aceasta este o vizualizare individuala a dispozitivului. Pentru administrarea intregului parc de echipamente, accesati aplicatia principala.

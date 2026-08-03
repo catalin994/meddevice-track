@@ -194,7 +194,7 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   }, []);
 
 
-  const SQL_FIX = `-- MEDITRACK — SCHEMA + MIGRARE (se poate rula de mai multe ori, in siguranta)
+  const SQL_FIX = `-- BIOMEDIC — SCHEMA + MIGRARE (se poate rula de mai multe ori, in siguranta)
 -- 1. Deschide Supabase Dashboard -> SQL Editor
 -- 2. Lipeste tot acest script si apasa RUN
 --

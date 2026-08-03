@@ -5,7 +5,7 @@
  *
  * Idempotent: safe to run again.
  */
-export const SECURITY_SQL = `-- MEDITRACK — CONTURI SI ACCES (se poate rula de mai multe ori, in siguranta)
+export const SECURITY_SQL = `-- BIOMEDIC — CONTURI SI ACCES (se poate rula de mai multe ori, in siguranta)
 -- Ruleaza acest script in Supabase Dashboard -> SQL Editor -> RUN.
 --
 -- Ce face:

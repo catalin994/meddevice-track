@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Stethoscope, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, List, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus, Sun, Moon } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -55,6 +55,7 @@ import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import { buildPath, uploadDataUrl } from './services/fileStorage';
 import LoginScreen from './components/LoginScreen';
+import { LogoTile, LogoMark } from './components/Logo';
 
 const VIEW_LABELS: Record<string, string> = {
   DASHBOARD: 'Panou',
@@ -936,10 +937,10 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-fade-in">
               <div className="relative">
                  <div className="w-24 h-24 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
-                 <Stethoscope className="w-8 h-8 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                 <LogoMark className="w-8 h-8 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
               </div>
               <div className="text-center">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">MediTrack OS</p>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Biomedic</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Se initializeaza registrul...</p>
               </div>
             </div>
@@ -1107,11 +1108,9 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
     <div className="h-full flex flex-col relative">
       <div className="absolute top-0 right-0 w-1 h-full bg-slate-50" />
       <div className="p-6 lg:p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
-        <div className="bg-slate-900 p-2.5 rounded-xl shadow-xl shadow-slate-900/10 ring-1 ring-white/20 shrink-0">
-          <Stethoscope className="w-6 h-6 text-blue-400" />
-        </div>
+        <LogoTile className="p-2.5 rounded-xl shrink-0" />
         <div className="min-w-0">
-          <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">MediTrack</h1>
+          <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">Biomedic</h1>
           {/* The close button takes this room on phones, and the subtitle
               wrapped to two lines rather than fitting beside it */}
           <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em] leading-relaxed mt-1.5">Registru echipamente medicale</p>

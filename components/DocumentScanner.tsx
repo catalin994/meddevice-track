@@ -453,7 +453,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
           <div className="p-2 bg-blue-600 rounded-xl"><ScanLine className="w-5 h-5 text-white" /></div>
           <div>
             <p className="text-white font-black text-sm uppercase tracking-widest">Scanner Documente</p>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">MediTrack · OCR Engine</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Biomedic · Recunoastere text</p>
           </div>
         </div>
         <button onClick={() => { stopCamera(); onClose(); }} className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">

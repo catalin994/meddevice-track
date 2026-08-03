@@ -97,7 +97,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
           let id: string | null = null;
 
           try {
-            // Normal case: a MediTrack deep link
+            // Normal case: a Biomedic deep link
             const url = new URL(raw);
             id = url.searchParams.get('id');
           } catch {
@@ -140,7 +140,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
           </div>
           <div>
             <p className="text-white font-black text-sm uppercase tracking-widest">Scaneaza QR Dispozitiv</p>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">MediTrack Scanner</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Scanare Biomedic</p>
           </div>
         </div>
         <button onClick={() => { stopCamera(); onClose(); }} className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">

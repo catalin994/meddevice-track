@@ -1,6 +1,8 @@
 
 import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion } from '../types';
 
+// Numele bazei locale ramane cel vechi dupa redenumirea aplicatiei: schimbarea
+// lui ar deschide o baza noua, goala, si ar abandona datele de pe fiecare telefon.
 const DB_NAME = 'MediTrackDB';
 const STORE_DEVICES = 'devices';
 const STORE_TASKS = 'tasks';

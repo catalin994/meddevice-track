@@ -50,7 +50,7 @@ const listState = {
 const exportToExcel = async (devices: MedicalDevice[]) => {
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'MediTrack';
+  wb.creator = 'Biomedic';
   wb.created = new Date();
 
   const TOTAL_COLS = 14;
@@ -88,7 +88,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ];
 
   // Title row
-  const titleRow = ws.addRow(['MEDITRACK — RAPORT INVENTAR DISPOZITIVE', ...Array(TOTAL_COLS - 1).fill('')]);
+  const titleRow = ws.addRow(['BIOMEDIC — RAPORT INVENTAR DISPOZITIVE', ...Array(TOTAL_COLS - 1).fill('')]);
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
   titleRow.height = 42;
   titleRow.getCell(1).style = {
@@ -259,7 +259,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
     };
   };
 
-  addSectionTitle('MEDITRACK — SUMAR RAPORT');
+  addSectionTitle('BIOMEDIC — SUMAR RAPORT');
   wsSummary.addRow([]);
   addSummaryRow('Generat', new Date().toLocaleString());
   addSummaryRow('Total dispozitive', devices.length, true);
@@ -287,7 +287,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `MediTrack_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+  a.download = `Biomedic_Raport_${new Date().toISOString().split('T')[0]}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 };
@@ -314,7 +314,7 @@ const importFromExcel = (
       // Find the header row: look for a row containing "Device Name" (legacy) or "Denumire echipament"
       const headerRowIdx = rows.findIndex(r => r.some((c: any) => ['Device Name', 'Denumire echipament'].includes(String(c).trim())));
       if (headerRowIdx === -1) {
-        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Nu am gasit randul de antet. Asigurati-va ca importati un export Excel MediTrack.'] });
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Nu am gasit randul de antet. Asigurati-va ca importati un export Excel Biomedic.'] });
         return;
       }
 
@@ -426,7 +426,7 @@ const exportToPDF = (devices: MedicalDevice[]) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MediTrack - Raport Dispozitive</title>
+  <title>Biomedic - Raport Dispozitive</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 24px; }
@@ -459,7 +459,7 @@ const exportToPDF = (devices: MedicalDevice[]) => {
 <body>
   <div class="header">
     <div class="header-left">
-      <h1>MediTrack &mdash; Raport Inventar Dispozitive</h1>
+      <h1>Biomedic &mdash; Raport Inventar Dispozitive</h1>
       <p>Sistem de management echipamente medicale &bull; Inginerie biomedicala</p>
     </div>
     <div class="header-right">
@@ -493,7 +493,7 @@ const exportToPDF = (devices: MedicalDevice[]) => {
   </table>
 
   <div class="footer">
-    <span>MediTrack &mdash; Registru Echipamente &mdash; Confidential</span>
+    <span>Biomedic &mdash; Registru Echipamente &mdash; Confidential</span>
     <span>Pagina <span class="pageNumber"></span></span>
   </div>
 

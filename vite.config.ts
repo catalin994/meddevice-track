@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => {
           registerType: 'prompt',
           includeAssets: ['apple-touch-icon.png', 'favicon-64.png'],
           manifest: {
-            name: 'MediTrack — Management echipamente medicale',
-            short_name: 'MediTrack',
+            name: 'Biomedic — Registru echipamente medicale',
+            short_name: 'Biomedic',
             description: 'Inventar, mentenanta si documente pentru aparatura medicala.',
             lang: 'ro',
             start_url: '/meddevice-track/',
