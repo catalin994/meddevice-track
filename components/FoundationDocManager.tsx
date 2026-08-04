@@ -11,6 +11,7 @@ import Portal from './Portal';
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import Pager, { usePagination, PageSizePicker } from './Pager';
+import SablonPanel from './SablonPanel';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 import { fundamentareDocx, numeFisier } from '../services/documenteAchizitie';
@@ -272,7 +273,10 @@ const FoundationDocManager: React.FC<Props> = ({
               {t === 'ALL' ? 'Toate' : FOUNDATION_DOC_RO[t as FoundationDocType]}
             </button>
           ))}
-          <div className="ml-auto"><PageSizePicker value={pageSize} onChange={setPageSize} /></div>
+          <div className="ml-auto flex items-center gap-2">
+            <SablonPanel fel="fundamentare" titlu="Document de fundamentare" />
+            <PageSizePicker value={pageSize} onChange={setPageSize} />
+          </div>
         </div>
       </div>
 

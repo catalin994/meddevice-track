@@ -12,6 +12,7 @@ import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import DepartmentPicker from './DepartmentPicker';
 import Pager, { usePagination, PageSizePicker } from './Pager';
+import SablonPanel from './SablonPanel';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 import { referatDocx, numeFisier } from '../services/documenteAchizitie';
@@ -288,7 +289,10 @@ const ReferatManager: React.FC<Props> = ({
               {s === 'ALL' ? 'Toate' : REFERAT_STATUS_RO[s as ReferatStatus]}
             </button>
           ))}
-          <div className="ml-auto"><PageSizePicker value={pageSize} onChange={setPageSize} /></div>
+          <div className="ml-auto flex items-center gap-2">
+            <SablonPanel fel="referat" titlu="Referat de necesitate" />
+            <PageSizePicker value={pageSize} onChange={setPageSize} />
+          </div>
         </div>
       </div>
 

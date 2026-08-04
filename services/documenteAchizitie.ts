@@ -1,5 +1,7 @@
 import { Referat, FoundationDoc, FOUNDATION_DOC_RO, normaliseFoundationType, referatTotal } from '../types';
 import { par, gol, tabel, construieste, dataRo, suma, Cell } from './docx';
+import { completeazaSablon } from './sablonWord';
+import { iaSablon } from './sabloane';
 
 /**
  * Referatul de necesitate si documentul de fundamentare, asa cum arata pe
@@ -21,7 +23,54 @@ export interface Antet {
 
 const A4_LATIME = 9638; // dxa disponibili intre margini pe A4 portret
 
+/**
+ * Referatul in Word.
+ *
+ * Daca institutia si-a pus sablonul, se porneste de la el si se schimba doar
+ * valorile — asa documentul iese identic cu hartia lor, cu sigla si antetul
+ * ei. Fara sablon se deseneaza aici o varianta corecta, dar nu identica.
+ */
 export const referatDocx = async (r: Referat, antet: Antet = {}): Promise<Blob> => {
+  const pozitii0 = r.items?.length
+    ? r.items
+    : [{ id: '1', name: r.subject, unit: 'Buc', quantity: 1, unitPrice: r.estimatedValue || 0, specs: '' }];
+
+  const sablon = await iaSablon('referat');
+  if (sablon) {
+    return completeazaSablon(sablon, {
+      valori: {
+        autoritate: antet.autoritate || '',
+        manager: antet.manager || '',
+        emitent: r.issuedBy || '',
+        data: dataRo(r.date),
+        aprobat: r.approvedBy || '',
+        obiect: r.subject || '',
+        justificare: r.justification || '',
+        oferte: r.offerProvider || r.offerNumbers
+          ? `Se poate realiza conform ofertelor ataşate de firma ${r.offerProvider || ''}`
+            + `${r.offerNumbers ? `, cu numărul ${r.offerNumbers}` : ''}`
+          : '',
+        articol: r.budgetArticle || '',
+        total: suma(referatTotal(pozitii0 as any)),
+        contact_nume: r.contactName || '',
+        contact_functie: r.contactRole || '',
+        contact_compartiment: r.issuedBy || '',
+        contact_email: r.contactEmail || '',
+        contact_telefon: r.contactPhone || '',
+        sef: r.approvedBy || '',
+      },
+      randuri: pozitii0.map((p, i) => ({
+        nr: String(i + 1),
+        denumire: p.name,
+        um: p.unit || 'Buc',
+        cant: String(p.quantity ?? ''),
+        pret: p.unitPrice ? suma(p.unitPrice) : '',
+        valoare: p.unitPrice ? suma((p.quantity || 0) * p.unitPrice) : '',
+        caracteristici: p.specs || '',
+      })),
+    });
+  }
+
   const pozitii = r.items?.length
     ? r.items
     : [{ id: '1', name: r.subject, unit: 'Buc', quantity: 1, unitPrice: r.estimatedValue || 0, specs: '' }];
@@ -124,6 +173,33 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
   const precedenta = d.previousValue || 0;
   const influenta = d.influence ?? ((d.amount || 0) - precedenta);
   const actualizata = d.amount ?? (precedenta + influenta);
+
+  const sablon = await iaSablon('fundamentare');
+  if (sablon) {
+    return completeazaSablon(sablon, {
+      valori: {
+        obiect: d.subject || '',
+        numar: d.number || '',
+        data: dataRo(d.date),
+        revizie: String(d.revision ?? 0),
+        data_revizie: dataRo(d.revisionDate || d.date),
+        compartiment: d.compartment || '',
+        descriere: d.description || '',
+        referinta: d.supplier || d.referenceNumber
+          ? `Se realizează conform ofertei / contractului${d.supplier ? ` de la firma ${d.supplier}` : ''}`
+            + `${d.referenceNumber ? `, cu numărul ${d.referenceNumber}` : ''}.`
+          : '',
+        articol: d.budgetArticle || '',
+        element: tip,
+        program: d.program || '',
+        cod_ssi: d.ssiCode || '',
+        parametri: d.parameters || '',
+        val_precedenta: suma(precedenta),
+        influenta: suma(influenta),
+        val_actualizata: suma(actualizata),
+      },
+    });
+  }
 
   // Element | Program | Cod SSI | Parametrii | Precedenta | Influente | Actualizata
   const L = [2300, 1500, 2100, 2100, 1900, 1600, 1900];
