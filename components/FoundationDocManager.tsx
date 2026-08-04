@@ -78,6 +78,7 @@ const gol = () => ({
   supplier: '',
   referenceNumber: '',
   frameworkContract: '',
+  frameworkTotal: 0,
   reference: '',
   recurring: false,
   seriesId: '',
@@ -264,7 +265,8 @@ const FoundationDocManager: React.FC<Props> = ({
       remainingAmount: d.remainingAmount || 0,
       currency: d.currency || 'RON',
       supplier: d.supplier || '', referenceNumber: d.referenceNumber || '',
-      frameworkContract: d.frameworkContract || '', reference: d.reference || '',
+      frameworkContract: d.frameworkContract || '', frameworkTotal: d.frameworkTotal || 0,
+      reference: d.reference || '',
       recurring: !!d.recurring, seriesId: d.seriesId || '', periodMonth: d.periodMonth || lunaAcum(),
       notes: d.notes || '', filePath: d.filePath, fileUrl: d.fileUrl || '', fileName: d.fileName || '',
     });
@@ -277,6 +279,7 @@ const FoundationDocManager: React.FC<Props> = ({
 
   const serii = useMemo(() => seriiRestante(docs), [docs]);
   const deFacut = useMemo(() => serii.filter(s => s.restante.length > 0), [serii]);
+  const restanteTotal = useMemo(() => deFacut.reduce((n, s) => n + s.restante.length, 0), [deFacut]);
 
   /**
    * Deschide documentul lunii urmatoare, gata completat din cel dinainte.
@@ -322,6 +325,7 @@ const FoundationDocManager: React.FC<Props> = ({
       supplier: p.supplier || '',
       referenceNumber: p.referenceNumber || '',
       frameworkContract: p.frameworkContract || '',
+      frameworkTotal: p.frameworkTotal || 0,
       reference: schimba(p.reference),
       recurring: true,
       seriesId: s.seriesId,
@@ -394,6 +398,7 @@ const FoundationDocManager: React.FC<Props> = ({
       supplier: form.supplier.trim() || undefined,
       referenceNumber: form.referenceNumber.trim() || undefined,
       frameworkContract: form.frameworkContract.trim() || undefined,
+      frameworkTotal: form.frameworkTotal || undefined,
       reference: form.reference.trim() || undefined,
       recurring: form.recurring || undefined,
       // Prima luna a unei serii isi da numele seriei; urmatoarele il mostenesc.
@@ -435,35 +440,80 @@ const FoundationDocManager: React.FC<Props> = ({
         cer cate unul pe luna; tinut minte de om, se uita — si se uita tocmai in
         lunile aglomerate. Aici sunt scrise, cu butonul care le face.
       */}
-      {deFacut.length > 0 && (
-        <div className="p-5 bg-amber-50 border-2 border-amber-200 rounded-[2rem] space-y-3">
+      {serii.length > 0 && (
+        <div className={`p-5 border-2 rounded-[2rem] space-y-3 ${
+          deFacut.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'
+        }`}>
           <div className="flex items-center gap-3">
-            <CalendarClock className="w-5 h-5 text-amber-700 shrink-0" />
-            <p className="text-[13px] font-black text-amber-900 uppercase tracking-wide">
-              {deFacut.reduce((n, s) => n + s.restante.length, 0)} document
-              {deFacut.reduce((n, s) => n + s.restante.length, 0) === 1 ? '' : 'e'} lunar
-              {deFacut.reduce((n, s) => n + s.restante.length, 0) === 1 ? '' : 'e'} de facut
+            <CalendarClock className={`w-5 h-5 shrink-0 ${deFacut.length > 0 ? 'text-amber-700' : 'text-slate-500'}`} />
+            <p className={`text-[13px] font-black uppercase tracking-wide ${deFacut.length > 0 ? 'text-amber-900' : 'text-slate-600'}`}>
+              {restanteTotal === 0
+                ? `${serii.length} contract${serii.length === 1 ? '' : 'e'} lunar${serii.length === 1 ? '' : 'e'} — la zi`
+                : `${restanteTotal} document${restanteTotal === 1 ? '' : 'e'} lunar${restanteTotal === 1 ? '' : 'e'} de facut`}
             </p>
           </div>
-          {deFacut.map(s => (
-            <div key={s.seriesId} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-white border border-amber-200 rounded-2xl">
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-bold text-slate-900 break-words">{s.ultimul.subject || 'Fara obiect'}</p>
-                <p className="text-[11px] font-bold text-slate-500 mt-0.5">
-                  {[s.ultimul.supplier, s.ultimul.referenceNumber].filter(Boolean).join(' · ')}
-                  {' · ultimul: '}{lunaRo(s.ultimul.periodMonth || '')}
-                  {s.restante.length > 1 && <span className="text-amber-700"> · {s.restante.length} luni in urma</span>}
-                </p>
+          {serii.map(s => {
+            const plafon = s.ultimul.frameworkTotal || 0;
+            const consumat = s.ultimul.amount || 0;
+            const rata = s.ultimul.influence || 0;
+            const ramas = plafon ? plafon - consumat : 0;
+            // Cate luni mai incap la rata de acum. Zero inseamna ca urmatoarea
+            // alocare nu mai are din ce sa fie facuta.
+            const luniRamase = plafon && rata > 0 ? Math.floor(ramas / rata) : null;
+            const procent = plafon ? Math.min(100, Math.round((consumat / plafon) * 100)) : 0;
+            const strans = plafon > 0 && luniRamase !== null && luniRamase <= 2;
+            return (
+              <div key={s.seriesId} className="px-4 py-3 bg-white border border-slate-200 rounded-2xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold text-slate-900 break-words">{s.ultimul.subject || 'Fara obiect'}</p>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                      {[s.ultimul.supplier, s.ultimul.referenceNumber].filter(Boolean).join(' · ')}
+                      {' · ultimul: '}{lunaRo(s.ultimul.periodMonth || '')}
+                      {s.restante.length > 1 && <span className="text-amber-700"> · {s.restante.length} luni in urma</span>}
+                    </p>
+                  </div>
+                  {s.restante.length > 0 ? (
+                    <button
+                      onClick={() => faLunaUrmatoare(s, s.restante[0])}
+                      className="w-full sm:w-auto px-5 py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 shrink-0 flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Fa documentul pe {lunaRo(s.restante[0])}
+                    </button>
+                  ) : (
+                    <span className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-black uppercase tracking-widest shrink-0 text-center">
+                      La zi
+                    </span>
+                  )}
+                </div>
+
+                {/* Cat s-a consumat din acordul-cadru. */}
+                {plafon > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-[11px] font-bold">
+                      <span className="text-slate-500">
+                        Acord-cadru{s.ultimul.frameworkContract ? ` ${s.ultimul.frameworkContract}` : ''}
+                      </span>
+                      <span className={strans ? 'text-red-700' : 'text-slate-600'}>
+                        {fmt(consumat)} din {fmt(plafon)} · raman {fmt(Math.max(0, ramas))}
+                        {luniRamase !== null && (
+                          <span className={strans ? 'text-red-700' : 'text-slate-500'}>
+                            {' '}({luniRamase === 0 ? 'nu mai incape o luna' : `inca ${luniRamase} lun${luniRamase === 1 ? 'a' : 'i'}`})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${
+                        procent >= 100 ? 'bg-red-600' : strans ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`} style={{ width: `${procent}%` }} />
+                    </div>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => faLunaUrmatoare(s, s.restante[0])}
-                className="w-full sm:w-auto px-5 py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 shrink-0 flex items-center justify-center gap-2"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Fa documentul pe {lunaRo(s.restante[0])}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -840,6 +890,13 @@ const FoundationDocManager: React.FC<Props> = ({
                         <input type="month" value={form.periodMonth}
                           onChange={e => setForm(p => ({ ...p, periodMonth: e.target.value }))}
                           aria-label="Luna pe care o acopera documentul" className="camp bg-white" />
+                      </Camp>
+                      {/* Plafonul din care trag alocarile lunare. */}
+                      <Camp eticheta="Valoarea acordului-cadru">
+                        <input type="number" step="0.01" value={form.frameworkTotal || ''}
+                          onChange={e => setForm(p => ({ ...p, frameworkTotal: parseFloat(e.target.value) || 0 }))}
+                          placeholder="Gol, nu se urmareste epuizarea"
+                          aria-label="Valoarea totala a acordului-cadru" className="camp bg-white" />
                       </Camp>
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Seria</label>

@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
+import { valabilitatePropusa } from '../services/termene';
 import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
@@ -58,6 +59,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     department: device.department,
     status: device.status,
     isCNCAN: !!device.isCNCAN,
+    cncanExpiry: device.cncanExpiry || '',
+    warrantyExpiration: device.warrantyExpiration || '',
+    metrologyRequired: !!device.metrologyRequired,
+    metrologyCertificate: device.metrologyCertificate || '',
+    metrologyDate: device.metrologyDate || '',
+    metrologyExpiry: device.metrologyExpiry || '',
+    metrologyLab: device.metrologyLab || '',
     notes: device.notes || '',
     image: device.image || '',
     files: device.files || [],
@@ -79,6 +87,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         department: device.department,
         status: device.status,
         isCNCAN: !!device.isCNCAN,
+        cncanExpiry: device.cncanExpiry || '',
+        warrantyExpiration: device.warrantyExpiration || '',
+        metrologyRequired: !!device.metrologyRequired,
+        metrologyCertificate: device.metrologyCertificate || '',
+        metrologyDate: device.metrologyDate || '',
+        metrologyExpiry: device.metrologyExpiry || '',
+        metrologyLab: device.metrologyLab || '',
         notes: device.notes || '',
         image: device.image || '',
         files: device.files || [],
@@ -432,6 +447,94 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                    )}
                    
+                   {/*
+                     Termenele care nu se negociaza. Buletinul metrologic expirat
+                     scoate aparatul din uz oricat de bine ar functiona, iar
+                     garantia expirata inseamna o reparatie platita degeaba.
+                     Stateau pana acum nicaieri, sau intr-o nota scrisa de mana.
+                   */}
+                   <div className="pt-6 sm:pt-8 border-t border-slate-100 space-y-4">
+                      <label className="tech-label block">Termene si conformitate</label>
+                      {isEditing ? (
+                        <div className="space-y-5">
+                          <div className="p-4 sm:p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input type="checkbox" name="metrologyRequired" checked={editForm.metrologyRequired}
+                                onChange={handleEditChange} className="mt-0.5 w-5 h-5 accent-blue-600 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-black text-slate-900">Supus controlului metrologic legal</p>
+                                <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                                  Aparatul masoara, deci are buletin de verificare periodica.
+                                </p>
+                              </div>
+                            </label>
+                            {editForm.metrologyRequired && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <label className="tech-label ml-1">Nr. buletin</label>
+                                  <input name="metrologyCertificate" value={editForm.metrologyCertificate}
+                                    onChange={handleEditChange} placeholder="ex. 1234/2026"
+                                    aria-label="Numarul buletinului metrologic" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="tech-label ml-1">Laborator</label>
+                                  <input name="metrologyLab" value={editForm.metrologyLab}
+                                    onChange={handleEditChange} placeholder="ex. BRML Brasov"
+                                    aria-label="Laboratorul de metrologie" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="tech-label ml-1">Data verificarii</label>
+                                  <input type="date" name="metrologyDate" value={editForm.metrologyDate}
+                                    onChange={e => {
+                                      const d = e.target.value;
+                                      // Valabilitatea se propune la un an, cat e de obicei;
+                                      // ramane de schimbat cand laboratorul scrie altceva.
+                                      setEditForm(p => ({ ...p, metrologyDate: d,
+                                        metrologyExpiry: p.metrologyExpiry || valabilitatePropusa(d) }));
+                                    }}
+                                    aria-label="Data verificarii metrologice" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="tech-label ml-1">Valabil pana la</label>
+                                  <input type="date" name="metrologyExpiry" value={editForm.metrologyExpiry}
+                                    onChange={handleEditChange}
+                                    aria-label="Buletinul metrologic e valabil pana la" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="tech-label ml-1">Garantia expira</label>
+                              <input type="date" name="warrantyExpiration" value={editForm.warrantyExpiration}
+                                onChange={handleEditChange} aria-label="Data expirarii garantiei" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="tech-label ml-1">Autorizatia CNCAN expira</label>
+                              <input type="date" name="cncanExpiry" value={editForm.cncanExpiry}
+                                onChange={handleEditChange} disabled={!editForm.isCNCAN}
+                                title={editForm.isCNCAN ? '' : 'Se completeaza doar la aparatele sub incidenta CNCAN'}
+                                aria-label="Data expirarii autorizatiei CNCAN"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors disabled:opacity-40" />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <TermenRow eticheta="Buletin metrologic"
+                            data={device.metrologyRequired ? device.metrologyExpiry : undefined}
+                            gol={device.metrologyRequired ? 'Netrecut — aparatul e supus controlului metrologic' : 'Nu e supus controlului metrologic'}
+                            greuCandLipseste={!!device.metrologyRequired}
+                            detaliu={[device.metrologyCertificate, device.metrologyLab].filter(Boolean).join(' · ')} />
+                          <TermenRow eticheta="Garantie" data={device.warrantyExpiration} gol="Netrecuta" />
+                          {device.isCNCAN && (
+                            <TermenRow eticheta="Autorizatie CNCAN" data={device.cncanExpiry} gol="Netrecuta" greuCandLipseste />
+                          )}
+                          <TermenRow eticheta="Urmatoarea mentenanta" data={device.nextMaintenanceDate} gol="Neprogramata" />
+                        </div>
+                      )}
+                   </div>
+
                    <div className="pt-6 sm:pt-8 border-t border-slate-100">
                       <label className="tech-label block mb-3">Note tehnice</label>
                       {isEditing ? (
@@ -938,12 +1041,47 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   );
 };
 
+/**
+ * Un termen, cu cate zile mai are.
+ *
+ * Data singura nu spune nimic: "12.03.2026" cere socoteala in cap de fiecare
+ * data. Aici scrie si daca a trecut, si peste cat timp vine.
+ */
+const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste }: {
+  eticheta: string; data?: string; gol: string; detaliu?: string; greuCandLipseste?: boolean;
+}) => {
+  const zile = data && !Number.isNaN(Date.parse(data))
+    ? Math.ceil((new Date(`${data}T00:00:00`).getTime()
+      - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00').getTime()) / 86400000)
+    : null;
+  const ton = zile === null
+    ? (greuCandLipseste ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-500')
+    : zile < 0 ? 'bg-red-50 border-red-200 text-red-800'
+    : zile <= 45 ? 'bg-amber-50 border-amber-200 text-amber-800'
+    : 'bg-emerald-50 border-emerald-200 text-emerald-800';
+  return (
+    <div className={`px-4 py-3 rounded-2xl border ${ton}`}>
+      <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{eticheta}</p>
+      <p className="text-[14px] font-black mt-0.5">
+        {data || gol}
+        {zile !== null && (
+          <span className="text-[11px] font-bold ml-2 opacity-80">
+            {zile < 0 ? `expirat de ${-zile} zile` : zile === 0 ? 'expira azi' : `peste ${zile} zile`}
+          </span>
+        )}
+      </p>
+      {detaliu && <p className="text-[11px] font-bold opacity-70 mt-0.5 truncate">{detaliu}</p>}
+    </div>
+  );
+};
+
 // Display labels for internal file type values — the stored values stay unchanged
 const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
   manual: 'Manual',
   report: 'Raport',
   service: 'Service',
   achizitie: 'Achizitie',
+  metrologie: 'Metrologie',
   image: 'Imagine',
   other: 'Altele',
 };

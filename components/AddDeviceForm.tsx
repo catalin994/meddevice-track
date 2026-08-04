@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
+import { CATEGORII_CU_METROLOGIE } from '../services/termene';
 import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert } from 'lucide-react';
 import DepartmentPicker from './DepartmentPicker';
 
@@ -115,6 +116,10 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       nextMaintenanceDate: calculateNextMaintenanceDate(formData.purchaseDate, formData.category),
       status: formData.status as DeviceStatus,
       isCNCAN: formData.isCNCAN,
+      // Un defibrilator sau un injectomat poarta buletin metrologic. Bifat de
+      // la inceput, aparatul apare imediat pe Panou ca "fara buletin trecut",
+      // in loc sa fie descoperit la primul control. Se poate scoate din fisa.
+      metrologyRequired: CATEGORII_CU_METROLOGIE.includes(formData.category),
       notes: formData.notes,
       image: formData.image,
       maintenanceHistory: [],
@@ -144,6 +149,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
         nextMaintenanceDate: calculateNextMaintenanceDate(formData.purchaseDate, formData.category),
         status: formData.status as DeviceStatus,
         isCNCAN: formData.isCNCAN,
+        metrologyRequired: CATEGORII_CU_METROLOGIE.includes(formData.category),
         notes: formData.notes,
         image: formData.image,
         maintenanceHistory: [],

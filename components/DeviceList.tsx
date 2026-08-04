@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown, ShieldCheck } from 'lucide-react';
 
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -47,7 +47,121 @@ const listState = {
   dept: 'ALL' as string,
   category: 'ALL' as string,
   tag: 'ALL' as string,
+  metrologie: 'ALL' as FiltruMetrologie,
   page: 1,
+};
+
+/**
+ * Filtrul de metrologie.
+ *
+ * "Care aparate au buletinul expirat" e intrebarea care se pune la un control,
+ * si pana acum se raspundea deschizand aparatele unul cate unul.
+ */
+type FiltruMetrologie = 'ALL' | 'EXPIRAT' | 'CURAND' | 'LIPSA' | 'VALABIL';
+
+const FILTRE_METROLOGIE: { id: FiltruMetrologie; text: string }[] = [
+  { id: 'ALL', text: 'Toate' },
+  { id: 'EXPIRAT', text: 'Metrologie expirata' },
+  { id: 'CURAND', text: 'Expira in 45 de zile' },
+  { id: 'LIPSA', text: 'Fara buletin trecut' },
+  { id: 'VALABIL', text: 'Metrologie valabila' },
+];
+
+const zileRamase = (data?: string): number | null => {
+  if (!data || Number.isNaN(Date.parse(data))) return null;
+  const azi = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
+  return Math.ceil((new Date(`${data}T00:00:00`).getTime() - azi.getTime()) / 86400000);
+};
+
+const treceFiltrulMetrologic = (d: MedicalDevice, f: FiltruMetrologie): boolean => {
+  if (f === 'ALL') return true;
+  if (!d.metrologyRequired) return false;
+  // Un aparat casat nu mai are termene de respectat. Fara randul asta, filtrul
+  // ar arata doua expirate acolo unde Panoul numara una — si cifra care nu se
+  // potriveste cu lista de sub ea nu mai e crezuta de nimeni.
+  if (d.status === DeviceStatus.RETIRED) return false;
+  const z = zileRamase(d.metrologyExpiry);
+  if (f === 'LIPSA') return z === null;
+  if (z === null) return false;
+  if (f === 'EXPIRAT') return z < 0;
+  if (f === 'CURAND') return z >= 0 && z <= 45;
+  return z >= 0;
+};
+
+/**
+ * Lista de metrologie, pentru control.
+ *
+ * Separata de exportul mare intentionat: acolo intrarea unei coloane noi cere
+ * retusarea antetelor imbinate, iar hartia care se cere la un control e alta —
+ * numai aparatele supuse controlului metrologic, cu buletinul, laboratorul,
+ * termenul si cate zile mai are. Se exporta ce se vede: filtrezi la expirate,
+ * exporti expiratele.
+ */
+const exportMetrologie = async (devices: MedicalDevice[]) => {
+  const supuse = devices.filter(d => d.metrologyRequired && d.status !== DeviceStatus.RETIRED);
+  if (supuse.length === 0) return;
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Biomedic';
+  wb.created = new Date();
+  const ws = wb.addWorksheet('Metrologie', {
+    pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+  ws.columns = [
+    { key: 'no', width: 5 }, { key: 'name', width: 30 }, { key: 'sn', width: 20 },
+    { key: 'dept', width: 20 }, { key: 'cert', width: 16 }, { key: 'lab', width: 22 },
+    { key: 'data', width: 14 }, { key: 'exp', width: 14 }, { key: 'zile', width: 12 },
+    { key: 'stare', width: 18 },
+  ];
+  const TOTAL = 10;
+  const titlu = ws.addRow(['BIOMEDIC — VERIFICARI METROLOGICE', ...Array(TOTAL - 1).fill('')]);
+  ws.mergeCells(1, 1, 1, TOTAL);
+  titlu.height = 38;
+  titlu.getCell(1).style = {
+    font: { bold: true, size: 15, color: { argb: 'FFFFFFFF' }, name: 'Arial' },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+  };
+  const sub = ws.addRow([`Generat: ${new Date().toLocaleString('ro-RO')}  •  ${supuse.length} mijloace de masurare`,
+    ...Array(TOTAL - 1).fill('')]);
+  ws.mergeCells(2, 1, 2, TOTAL);
+  sub.getCell(1).style = {
+    font: { size: 9, color: { argb: 'FF94A3B8' }, italic: true },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF263238' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+  };
+  ws.addRow([]).height = 6;
+
+  const cap = ws.addRow(['#', 'Denumire', 'Numar serie', 'Sectie', 'Nr. buletin', 'Laborator',
+                         'Data verificarii', 'Valabil pana la', 'Zile ramase', 'Stare']);
+  cap.height = 24;
+  cap.eachCell(c => { c.style = {
+    font: { bold: true, size: 10, color: { argb: 'FFFFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } },
+    alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+  }; });
+
+  const ordonate = [...supuse].sort((a, b) => (a.metrologyExpiry || '9999').localeCompare(b.metrologyExpiry || '9999'));
+  ordonate.forEach((d, i) => {
+    const z = zileRamase(d.metrologyExpiry);
+    const stare = z === null ? 'Fara buletin trecut' : z < 0 ? 'EXPIRAT' : z <= 45 ? 'Expira curand' : 'Valabil';
+    const culoare = z === null ? 'FFF59E0B' : z < 0 ? 'FFDC2626' : z <= 45 ? 'FFD97706' : 'FF059669';
+    const r = ws.addRow([i + 1, d.name, d.serialNumber, d.department,
+      d.metrologyCertificate || '', d.metrologyLab || '',
+      d.metrologyDate || '', d.metrologyExpiry || '',
+      z === null ? '' : z, stare]);
+    r.getCell(10).style = { font: { bold: true, color: { argb: culoare } }, alignment: { horizontal: 'center' } };
+    r.getCell(9).alignment = { horizontal: 'center' };
+  });
+
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Metrologie_${new Date().toISOString().split('T')[0]}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 const exportToExcel = async (devices: MedicalDevice[]) => {
@@ -810,6 +924,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterDept, setFilterDept] = useState<string | 'ALL'>(listState.dept);
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>(listState.category);
   const [filterTag, setFilterTag] = useState<string | 'ALL'>(listState.tag);
+  const [filterMetrologie, setFilterMetrologie] = useState<FiltruMetrologie>(listState.metrologie);
   const [localSearch, setLocalSearch] = useState(listState.search);
   const [showQRSheet, setShowQRSheet] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -833,7 +948,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   // toggle — opened automatically when a filter is already applied.
   const activeFilterCount =
     (filterDept !== 'ALL' ? 1 : 0) + (filterCategory !== 'ALL' ? 1 : 0) +
-    (filterStatus !== 'ALL' ? 1 : 0) + (filterTag !== 'ALL' ? 1 : 0);
+    (filterStatus !== 'ALL' ? 1 : 0) + (filterTag !== 'ALL' ? 1 : 0) +
+    (filterMetrologie !== 'ALL' ? 1 : 0);
   const [showFilters, setShowFilters] = useState(() => activeFilterCount > 0);
 
   // A placeholder can't be shortened with CSS, so track the breakpoint itself
@@ -909,10 +1025,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       const matchDept = filterDept === 'ALL' || d.department === filterDept;
       const matchCategory = filterCategory === 'ALL' || d.category === filterCategory;
       const matchTag = filterTag === 'ALL' || (d.tags || []).includes(filterTag);
+      const matchMetrologie = treceFiltrulMetrologic(d, filterMetrologie);
 
-      return matchSearch && matchStatus && matchDept && matchCategory && matchTag;
+      return matchSearch && matchStatus && matchDept && matchCategory && matchTag && matchMetrologie;
     });
-  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag]);
+  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag, filterMetrologie]);
 
   const pageCount = Math.max(1, Math.ceil(filteredDevices.length / pageSize));
 
@@ -935,6 +1052,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     listState.dept = filterDept;
     listState.category = filterCategory;
     listState.tag = filterTag;
+    listState.metrologie = filterMetrologie;
     listState.page = page;
   }, [localSearch, filterStatus, filterDept, filterCategory, filterTag, page]);
 
@@ -1110,7 +1228,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           </button>
         </div>
 
-        <div className={`${showFilters ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2 sm:gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        <div className={`${showFilters ? 'grid' : 'hidden'} sm:grid grid-cols-2 gap-2 sm:gap-4 w-full ${allTags.length > 0 ? 'xl:grid-cols-5' : 'sm:grid-cols-4'}`}>
           <FilterSelect label="Departament" value={filterDept} onChange={setFilterDept} options={allAvailableDepartments} />
           <FilterSelect label="Categorie" value={filterCategory} onChange={setFilterCategory} options={DEVICE_CATEGORIES as readonly string[]} />
           <FilterSelect
@@ -1120,6 +1238,18 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             options={Object.values(DeviceStatus)}
             labelFor={(s) => DEVICE_STATUS_RO[s as DeviceStatus] || s}
           />
+          {/* "Care aparate au buletinul expirat" — intrebarea de la control. */}
+          <div className="space-y-1 min-w-0">
+            <label className="tech-label ml-1">Metrologie</label>
+            <select
+              aria-label="Filtru metrologie"
+              className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
+              value={filterMetrologie}
+              onChange={e => setFilterMetrologie(e.target.value as FiltruMetrologie)}
+            >
+              {FILTRE_METROLOGIE.map(f => <option key={f.id} value={f.id}>{f.text.toUpperCase()}</option>)}
+            </select>
+          </div>
           {allTags.length > 0 && (
             <FilterSelect label="Eticheta" value={filterTag} onChange={setFilterTag} options={allTags} />
           )}
@@ -1190,6 +1320,13 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 icon={<FileText className="w-4 h-4 shrink-0 text-red-600" />}
                 label="PDF"
                 hint="Exporta lista filtrata in PDF"
+              />
+              <ToolButton
+                onClick={() => exportMetrologie(filteredDevices)}
+                disabled={filteredDevices.every(d => !d.metrologyRequired)}
+                icon={<ShieldCheck className="w-4 h-4 shrink-0 text-amber-600" />}
+                label="Metrologie"
+                hint="Lista de verificari metrologice, pentru control"
               />
               <ToolButton
                 onClick={() => importInputRef.current?.click()}

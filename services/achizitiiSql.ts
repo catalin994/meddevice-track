@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.documente_fundamentare (
   "supplier"          TEXT,
   "referenceNumber"   TEXT,
   "frameworkContract" TEXT,
+  "frameworkTotal"    NUMERIC,
   "reference"         TEXT,
   "recurring"         BOOLEAN,
   "seriesId"          TEXT,
@@ -99,7 +100,9 @@ ALTER TABLE public.documente_fundamentare
   -- documentele lunare de pe contracte: ce serie, ce luna
   ADD COLUMN IF NOT EXISTS "recurring"         BOOLEAN,
   ADD COLUMN IF NOT EXISTS "seriesId"          TEXT,
-  ADD COLUMN IF NOT EXISTS "periodMonth"       TEXT;
+  ADD COLUMN IF NOT EXISTS "periodMonth"       TEXT,
+  -- plafonul acordului-cadru din care trag alocarile lunare
+  ADD COLUMN IF NOT EXISTS "frameworkTotal"    NUMERIC;
 
 -- Cautarea dupa referatul sustinut, pe dosarele mari.
 CREATE INDEX IF NOT EXISTS documente_fundamentare_referat_idx

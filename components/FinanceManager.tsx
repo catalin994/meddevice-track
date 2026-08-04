@@ -20,6 +20,7 @@ import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 const ReferatManager = lazy(() => import('./ReferatManager'));
 const FoundationDocManager = lazy(() => import('./FoundationDocManager'));
+const BugetPanel = lazy(() => import('./BugetPanel'));
 
 interface FinanceManagerProps {
   devices: MedicalDevice[];
@@ -36,7 +37,7 @@ interface FinanceManagerProps {
   canDelete: boolean;
 }
 
-type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'REFERATE' | 'FUNDAMENTARE' | 'CONTRACTS';
+type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'CONTRACTS';
 
 const emptyForm = () => ({
   invoiceNumber: '',
@@ -48,6 +49,7 @@ const emptyForm = () => ({
   status: InvoiceStatus.NOT_UPLOADED,
   uploadedAt: '',
   contractNumber: '',
+  budgetArticle: '',
   description: '',
   fileUrl: '',
   fileName: '',
@@ -545,6 +547,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       status: normaliseInvoiceStatus(inv.status),
       uploadedAt: inv.uploadedAt || '',
       contractNumber: inv.contractNumber || '',
+      budgetArticle: inv.budgetArticle || '',
       description: inv.description || '',
       fileUrl: inv.fileUrl || '',
       fileName: inv.fileName || '',
@@ -586,6 +589,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       status: form.status,
       uploadedAt,
       contractNumber: form.contractNumber || undefined,
+      budgetArticle: form.budgetArticle.trim() || undefined,
       deviceIds: selectedDeviceIds,
       description: form.description || undefined,
       filePath,
@@ -668,6 +672,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           {([
             ['OVERVIEW', 'Sumar', TrendingUp, 'Sumar'],
             ['INVOICES', 'Facturi', Receipt, 'Facturi'],
+            ['BUDGET', 'Buget', Landmark, 'Buget'],
             ['REFERATE', 'Referate', FileSignature, 'Referate'],
             ['FUNDAMENTARE', 'Documente de fundamentare', FolderOpen, 'Fundamentare'],
             ['CONTRACTS', 'Contracte', ShieldCheck, 'Contracte'],
@@ -888,6 +893,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             filtruReferat={dosarReferat}
             onClearFiltruReferat={() => setDosarReferat(null)}
           />
+        </Suspense>
+      )}
+
+      {/* ============ BUGET ============ */}
+      {tab === 'BUDGET' && (
+        <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+          <BugetPanel docs={foundationDocs} invoices={invoices} moneda={dominantCurrency} />
         </Suspense>
       )}
 
@@ -1129,6 +1141,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                       <option key={c.contractNumber} value={c.contractNumber}>{c.contractNumber} · {c.provider}</option>
                     ))}
                   </select>
+                </Field>
+                {/* Pagina de buget il deduce cand lipseste; scris aici, are ultimul cuvant. */}
+                <Field label="Articol bugetar">
+                  <input value={form.budgetArticle} onChange={e => setForm(p => ({ ...p, budgetArticle: e.target.value }))}
+                    placeholder="ex. 200109 — gol, se deduce din contract" className="fin-input" />
                 </Field>
                 <Field label="Descriere">
                   <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="ex. Revizie anuala, piese schimb..." className="fin-input" />

@@ -220,6 +220,12 @@ CREATE TABLE IF NOT EXISTS public.devices (
     "nextMaintenanceDate" TEXT,
     status TEXT DEFAULT 'Active',
     "isCNCAN" BOOLEAN DEFAULT FALSE,
+    "cncanExpiry" TEXT,
+    "metrologyRequired" BOOLEAN DEFAULT FALSE,
+    "metrologyCertificate" TEXT,
+    "metrologyDate" TEXT,
+    "metrologyExpiry" TEXT,
+    "metrologyLab" TEXT,
     image TEXT,
     notes TEXT,
     tags JSONB DEFAULT '[]'::jsonb,
@@ -257,6 +263,7 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     currency TEXT DEFAULT 'RON',
     status TEXT DEFAULT 'NotUploaded',
     "contractNumber" TEXT,
+    "budgetArticle" TEXT,
     "deviceIds" JSONB DEFAULT '[]'::jsonb,
     description TEXT,
     "fileUrl" TEXT,
@@ -383,6 +390,16 @@ ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "purchaseDate" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "warrantyExpiration" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "nextMaintenanceDate" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "isCNCAN" BOOLEAN DEFAULT FALSE;
+-- termenele: autorizatia CNCAN si verificarea metrologica periodica
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "cncanExpiry" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyRequired" BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyCertificate" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyDate" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyExpiry" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyLab" TEXT;
+-- articolul bugetar al facturii, pentru pagina de buget
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "budgetArticle" TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "uploadedAt" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "maintenanceHistory" JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "locationHistory" JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS contracts JSONB DEFAULT '[]'::jsonb;

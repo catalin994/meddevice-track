@@ -298,6 +298,14 @@ export interface FoundationDoc {
   referenceNumber?: string;
   /** Acordul-cadru pe care se sprijina un contract subsecvent. */
   frameworkContract?: string;
+  /**
+   * Valoarea totala a acordului-cadru.
+   *
+   * Contractele subsecvente trag dintr-un plafon. Fara cifra asta nimeni nu
+   * vede cat a mai ramas pana la epuizare — se afla in luna in care alocarea
+   * nu mai incape, adica prea tarziu ca sa se mai poata face o procedura noua.
+   */
+  frameworkTotal?: number;
   /** Frazele care leaga documentul de oferta sau de contract. Se propune una
    *  din campurile de mai sus, dar se poate scrie orice — documentele reale nu
    *  au doua la fel. */
@@ -383,7 +391,7 @@ export const schimbaLuna = (text: string, dinPerioada: string, inPerioada: strin
 export interface DeviceFile {
   id: string;
   name: string;
-  type: 'manual' | 'report' | 'image' | 'other' | 'service' | 'achizitie';
+  type: 'manual' | 'report' | 'image' | 'other' | 'service' | 'achizitie' | 'metrologie';
   /** Key in Supabase Storage. Newer records use this instead of `url`. */
   path?: string;
   /** Legacy inline data URL, kept so old records still open. */
@@ -417,6 +425,26 @@ export interface MedicalDevice {
   warrantyExpiration?: string;
   status: DeviceStatus;
   isCNCAN?: boolean;
+  /** Autorizatia CNCAN are termen; se reinnoieste. */
+  cncanExpiry?: string;
+  /**
+   * Verificarea metrologica periodica.
+   *
+   * Aparatele care masoara — tensiometre, cantare, injectomate, defibrilatoare
+   * — sunt mijloace de masurare supuse controlului metrologic legal. Buletinul
+   * are termen, si un aparat cu buletinul expirat nu are voie sa fie folosit,
+   * oricat de bine ar functiona. E singurul termen din aplicatie care nu se
+   * negociaza cu nimeni.
+   */
+  metrologyRequired?: boolean;
+  /** Numarul buletinului de verificare metrologica. */
+  metrologyCertificate?: string;
+  /** Data verificarii. */
+  metrologyDate?: string;
+  /** Pana cand e valabil. De obicei un an, dar nu intotdeauna. */
+  metrologyExpiry?: string;
+  /** Laboratorul care a facut verificarea. */
+  metrologyLab?: string;
   image?: string;
   notes?: string;
   maintenanceHistory: MaintenanceRecord[];
@@ -552,6 +580,13 @@ export interface Invoice {
   /** When it was marked as uploaded to ConectX (ISO date). */
   uploadedAt?: string;
   contractNumber?: string;   // optional link to a service contract
+  /**
+   * Articolul bugetar pe care se face plata.
+   *
+   * Cand lipseste, pagina de buget il deduce din documentul de fundamentare cu
+   * acelasi numar de contract; scris aici, are ultimul cuvant.
+   */
+  budgetArticle?: string;
   deviceIds: string[];       // devices this cost is associated with
   description?: string;
   /** Key in Supabase Storage for the attached invoice PDF. */

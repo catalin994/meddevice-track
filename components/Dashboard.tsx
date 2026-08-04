@@ -1,16 +1,18 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO } from '../types';
-import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock } from 'lucide-react';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, Contract } from '../types';
+import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock } from 'lucide-react';
+import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, Termen, FelTermen } from '../services/termene';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
 interface DashboardProps {
   devices: MedicalDevice[];
   tasks: MedicalTask[];
+  onSelectDevice?: (id: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
+const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice }) => {
   
   const statusData = useMemo(() => {
     const counts = {
@@ -46,6 +48,20 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       .filter(d => d.daysRemaining <= 30 && d.daysRemaining >= -7) // Show up to 30 days in future and 7 days in past
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
   }, [devices]);
+
+  /**
+   * Termenele care se apropie: metrologie, garantie, contracte, CNCAN.
+   *
+   * Contractele stau in interiorul aparatelor, deci se aduna de acolo, cate
+   * unul pe numar — acelasi contract acopera de obicei mai multe aparate.
+   */
+  const contracte = useMemo(() => Array.from(new Map<string, Contract>(
+    devices.flatMap(d => d.contracts || []).map(c => [c.contractNumber, c])).values()), [devices]);
+  const termene = useMemo(
+    () => termeneDeUrmarit(termeneleTuturor(devices, contracte)).filter(t => t.fel !== 'mentenanta'),
+    [devices, contracte]);
+  const metrologieRea = useMemo(() => metrologieExpirata(devices), [devices]);
+  const metrologieGoala = useMemo(() => metrologieNecunoscuta(devices), [devices]);
 
   const defecte = useMemo(
     () => devices.filter(d => d.status === DeviceStatus.BROKEN).length, [devices]);
@@ -87,7 +103,71 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
                 : intarziate > 0 ? `${intarziate} cu termen depasit` : 'Urm. 30 zile'}
           tone={upcomingMaintenance.length === 0 ? 'ok' : intarziate > 0 ? 'alert' : 'warn'}
         />
+        {/*
+          Metrologia isi merita cifra ei: un aparat cu buletinul expirat nu are
+          voie sa fie folosit, si asta nu se vede din nimic altceva de pe ecran.
+        */}
+        <StatCard
+          title="Metrologie Expirata" value={metrologieRea.length}
+          icon={<ShieldCheck className="w-5 h-5" />} color="text-red-700" bgColor="bg-red-50"
+          note={metrologieRea.length === 0
+            ? (metrologieGoala.length ? `${metrologieGoala.length} fara buletin trecut` : 'Toate valabile')
+            : 'Nu au voie sa fie folosite'}
+          tone={metrologieRea.length > 0 ? 'alert' : metrologieGoala.length > 0 ? 'warn' : 'ok'}
+        />
       </div>
+
+      {/*
+        Termenele care se apropie, toate la un loc. Aplicatia se uita pana acum
+        doar la mentenanta; restul ceasurilor ticaiau nevazute.
+      */}
+      {termene.length > 0 && (
+        <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
+            <div>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Termene care expira</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">
+                Buletine metrologice, garantii, contracte de service, autorizatii
+              </p>
+            </div>
+            <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl"><CalendarClock className="w-6 h-6" /></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+            {termene.slice(0, 24).map((t, i) => (
+              <button
+                key={`${t.fel}-${t.deviceId || t.subiect}-${i}`}
+                onClick={() => t.deviceId && onSelectDevice?.(t.deviceId)}
+                disabled={!t.deviceId}
+                className={`text-left p-4 sm:p-5 rounded-3xl border flex items-center gap-3 sm:gap-4 transition-all ${
+                  t.zile < 0 ? 'bg-red-50 border-red-200' : t.zile <= 14 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'
+                } ${t.deviceId ? 'hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer' : 'cursor-default'}`}
+              >
+                <div className={`p-3 shrink-0 rounded-2xl text-white shadow-lg ${
+                  t.zile < 0 ? 'bg-red-600 shadow-red-600/20' : t.zile <= 14 ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-400 shadow-slate-400/20'
+                }`}>
+                  {t.fel === 'metrologie' ? <ShieldCheck className="w-5 h-5" /> : <CalendarClock className="w-5 h-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t.eticheta}</p>
+                  <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words">{t.subiect}</p>
+                  {t.detaliu && <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate">{t.detaliu}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-[15px] font-bold whitespace-nowrap ${t.zile < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                    {t.zile < 0 ? 'Expirat' : t.zile === 0 ? 'Azi' : `${t.zile} zile`}
+                  </p>
+                  <p className="text-[11px] font-semibold text-slate-500 mt-1 whitespace-nowrap">{t.data}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+          {termene.length > 24 && (
+            <p className="text-[12px] font-bold text-slate-500 mt-4 text-center">
+              si inca {termene.length - 24} — vezi lista intreaga in Inventar
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
