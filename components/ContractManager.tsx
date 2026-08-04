@@ -108,7 +108,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             </div>
             Registru Contracte
           </h2>
-          <p className="text-sm text-slate-400 font-bold uppercase mt-1 tracking-widest">Contracte de service</p>
+          <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Contracte de service</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
@@ -126,23 +126,23 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             </div>
             
             <div className="flex justify-between items-start mb-6">
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest">Contract Valid</span>
+              <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">Valoare Anuala</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">Valoare Anuala</p>
                 <p className="text-lg font-black text-indigo-600">${contract.annualCost.toLocaleString()}</p>
               </div>
             </div>
 
             <h3 className="text-xl font-black text-slate-900 leading-none">{contract.provider}</h3>
-            <p className="text-[10px] font-mono text-slate-400 uppercase mt-1">Ref: {contract.contractNumber}</p>
+            <p className="text-[10px] font-mono text-slate-500 uppercase mt-1">Ref: {contract.contractNumber}</p>
 
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                <Calendar className="w-4 h-4 text-slate-300" />
+                <Calendar className="w-4 h-4 text-slate-500" />
                 <span>{contract.startDate} — {contract.endDate}</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                <Phone className="w-4 h-4 text-slate-300" />
+                <Phone className="w-4 h-4 text-slate-500" />
                 <span>{contract.contactPhone}</span>
               </div>
             </div>
@@ -151,23 +151,23 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
               <div className="flex -space-x-3 overflow-hidden">
                 {devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).slice(0, 4).map((d, i) => (
                   <div key={d.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
-                    {d.image ? <img src={d.image} className="h-full w-full object-cover" /> : <div className="text-[8px] font-bold text-slate-400">{d.name.charAt(0)}</div>}
+                    {d.image ? <img src={d.image} className="h-full w-full object-cover" /> : <div className="text-[10px] font-bold text-slate-500">{d.name.charAt(0)}</div>}
                   </div>
                 ))}
                 {devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).length > 4 && (
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-white bg-slate-900 text-white text-[8px] font-black">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-white bg-slate-900 text-white text-[10px] font-black">
                     +{devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).length - 4}
                   </div>
                 )}
               </div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dispozitive Acoperite</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dispozitive Acoperite</span>
             </div>
           </div>
         ))}
         {globalContracts.length === 0 && (
           <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
             <FileText className="w-16 h-16 text-slate-100 mb-4" />
-            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Niciun contract activ</p>
+            <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Niciun contract activ</p>
           </div>
         )}
       </div>
@@ -179,9 +179,9 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Adauga Contract</h3>
-                  <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">Asociaza contractul cu dispozitivele</p>
+                  <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Asociaza contractul cu dispozitivele</p>
                </div>
-               <button onClick={() => setIsAdding(false)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-6 h-6" /></button>
+               <button onClick={() => setIsAdding(false)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-6 h-6" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 lg:p-12">
@@ -216,7 +216,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                            <FormInput label="Cost Anual ($)" name="annualCost" type="number" value={formData.annualCost.toString()} onChange={handleInputChange} placeholder="0.00" required />
                            <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="555-000-0000" required />
                            <div className="sm:col-span-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Detalii Acoperire</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Detalii Acoperire</label>
                               <textarea 
                                  name="coverageDetails"
                                  value={formData.coverageDetails}
@@ -237,11 +237,11 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                               <Plus className="w-5 h-5 text-indigo-600" /> Asociaza Dispozitive
                            </h4>
-                           <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Selectate: {selectedDevices.length}</p>
+                           <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Selectate: {selectedDevices.length}</p>
                         </div>
 
                         <div className="relative mb-6">
-                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                            <input 
                               type="text" 
                               placeholder="Cauta in inventar..."
@@ -262,12 +262,12 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                                     : 'bg-white border-slate-100 hover:border-indigo-200'
                                  }`}
                               >
-                                 <div className={`p-2 rounded-lg ${selectedDevices.includes(device.id) ? 'bg-white/20' : 'bg-slate-50 text-slate-400'}`}>
+                                 <div className={`p-2 rounded-lg ${selectedDevices.includes(device.id) ? 'bg-white/20' : 'bg-slate-50 text-slate-500'}`}>
                                     {selectedDevices.includes(device.id) ? <Check className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
                                  </div>
                                  <div className="truncate flex-1">
                                     <p className={`text-[11px] font-black truncate ${selectedDevices.includes(device.id) ? 'text-white' : 'text-slate-900'}`}>{device.name}</p>
-                                    <p className={`text-[9px] font-bold uppercase tracking-tighter ${selectedDevices.includes(device.id) ? 'text-white/60' : 'text-slate-400'}`}>{device.serialNumber}</p>
+                                    <p className={`text-[10px] font-bold uppercase tracking-tighter ${selectedDevices.includes(device.id) ? 'text-white/60' : 'text-slate-500'}`}>{device.serialNumber}</p>
                                  </div>
                               </div>
                            ))}
@@ -296,7 +296,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
 const FormInput = ({ label, name, value, onChange, placeholder, type = "text", required = false }: any) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</label>
+    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</label>
     <input 
       required={required}
       name={name} 

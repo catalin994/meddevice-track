@@ -101,7 +101,7 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
           </button>
           {pageWindow(page, pageCount).map((n, i) =>
             n === '…' ? (
-              <span key={`gap-${i}`} className="px-1 text-slate-300 font-black">…</span>
+              <span key={`gap-${i}`} className="px-1 text-slate-500 font-black">…</span>
             ) : (
               <button
                 key={n}

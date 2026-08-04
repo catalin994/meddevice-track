@@ -285,7 +285,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                <h1 className="text-lg sm:text-4xl font-black text-slate-900 tracking-tight sm:tracking-tighter uppercase leading-tight break-words min-w-0">{device.name}</h1>
                {/* On phones the status lives here, since the dot column is hidden */}
-               <span className={`md:hidden px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+               <span className={`md:hidden px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
                  device.status === DeviceStatus.ACTIVE ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'
                }`}>{DEVICE_STATUS_RO[device.status] || device.status}</span>
             </div>
@@ -295,8 +295,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                </div>
             </div>
             <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1">
-              <span className="tech-label text-slate-400 truncate">MOD: <span className="text-slate-600">{device.model}</span></span>
-              <span className="tech-label text-slate-400 truncate">CAT: <span className="text-slate-600">{device.category}</span></span>
+              <span className="tech-label text-slate-500 truncate">MOD: <span className="text-slate-600">{device.model}</span></span>
+              <span className="tech-label text-slate-500 truncate">CAT: <span className="text-slate-600">{device.category}</span></span>
             </div>
           </div>
         </div>
@@ -312,7 +312,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                  <>
                    <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl shadow-lg font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest active:scale-95 transition hover:bg-slate-800"><Edit2 className="w-4 h-4 shrink-0" /> Editeaza</button>
                    {canDelete && (
-                     <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-red-50 text-red-600 border border-red-100 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
+                     <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-red-50 text-red-700 border border-red-100 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
                    )}
                  </>
                )
@@ -358,7 +358,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                               <select name="category" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 transition-colors" value={editForm.category} onChange={handleEditChange}>
                                 {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
-                              <Layers className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none" />
+                              <Layers className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                            </div>
                         </div>
                         <div className="space-y-1">
@@ -403,7 +403,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                                   }
                                 }}
                                 placeholder={editForm.tags.length === 0 ? 'ex. critic, garantie, backup... (Enter pentru adaugare)' : '+ adauga'}
-                                className="flex-1 min-w-[140px] bg-transparent text-xs font-bold outline-none placeholder:text-slate-300"
+                                className="flex-1 min-w-[140px] bg-transparent text-xs font-bold outline-none placeholder:text-slate-500"
                               />
                            </div>
                         </div>
@@ -536,7 +536,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-blue-600 rounded-full" />
                         <h4 className="tech-label text-slate-900">Manuale Tehnice</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'manual').length} fisiere</span>
+                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'manual').length} fisiere</span>
                   </div>
                   
                   <div className="space-y-3 sm:space-y-4">
@@ -546,7 +546,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <BookOpen className="w-10 h-10 text-slate-300 mb-3" />
+                          <BookOpen className="w-10 h-10 text-slate-500 mb-3" />
                           <p className="tech-label">Niciun manual</p>
                        </div>
                      )}
@@ -560,7 +560,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-emerald-500 rounded-full" />
                         <h4 className="tech-label text-slate-900">Rapoarte Service</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'report').length} fisiere</span>
+                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'report').length} fisiere</span>
                   </div>
                   
                   <div className="space-y-3 sm:space-y-4">
@@ -570,7 +570,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <FileText className="w-10 h-10 text-slate-300 mb-3" />
+                          <FileText className="w-10 h-10 text-slate-500 mb-3" />
                           <p className="tech-label">Niciun raport</p>
                        </div>
                      )}
@@ -584,7 +584,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-amber-500 rounded-full" />
                         <h4 className="tech-label text-slate-900">Documente Service</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'service').length} fisiere</span>
+                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'service').length} fisiere</span>
                   </div>
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'service').length > 0 ? (
@@ -593,7 +593,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <Wrench className="w-10 h-10 text-slate-300 mb-3" />
+                          <Wrench className="w-10 h-10 text-slate-500 mb-3" />
                           <p className="tech-label">Niciun document de service</p>
                        </div>
                      )}
@@ -607,7 +607,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <div className="w-2 h-6 bg-indigo-500 rounded-full" />
                         <h4 className="tech-label text-slate-900">Documente Achizitie</h4>
                      </div>
-                     <span className="tech-label text-slate-400">{(editForm.files || []).filter(f => f.type === 'achizitie').length} fisiere</span>
+                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'achizitie').length} fisiere</span>
                   </div>
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
@@ -616,7 +616,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <Box className="w-10 h-10 text-slate-300 mb-3" />
+                          <Box className="w-10 h-10 text-slate-500 mb-3" />
                           <p className="tech-label">Niciun document de achizitie</p>
                        </div>
                      )}
@@ -631,7 +631,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           <div className="w-2 h-6 bg-slate-400 rounded-full" />
                           <h4 className="tech-label text-slate-900">Alte Documente</h4>
                        </div>
-                       <span className="tech-label text-slate-400">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} fisiere</span>
+                       <span className="tech-label text-slate-500">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} fisiere</span>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                        {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
@@ -682,7 +682,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div key={task.id} className="hardware-card p-4 sm:p-6 rounded-3xl sm:rounded-[2rem] flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6 hover:shadow-xl transition-all group">
                      <div className={`w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
                         task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-600' : 
-                        task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'
+                        task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
                      }`}>
                         {task.status === TaskStatus.COMPLETED ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
                      </div>
@@ -694,15 +694,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            }`}>
                               {TASK_STATUS_RO[task.status] || task.status}
                            </span>
-                           <span className="text-[10px] font-mono font-bold text-slate-400">ID: {task.id.slice(0,8)}</span>
-                           <span className="text-[10px] font-mono font-bold text-slate-400">Termen: {task.createdAt}</span>
+                           <span className="text-[10px] font-mono font-bold text-slate-500">ID: {task.id.slice(0,8)}</span>
+                           <span className="text-[10px] font-mono font-bold text-slate-500">Termen: {task.createdAt}</span>
                         </div>
                         <h4 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">{task.title}</h4>
                         <p className="text-sm text-slate-500 mt-1 line-clamp-1 font-medium">{task.description || 'Fara descriere.'}</p>
                      </div>
                       <div className="hidden md:flex items-center gap-4">
                         <span className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border ${
-                          task.status === TaskStatus.PENDING ? 'border-slate-200 text-slate-400 bg-white' : 
+                          task.status === TaskStatus.PENDING ? 'border-slate-200 text-slate-500 bg-white' : 
                           task.status === TaskStatus.IN_PROGRESS ? 'border-blue-200 text-blue-600 bg-blue-50/50' : 
                           'border-green-200 text-green-600 bg-green-50/50'
                         }`}>
@@ -765,7 +765,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            </div>
                            <div className="min-w-0">
                               <h4 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">{MAINTENANCE_TYPE_RO[record.type] || record.type}</h4>
-                              <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">EFECTUAT LA: {record.date} DE {record.technician}</p>
+                              <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">EFECTUAT LA: {record.date} DE {record.technician}</p>
                            </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -844,7 +844,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 </div>
 
                 <div className="pt-6 sm:pt-8 border-t border-slate-100">
-                   <p className="text-[10px] font-mono font-bold text-slate-400 leading-relaxed uppercase">
+                   <p className="text-[10px] font-mono font-bold text-slate-500 leading-relaxed uppercase">
                       Scanarea acestui cod ofera acces instant la documentatia tehnica, istoricul de service si statusul operational.
                    </p>
                 </div>
@@ -865,7 +865,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               {(() => {
                 const deviceAudit = auditEntries.filter(e => e.entity === 'device' && e.entityId === device.id);
                 if (deviceAudit.length === 0) {
-                  return <p className="py-12 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Nicio modificare inregistrata pentru acest dispozitiv</p>;
+                  return <p className="py-12 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Nicio modificare inregistrata pentru acest dispozitiv</p>;
                 }
                 return (
                   <div className="space-y-3">
@@ -880,11 +880,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           </p>
                           {e.details && <p className="text-[11px] font-medium text-slate-500 mt-0.5 break-words">{e.details}</p>}
                           {/* On phones the timestamp sits under the text instead of squeezing it */}
-                          <p className="sm:hidden text-[10px] font-mono font-bold text-slate-400 mt-1">
+                          <p className="sm:hidden text-[10px] font-mono font-bold text-slate-500 mt-1">
                             {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        <p className="hidden sm:block text-[10px] font-mono font-bold text-slate-400 shrink-0">
+                        <p className="hidden sm:block text-[10px] font-mono font-bold text-slate-500 shrink-0">
                           {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
@@ -923,7 +923,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               <LogoTile className="p-2 rounded-lg" markClassName="w-5 h-5" />
               <h1 className="text-lg font-black tracking-tight text-white uppercase">Biomedic</h1>
            </div>
-           <p className="text-xs text-slate-400 font-medium max-w-xs">
+           <p className="text-xs text-slate-500 font-medium max-w-xs">
               Aceasta este o vizualizare individuala a dispozitivului. Pentru administrarea intregului parc de echipamente, accesati aplicatia principala.
            </p>
            <a 
@@ -961,7 +961,7 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
                <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700`}>
                   {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
                </span>
-               <span className="text-[10px] font-mono font-bold text-slate-400 truncate">{file.dateAdded}</span>
+               <span className="text-[10px] font-mono font-bold text-slate-500 truncate">{file.dateAdded}</span>
             </div>
             <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
          </div>
@@ -979,8 +979,8 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
 const TabButton = React.memo(({ active, onClick, icon, label, shortLabel }: any) => (
   <button
     onClick={onClick}
-    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-3 px-1 sm:px-8 py-3 sm:py-6 text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all relative whitespace-nowrap ${
-      active ? 'text-blue-600 bg-blue-50/60 sm:bg-transparent' : 'text-slate-400 hover:text-slate-600'
+    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-3 px-1 sm:px-8 py-3 sm:py-6 text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all relative whitespace-nowrap ${
+      active ? 'text-blue-600 bg-blue-50/60 sm:bg-transparent' : 'text-slate-500 hover:text-slate-600'
     }`}
   >
     {icon}
@@ -1023,23 +1023,23 @@ const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice
       <div className="space-y-3">
         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
           <div className="flex items-center gap-3">
-            <Receipt className="w-4 h-4 text-slate-300" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Facturi ({deviceInvoices.length})</span>
+            <Receipt className="w-4 h-4 text-slate-500" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Facturi ({deviceInvoices.length})</span>
           </div>
           <div className="text-right">
             {byCurrency.size === 0 ? (
-              <span className="text-sm font-black text-slate-300">—</span>
+              <span className="text-sm font-black text-slate-500">—</span>
             ) : (
               Array.from(byCurrency.entries()).map(([cur, total]) => (
-                <p key={cur} className="text-sm font-black text-slate-900">{fmt(total)} <span className="text-[10px] text-slate-400">{cur}</span></p>
+                <p key={cur} className="text-sm font-black text-slate-900">{fmt(total)} <span className="text-[10px] text-slate-500">{cur}</span></p>
               ))
             )}
           </div>
         </div>
         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-4 h-4 text-slate-300" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contracte / an ({contracts.length})</span>
+            <ShieldCheck className="w-4 h-4 text-slate-500" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Contracte / an ({contracts.length})</span>
           </div>
           <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
         </div>

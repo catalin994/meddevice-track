@@ -871,7 +871,7 @@ const App: React.FC = () => {
                </button>
                <div className="min-w-0">
                  <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{VIEW_LABELS[view] || view.replace('_', ' ')}</h2>
-                 <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
+                 <p className="hidden sm:block text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
@@ -888,7 +888,7 @@ const App: React.FC = () => {
               >
                 <Search className="w-4 h-4" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Cauta...</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[9px] font-black">Ctrl K</kbd>
+                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-black">Ctrl K</kbd>
               </button>
               {/* Mobile: compact search icon */}
               <button onClick={() => setShowPalette(true)} className="md:hidden p-2.5 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl" title="Cautare">
@@ -898,7 +898,7 @@ const App: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="hidden md:block text-right">
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
                 <button
                   onClick={toggleTheme}
@@ -948,7 +948,7 @@ const App: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Biomedic</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Se initializeaza registrul...</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Se initializeaza registrul...</p>
               </div>
             </div>
           ) : (
@@ -956,7 +956,7 @@ const App: React.FC = () => {
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Se incarca modulul...</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Se incarca modulul...</p>
                 </div>
               }>
                 {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} />}
@@ -1022,8 +1022,8 @@ const App: React.FC = () => {
                 {view === 'FINANCE' && !canFinance && (
                   <div className="py-32 flex flex-col items-center text-center">
                     <ShieldCheck className="w-16 h-16 text-slate-200 mb-4" />
-                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Acces restrictionat</p>
-                    <p className="text-xs text-slate-400 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
+                    <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Acces restrictionat</p>
+                    <p className="text-xs text-slate-500 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
                   </div>
                 )}
                 {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} onMigrateFiles={migrateFilesToStorage} />}
@@ -1099,7 +1099,7 @@ const NavItem = React.memo(({ active, onClick, icon, label }: any) => (
 
 const SYNC_LABELS: Record<string, { text: string; dot: string; tone: string }> = {
   cloud:           { text: 'Operational',            dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]', tone: 'text-emerald-600' },
-  local:           { text: 'Doar local',             dot: 'bg-amber-500',  tone: 'text-amber-600' },
+  local:           { text: 'Doar local',             dot: 'bg-amber-500',  tone: 'text-amber-700' },
   error:           { text: 'Eroare de sincronizare', dot: 'bg-red-500',    tone: 'text-red-600' },
   'table-missing': { text: 'Schema lipsa in cloud',  dot: 'bg-red-500',    tone: 'text-red-600' },
   paused:          { text: 'Proiect Supabase oprit', dot: 'bg-red-500',    tone: 'text-red-600' },
@@ -1120,7 +1120,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
           <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">Biomedic</h1>
           {/* The close button takes this room on phones, and the subtitle
               wrapped to two lines rather than fitting beside it */}
-          <p className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em] leading-relaxed mt-1.5">Registru echipamente medicale</p>
+          <p className="hidden lg:block text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em] leading-relaxed mt-1.5">Registru echipamente medicale</p>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}
@@ -1132,13 +1132,13 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
         </button>
       </div>
       <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar bg-white">
-        <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Operatiuni</p></div>
+        <div className="px-3 mb-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Operatiuni</p></div>
         <NavItem active={view === 'DASHBOARD'} onClick={() => { setView('DASHBOARD'); setSidebarOpen(false); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Panou" />
         <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventar" />
         <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Tichete Service" />
         <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Mentenanta" />
         {canFinance && <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />}
-        <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Sistem</p></div>
+        <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Sistem</p></div>
         <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configurare" />
       </nav>
       <div className="p-6 border-t border-slate-100 bg-slate-50/50">
@@ -1150,11 +1150,11 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
             return (
               <>
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizare Cloud</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sincronizare Cloud</p>
                   <div className={`w-2 h-2 rounded-full ${isSyncingNow ? 'bg-blue-500 animate-pulse' : info.dot}`} />
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isSyncingNow ? 'bg-blue-50 text-blue-600' : isFailure ? 'bg-red-50 text-red-600' : syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <div className={`p-2 rounded-lg ${isSyncingNow ? 'bg-blue-50 text-blue-600' : isFailure ? 'bg-red-50 text-red-600' : syncStatus === 'cloud' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700'}`}>
                     {isSyncingNow ? <RefreshCw className="w-4 h-4 animate-spin" />
                       : isFailure ? <AlertCircle className="w-4 h-4" />
                       : syncStatus === 'cloud' ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}

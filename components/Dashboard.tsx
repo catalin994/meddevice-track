@@ -51,10 +51,10 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
     <div className="space-y-8 animate-slide-up">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         <StatCard title="Total Echipamente" value={devices.length} icon={<Activity className="w-5 h-5" />} trend="+2.4%" color="text-blue-600" bgColor="bg-blue-50" />
-        <StatCard title="Defectiuni Critice" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="Risc ridicat" color="text-red-600" bgColor="bg-red-50" />
+        <StatCard title="Defectiuni Critice" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="Risc ridicat" color="text-red-700" bgColor="bg-red-50" />
         <StatCard title="Tichete Active" value={pendingTasks} icon={<CheckSquare className="w-5 h-5" />} trend="Operational" color="text-indigo-600" bgColor="bg-indigo-50" />
-        <StatCard title="Interventii Urgente" value={criticalTasks} icon={<AlertTriangle className="w-5 h-5" />} trend="Imediat" color="text-orange-600" bgColor="bg-orange-50" />
-        <StatCard title="Mentenante Programate" value={upcomingMaintenance.length} icon={<Wrench className="w-5 h-5" />} trend="Urm. 30 zile" color="text-amber-600" bgColor="bg-amber-50" />
+        <StatCard title="Interventii Urgente" value={criticalTasks} icon={<AlertTriangle className="w-5 h-5" />} trend="Imediat" color="text-orange-700" bgColor="bg-orange-50" />
+        <StatCard title="Mentenante Programate" value={upcomingMaintenance.length} icon={<Wrench className="w-5 h-5" />} trend="Urm. 30 zile" color="text-amber-700" bgColor="bg-amber-50" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
             {tasks.length === 0 && (
               <div className="py-20 text-center">
                  <CheckCircle className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                 <p className="text-sm font-semibold text-slate-400">Niciun tichet critic activ</p>
+                 <p className="text-sm font-semibold text-slate-500">Niciun tichet critic activ</p>
               </div>
             )}
           </div>
@@ -116,7 +116,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
             <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Monitor Mentenante</h3>
             <p className="text-[13px] font-semibold text-slate-500 mt-1">Program preventiv 30 zile</p>
           </div>
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+          <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl">
             <Wrench className="w-6 h-6" />
           </div>
         </div>
@@ -142,7 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
           {upcomingMaintenance.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
-              <p className="text-sm font-semibold text-slate-400">Totul operational. Nicio mentenanta programata.</p>
+              <p className="text-sm font-semibold text-slate-500">Totul operational. Nicio mentenanta programata.</p>
             </div>
           )}
         </div>

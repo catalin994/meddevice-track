@@ -579,7 +579,7 @@ const DeviceRow = React.memo(({
       onChange={() => onToggleSelection(device.id)}
     />
 
-    <span className="shrink-0 mt-0.5 md:mt-0 font-mono text-xs font-bold text-slate-400 tabular-nums md:text-center">
+    <span className="shrink-0 mt-0.5 md:mt-0 font-mono text-xs font-bold text-slate-500 tabular-nums md:text-center">
       {index}
     </span>
 
@@ -615,7 +615,7 @@ const DeviceRow = React.memo(({
       {canDelete && (
         <button
           onClick={(e) => onDelete(e, device.id)}
-          className="p-2.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
+          className="p-2.5 bg-white text-slate-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 border-2 border-slate-200 rounded-xl transition active:scale-90"
           title="Sterge dispozitiv"
         >
           <Trash2 className="w-4 h-4" />
@@ -679,7 +679,7 @@ const DeviceCard = React.memo(({
           checked={isSelected} 
           onChange={() => onToggleSelection(device.id)} 
         />
-        <span className="font-mono text-xs font-bold text-slate-400 tabular-nums">{index}</span>
+        <span className="font-mono text-xs font-bold text-slate-500 tabular-nums">{index}</span>
       </div>
 
       {/* Asset Image/Icon */}
@@ -740,7 +740,7 @@ const DeviceCard = React.memo(({
               <Tag className="w-3 h-3" /> {tag}
             </span>
           ))}
-          <span className="text-[11px] font-medium text-slate-400">ID: {device.id.slice(0, 12)}…</span>
+          <span className="text-[11px] font-medium text-slate-500">ID: {device.id.slice(0, 12)}…</span>
         </div>
       </div>
 
@@ -756,7 +756,7 @@ const DeviceCard = React.memo(({
         </button>
         {canDelete && (
           <button 
-            className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+            className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
             onClick={(e) => onDelete(e, device.id)}
             title="Sterge dispozitiv"
           >
@@ -997,7 +997,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Editare rapida</h3>
                    <p className="tech-label mt-1">ID: {editingDevice.id}</p>
                 </div>
-                <button onClick={() => setEditingDevice(null)} className="p-3 hover:bg-slate-100 rounded-2xl transition text-slate-400"><X className="w-6 h-6" /></button>
+                <button onClick={() => setEditingDevice(null)} className="p-3 hover:bg-slate-100 rounded-2xl transition text-slate-500"><X className="w-6 h-6" /></button>
              </div>
              
              <div className="space-y-6 mb-10">
@@ -1041,7 +1041,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       <div className="hardware-card p-3 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col gap-3 sm:gap-6">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
           <div className="relative flex-1 min-w-0 group">
-            <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-300'}`} />
+            <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-500'}`} />
             <input 
               type="text"
               placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, categorie, serie sau departament...'}
@@ -1057,7 +1057,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           >
             <SlidersHorizontal className="w-5 h-5" />
             {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 bg-slate-900 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 bg-slate-900 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
@@ -1117,7 +1117,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             {selectedIds.size > 0 && (
               <>
                 <span className="tech-label text-blue-600 font-black">{selectedIds.size} selectate</span>
-                <button className="px-4 py-2 bg-red-50 text-red-600 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Sterge selectia</button>
+                <button className="px-4 py-2 bg-red-50 text-red-700 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Sterge selectia</button>
               </>
             )}
             <button
@@ -1173,7 +1173,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                   </p>
               }
             </div>
-            <button onClick={() => setImportResult(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            <button onClick={() => setImportResult(null)} className="text-slate-500 hover:text-slate-600"><X className="w-4 h-4" /></button>
           </div>
         )}
 
@@ -1237,7 +1237,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
                 <Box className="w-10 h-10 text-slate-200" />
               </div>
-              <p className="tech-label mb-8 text-slate-400">Niciun dispozitiv gasit in registru</p>
+              <p className="tech-label mb-8 text-slate-500">Niciun dispozitiv gasit in registru</p>
               <button
                 onClick={onAddDevice}
                 className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"

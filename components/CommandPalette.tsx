@@ -118,21 +118,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
     <div className="fixed inset-0 z-[700] scrim backdrop-blur-sm flex items-start justify-center pt-[12vh] p-4" onClick={onClose}>
       <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-          <Search className="w-5 h-5 text-slate-300 shrink-0" />
+          <Search className="w-5 h-5 text-slate-500 shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Cauta dispozitive, facturi, tichete sau pagini..."
-            className="flex-1 text-sm font-bold outline-none placeholder:text-slate-300 placeholder:font-medium"
+            className="flex-1 text-sm font-bold outline-none placeholder:text-slate-500 placeholder:font-medium"
           />
-          <kbd className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[9px] font-black uppercase">Esc</kbd>
+          <kbd className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase">Esc</kbd>
         </div>
 
         <div ref={listRef} className="palette-shell overflow-y-auto overscroll-contain p-2">
           {items.length === 0 && (
-            <p className="py-10 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Niciun rezultat</p>
+            <p className="py-10 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Niciun rezultat</p>
           )}
           {items.map((item, idx) => {
             const showGroup = item.group !== lastGroup;
@@ -140,7 +140,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
             return (
               <React.Fragment key={item.key}>
                 {showGroup && (
-                  <p className="px-3 pt-3 pb-1.5 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">{item.group}</p>
+                  <p className="px-3 pt-3 pb-1.5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{item.group}</p>
                 )}
                 <button
                   data-idx={idx}
@@ -148,10 +148,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
                   onMouseEnter={() => setActiveIndex(idx)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition ${idx === activeIndex ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
                 >
-                  <div className={`p-1.5 rounded-lg ${idx === activeIndex ? 'bg-white/20' : 'bg-slate-100 text-slate-400'}`}>{item.icon}</div>
+                  <div className={`p-1.5 rounded-lg ${idx === activeIndex ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{item.icon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-black truncate">{item.title}</p>
-                    {item.subtitle && <p className={`text-[10px] font-bold truncate ${idx === activeIndex ? 'text-white/60' : 'text-slate-400'}`}>{item.subtitle}</p>}
+                    {item.subtitle && <p className={`text-[10px] font-bold truncate ${idx === activeIndex ? 'text-white/60' : 'text-slate-500'}`}>{item.subtitle}</p>}
                   </div>
                   {idx === activeIndex && <CornerDownLeft className="w-3.5 h-3.5 shrink-0 text-white/60" />}
                 </button>
@@ -161,8 +161,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
         </div>
 
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-4">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">↑↓ navigheaza</span>
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">↵ deschide</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">↑↓ navigheaza</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">↵ deschide</span>
         </div>
       </div>
     </div>

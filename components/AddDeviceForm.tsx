@@ -198,7 +198,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       
       <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
         <h2 className="text-2xl font-black text-slate-900 uppercase">Inregistrare Dispozitiv</h2>
-        <button onClick={onCancel} className="p-2 text-slate-400"><X className="w-6 h-6" /></button>
+        <button onClick={onCancel} className="p-2 text-slate-500"><X className="w-6 h-6" /></button>
       </div>
 
       <div className="flex border-b border-slate-100 bg-white">
@@ -221,7 +221,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField label="Denumire dispozitiv" name="name" value={formData.name} onChange={handleChange} required />
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400">Categorie</label>
+                <label className="text-[10px] font-black uppercase text-slate-500">Categorie</label>
                 <select name="category" value={formData.category} onChange={handleChange} className="w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none">
                   {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -251,12 +251,12 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
 };
 
 const TabButton = React.memo(({ active, onClick, label, icon }: any) => (
-  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-400'}`}>{icon}{label}</button>
+  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500'}`}>{icon}{label}</button>
 ));
 
 const FormField = React.memo(({ label, name, value, onChange, type = "text", required = false }: any) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-black uppercase text-slate-400">{label}</label>
+    <label className="text-[10px] font-black uppercase text-slate-500">{label}</label>
     <input required={required} name={name} type={type} value={value} onChange={onChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" />
   </div>
 ));

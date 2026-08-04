@@ -287,16 +287,16 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch gap-3 sm:gap-4 w-full 2xl:w-auto">
           <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl shrink-0">
             <button onClick={() => setViewMode('LIST')}
-              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
               Lista
             </button>
             <button onClick={() => setViewMode('CALENDAR')}
-              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-400'}`}>
+              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
               Calendar
             </button>
           </div>
           <div className="relative flex-1 sm:min-w-[240px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
             <input 
               type="text"
               placeholder="Cauta dupa nume, model, serie sau departament..."
@@ -318,7 +318,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               className={`px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-2xl active:scale-95 whitespace-nowrap ${
                 modifiedCount > 0 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-100 text-slate-500 cursor-not-allowed'
               }`}
             >
               <Save className="w-5 h-5" /> Aplica Tot ({modifiedCount})
@@ -351,7 +351,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         {/* Sentinel — loads the next batch when scrolled into view */}
         <div ref={sentinelRef} className="h-1 col-span-full" />
         {visibleCount < filteredDevices.length && (
-          <div className="col-span-full py-6 flex items-center justify-center gap-3 text-slate-400">
+          <div className="col-span-full py-6 flex items-center justify-center gap-3 text-slate-500">
             <div className="w-4 h-4 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
             <span className="text-[11px] font-bold">Se incarca... {Math.min(visibleCount, filteredDevices.length)} / {filteredDevices.length}</span>
           </div>
@@ -363,7 +363,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               <ClipboardList className="w-16 h-16 text-slate-200" />
             </div>
             <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Niciun dispozitiv gasit</h3>
-            <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs">Ajusteaza cautarea sau adauga dispozitive noi in inventar pentru a incepe planificarea.</p>
+            <p className="text-sm text-slate-500 mt-2 font-medium max-w-xs">Ajusteaza cautarea sau adauga dispozitive noi in inventar pentru a incepe planificarea.</p>
           </div>
         )}
       </div>
@@ -377,7 +377,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               {modifiedCount}
             </div>
             <div>
-              <p className="text-[11px] font-bold text-slate-400 leading-none mb-1">Modificari in asteptare</p>
+              <p className="text-[11px] font-bold text-slate-500 leading-none mb-1">Modificari in asteptare</p>
               <p className="text-sm font-bold leading-none">Modificari pregatite</p>
             </div>
           </div>
@@ -445,7 +445,7 @@ const MaintenanceCard = React.memo(({
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{device.department || 'Necunoscut'}</span>
               <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-              <span className="text-[11px] font-mono text-slate-400 font-bold">SN: {device.serialNumber || 'N/A'}</span>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">SN: {device.serialNumber || 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -468,7 +468,7 @@ const MaintenanceCard = React.memo(({
               >
                 {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
             </div>
             <div className="relative">
               <select 
@@ -478,7 +478,7 @@ const MaintenanceCard = React.memo(({
               >
                 {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -493,7 +493,7 @@ const MaintenanceCard = React.memo(({
             >
               {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{FREQUENCY_RO[opt] || opt}</option>)}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
         </div>
 
@@ -503,7 +503,7 @@ const MaintenanceCard = React.memo(({
             value={draft.tasks}
             onChange={(e) => onUpdateDraft(device.id, { tasks: e.target.value })}
             placeholder="Descrie calibrarea, curatarea sau inlocuirea pieselor..."
-            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-medium text-slate-600 min-h-[80px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none placeholder:text-slate-300"
+            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-medium text-slate-600 min-h-[80px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none placeholder:text-slate-500"
           />
         </div>
       </div>
@@ -511,10 +511,10 @@ const MaintenanceCard = React.memo(({
       <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-blue-400" />
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
         </div>
         {!draft.isModified && (
-          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest italic">Nemodificat</span>
+          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic">Nemodificat</span>
         )}
       </div>
     </div>

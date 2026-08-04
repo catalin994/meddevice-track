@@ -86,7 +86,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
           <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><CalendarDays className="w-5 h-5" /></div>
           <div>
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{MONTH_NAMES[month]} {year}</h3>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{monthTotal} mentenante programate</p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{monthTotal} mentenante programate</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
       {/* Grid */}
       <div className="p-4 sm:p-6">
         <div className="grid grid-cols-7 mb-2">
-          {WEEKDAYS.map(w => <p key={w} className="text-center text-[9px] font-black text-slate-300 uppercase tracking-widest py-2">{w}</p>)}
+          {WEEKDAYS.map(w => <p key={w} className="text-center text-[10px] font-black text-slate-500 uppercase tracking-widest py-2">{w}</p>)}
         </div>
         <div className="space-y-1.5">
           {weeks.map((week, wi) => (
@@ -125,11 +125,11 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
                         isToday ? 'border-blue-200 bg-blue-50/50' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                   >
                     <div className="flex items-center justify-between px-1">
-                      <span className={`text-[11px] font-black ${isSelected ? 'text-white' : isToday ? 'text-blue-600' : isPast ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <span className={`text-[11px] font-black ${isSelected ? 'text-white' : isToday ? 'text-blue-600' : isPast ? 'text-slate-500' : 'text-slate-500'}`}>
                         {day.getUTCDate()}
                       </span>
                       {dayDevices.length > 0 && (
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-white/20 text-white' : isPast ? 'bg-red-50 text-red-500' : 'bg-blue-600 text-white'}`}>
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-white/20 text-white' : isPast ? 'bg-red-50 text-red-500' : 'bg-blue-600 text-white'}`}>
                           {dayDevices.length}
                         </span>
                       )}
@@ -141,14 +141,14 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
                           draggable
                           onDragStart={e => { e.dataTransfer.setData('text/device-id', d.id); e.stopPropagation(); }}
                           title={`${d.name} — trage pe alta zi pentru reprogramare`}
-                          className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md truncate cursor-grab active:cursor-grabbing
-                            ${isSelected ? 'bg-white/15 text-white' : isPast ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-600'}`}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md truncate cursor-grab active:cursor-grabbing
+                            ${isSelected ? 'bg-white/15 text-white' : isPast ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'}`}
                         >
                           {d.name}
                         </div>
                       ))}
                       {dayDevices.length > 2 && (
-                        <p className={`text-[8px] font-black px-1.5 ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>+{dayDevices.length - 2}</p>
+                        <p className={`text-[10px] font-black px-1.5 ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>+{dayDevices.length - 2}</p>
                       )}
                     </div>
                   </div>
@@ -157,7 +157,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
             </div>
           ))}
         </div>
-        <p className="mt-4 text-center text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+        <p className="mt-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           Trage un dispozitiv pe alta zi pentru a reprograma mentenanta
         </p>
       </div>
@@ -169,10 +169,10 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">
               {new Date(selectedDay + 'T00:00:00').toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </h4>
-            <button onClick={() => setSelectedDay(null)} className="p-2 text-slate-400 hover:text-slate-900 transition"><X className="w-4 h-4" /></button>
+            <button onClick={() => setSelectedDay(null)} className="p-2 text-slate-500 hover:text-slate-900 transition"><X className="w-4 h-4" /></button>
           </div>
           {selectedDevices.length === 0 ? (
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest py-4 text-center">Nicio mentenanta programata in aceasta zi</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4 text-center">Nicio mentenanta programata in aceasta zi</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {selectedDevices.map(d => (
@@ -181,7 +181,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
                   <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0"><Cpu className="w-4 h-4" /></div>
                   <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900 truncate">{d.name}</p>
-                    <p className="text-[10px] font-mono text-slate-400">SN: {d.serialNumber} · {d.department}</p>
+                    <p className="text-[10px] font-mono text-slate-500">SN: {d.serialNumber} · {d.department}</p>
                   </div>
                 </button>
               ))}

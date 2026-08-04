@@ -72,7 +72,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State
           </div>
 
           <div className="p-4 bg-white border-2 border-slate-200 rounded-2xl">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">Detaliu tehnic</p>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Detaliu tehnic</p>
             <p className="text-xs font-mono text-slate-600 break-words">
               {error.name}: {error.message}
             </p>

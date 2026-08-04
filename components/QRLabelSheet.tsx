@@ -71,7 +71,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
             <div className="p-3 bg-slate-900 text-white rounded-2xl"><QrCode className="w-6 h-6" /></div>
             <div>
               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Etichete QR</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">
+              <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
                 {devices.length} dispozitive · gata de printat si lipit pe echipamente
                 {truncated > 0 && <span className="text-amber-500"> · inca {truncated} nefiltrate — filtreaza inventarul pe transe</span>}
               </p>
@@ -83,7 +83,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
               {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
               Printeaza
             </button>
-            <button onClick={onClose} className="p-3 bg-white text-slate-400 rounded-xl hover:text-slate-900 transition shadow-sm border border-slate-200">
+            <button onClick={onClose} className="p-3 bg-white text-slate-500 rounded-xl hover:text-slate-900 transition shadow-sm border border-slate-200">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -91,7 +91,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
 
         <div className="flex-1 overflow-y-auto p-6 sm:p-8">
           {devices.length === 0 ? (
-            <p className="py-16 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Niciun dispozitiv de afisat — ajusteaza filtrele din inventar</p>
+            <p className="py-16 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Niciun dispozitiv de afisat — ajusteaza filtrele din inventar</p>
           ) : (
             <Suspense fallback={<div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
               <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -100,7 +100,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
                     <QRCodeCanvas value={deviceUrl(d.id)} size={110} level="M" includeMargin={false} />
                     <p className="text-[11px] font-black text-slate-900 mt-3 leading-tight line-clamp-2">{d.name}</p>
                     <p className="text-[10px] font-mono text-slate-500 mt-1">SN: {d.serialNumber}</p>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{d.department}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-0.5">{d.department}</p>
                   </div>
                 ))}
               </div>

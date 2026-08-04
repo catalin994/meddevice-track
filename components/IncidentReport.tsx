@@ -188,16 +188,16 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Raporteaza Incident</h3>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Se genereaza automat un tichet de service</p>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Se genereaza automat un tichet de service</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition border border-slate-200 shadow-sm"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition border border-slate-200 shadow-sm"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
           {/* Device picker */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aparatul cu probleme</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Aparatul cu probleme</label>
             {selectedDevice ? (
               <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
                 <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
@@ -205,12 +205,12 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                   <p className="text-sm font-black text-slate-900 truncate">{selectedDevice.name}</p>
                   <p className="text-[10px] font-mono text-slate-500">SN: {selectedDevice.serialNumber} · {selectedDevice.department}</p>
                 </div>
-                <button type="button" onClick={() => { setSelectedDevice(null); setDeviceSearch(''); }} className="text-slate-400 hover:text-red-500 transition"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { setSelectedDevice(null); setDeviceSearch(''); }} className="text-slate-500 hover:text-red-500 transition"><X className="w-4 h-4" /></button>
               </div>
             ) : (
               <>
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
                     value={deviceSearch}
                     onChange={e => setDeviceSearch(e.target.value)}
@@ -224,14 +224,14 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                       <button key={d.id} type="button" onClick={() => { setSelectedDevice(d); setDeviceSearch(''); }}
                         className="w-full text-left p-3 rounded-xl border bg-white border-slate-100 hover:border-blue-300 hover:bg-blue-50/50 transition">
                         <p className="text-sm font-bold text-slate-900">{d.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400">SN: {d.serialNumber} · {d.department}</p>
+                        <p className="text-[10px] font-mono text-slate-500">SN: {d.serialNumber} · {d.department}</p>
                       </button>
                     ))}
                   </div>
                 )}
                 {deviceSearch.length < 2 && (
                   <div className="space-y-1">
-                    <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest ml-1">Optional — daca nu stii aparatul, alege departamentul:</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest ml-1">Optional — daca nu stii aparatul, alege departamentul:</p>
                     <select value={department} onChange={e => setDepartment(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
                       {HOSPITAL_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -244,7 +244,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Problem quick-select */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ce problema are?</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ce problema are?</label>
             <div className="flex flex-wrap gap-2">
               {COMMON_ISSUES.map(ci => (
                 <button key={ci} type="button" onClick={() => setIssue(issue === ci ? '' : ci)}
@@ -263,7 +263,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Severity */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cat de grav este?</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cat de grav este?</label>
             <div className="grid grid-cols-3 gap-2">
               {([TaskPriority.CRITICAL, TaskPriority.HIGH, TaskPriority.MEDIUM] as TaskPriority[]).map(p => (
                 <button key={p} type="button" onClick={() => setPriority(p)}
@@ -278,7 +278,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Attachments */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Poze, video sau fisiere</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Poze, video sau fisiere</label>
             <div className="grid grid-cols-2 gap-3">
               <input ref={mediaInputRef} type="file" accept="image/*,video/*" capture="environment" multiple className="hidden" onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} />
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} />
@@ -292,7 +292,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
               </button>
             </div>
             {isProcessingFile && (
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold"><Loader2 className="w-4 h-4 animate-spin" /> Se proceseaza...</div>
+              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold"><Loader2 className="w-4 h-4 animate-spin" /> Se proceseaza...</div>
             )}
             {attachError && (
               <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -307,14 +307,14 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                     {a.kind === 'image' ? (
                       <AttachmentPreview attachment={a} />
                     ) : (
-                      <div className="w-full h-20 flex flex-col items-center justify-center gap-1 text-slate-400">
+                      <div className="w-full h-20 flex flex-col items-center justify-center gap-1 text-slate-500">
                         {a.kind === 'video' ? <Film className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
-                        <span className="text-[8px] font-black uppercase">{a.kind === 'video' ? 'Video' : 'Fisier'}</span>
+                        <span className="text-[10px] font-black uppercase">{a.kind === 'video' ? 'Video' : 'Fisier'}</span>
                       </div>
                     )}
                     <div className="px-1.5 py-1 bg-white border-t border-slate-100">
-                      <p className="text-[8px] font-bold text-slate-500 truncate" title={a.name}>{a.name}</p>
-                      <p className="text-[8px] font-mono text-slate-300">{fmtSize(a.size)}</p>
+                      <p className="text-[10px] font-bold text-slate-500 truncate" title={a.name}>{a.name}</p>
+                      <p className="text-[10px] font-mono text-slate-500">{fmtSize(a.size)}</p>
                     </div>
                     <button type="button" onClick={() => setAttachments(prev => prev.filter(x => x.id !== a.id))}
                       className="absolute top-1 right-1 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition">
@@ -324,7 +324,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                 ))}
               </div>
             )}
-            <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">Limite: poze {MAX_IMAGE_MB}MB · video {MAX_VIDEO_MB}MB · fisiere {MAX_FILE_MB}MB</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Limite: poze {MAX_IMAGE_MB}MB · video {MAX_VIDEO_MB}MB · fisiere {MAX_FILE_MB}MB</p>
           </div>
 
           {/* Submit */}

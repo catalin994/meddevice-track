@@ -428,10 +428,10 @@ NOTIFY pgrst, 'reload schema';
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Infrastructura globala de date</p>
+              <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Infrastructura globala de date</p>
             </div>
           </div>
-          <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
+          <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
              {isTesting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Verifica conexiunea</span>
           </button>
@@ -458,20 +458,20 @@ NOTIFY pgrst, 'reload schema';
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">URL Endpoint Proiect</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">URL Endpoint Proiect</label>
                 <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
                 <div className="relative">
                   <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
-                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
                 </div>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
-              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-600 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
+              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
             </div>
         </div>
       </div>
@@ -628,7 +628,7 @@ NOTIFY pgrst, 'reload schema';
                   {active && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
                 </div>
                 <p className="text-xs font-medium text-slate-500 leading-relaxed mb-3">{q.description}</p>
-                <p className="text-[11px] font-bold text-slate-400">~{q.approxKb} KB / pagina</p>
+                <p className="text-[11px] font-bold text-slate-500">~{q.approxKb} KB / pagina</p>
               </button>
             );
           })}
@@ -652,7 +652,7 @@ NOTIFY pgrst, 'reload schema';
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Utilizatori & Roluri</h2>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Controlul accesului in aplicatie</p>
+              <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Controlul accesului in aplicatie</p>
             </div>
           </div>
 
@@ -664,13 +664,13 @@ NOTIFY pgrst, 'reload schema';
 
           <div className="space-y-3 mb-8">
             {users.length === 0 && (
-              <p className="text-sm font-semibold text-slate-400 py-6 text-center">
+              <p className="text-sm font-semibold text-slate-500 py-6 text-center">
                 Niciun cont inca. Utilizatorii se inregistreaza singuri din ecranul de autentificare.
               </p>
             )}
             {users.map(u => (
               <div key={u.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className={`p-2.5 rounded-xl border shrink-0 self-start ${u.approved ? 'bg-white text-indigo-600 border-slate-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                <div className={`p-2.5 rounded-xl border shrink-0 self-start ${u.approved ? 'bg-white text-indigo-600 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -732,24 +732,24 @@ NOTIFY pgrst, 'reload schema';
           </div>
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Jurnal Activitate</h2>
-            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Cine a modificat ce si cand · ultimele {Math.min(auditLog.length, 50)} actiuni</p>
+            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Cine a modificat ce si cand · ultimele {Math.min(auditLog.length, 50)} actiuni</p>
           </div>
         </div>
         {auditLog.length === 0 ? (
-          <p className="py-10 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">Nicio actiune inregistrata inca</p>
+          <p className="py-10 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Nicio actiune inregistrata inca</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {auditLog.slice(0, 50).map(e => (
               <div key={e.id} className="flex items-center gap-3 p-3.5 bg-slate-50/70 rounded-xl border border-slate-100">
-                <span className={`shrink-0 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                   {e.action === 'create' ? 'Creat' : e.action === 'delete' ? 'Sters' : 'Modif.'}
                 </span>
-                <span className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-black uppercase tracking-widest text-slate-400">
+                <span className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500">
                   {e.entity === 'device' ? 'Dispozitiv' : e.entity === 'task' ? 'Tichet' : 'Factura'}
                 </span>
                 <p className="flex-1 min-w-0 text-xs font-bold text-slate-700 truncate">{e.entityName}</p>
                 <p className="shrink-0 text-[10px] font-black text-blue-600">{e.userName}</p>
-                <p className="shrink-0 text-[9px] font-mono font-bold text-slate-400">
+                <p className="shrink-0 text-[10px] font-mono font-bold text-slate-500">
                   {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -779,7 +779,7 @@ NOTIFY pgrst, 'reload schema';
                 {isRepairing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                 Ruleaza Recuperarea
               </button>
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-800/30 rounded-lg text-[9px] font-black text-blue-300 uppercase">
+              <div className="flex items-center justify-between px-4 py-2 bg-blue-800/30 rounded-lg text-[10px] font-black text-blue-300 uppercase">
                 <span>Inregistrari vechi gasite</span>
                 <span className="text-white">{lsCount ?? '0'}</span>
               </div>
@@ -797,20 +797,20 @@ NOTIFY pgrst, 'reload schema';
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Echipamente in stocarea locala</span>
+                 <span className="text-[10px] font-black text-slate-500 uppercase">Echipamente in stocarea locala</span>
                  <span className="text-sm font-black text-slate-900">{dbCount ?? '...'}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Dispozitive active in aplicatie</span>
+                 <span className="text-[10px] font-black text-slate-500 uppercase">Dispozitive active in aplicatie</span>
                  <span className="text-sm font-black text-blue-600">{devices.length}</span>
               </div>
               <div className={`flex items-center justify-between p-4 rounded-2xl border ${cloudCount !== null && cloudCount < devices.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-100'}`}>
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Echipamente in cloud</span>
+                 <span className="text-[10px] font-black text-slate-500 uppercase">Echipamente in cloud</span>
                  <span className="flex items-center gap-2">
                    <span className={`text-sm font-black ${cloudCount !== null && cloudCount < devices.length ? 'text-amber-600' : 'text-emerald-600'}`}>
                      {isCountingCloud ? '...' : cloudError ? '—' : cloudCount ?? '?'}
                    </span>
-                   <button onClick={refreshCloudCount} disabled={isCountingCloud} className="p-1.5 text-slate-400 hover:text-blue-600 transition" title="Verifica din nou">
+                   <button onClick={refreshCloudCount} disabled={isCountingCloud} className="p-1.5 text-slate-500 hover:text-blue-600 transition" title="Verifica din nou">
                      <RefreshCw className={`w-3.5 h-3.5 ${isCountingCloud ? 'animate-spin' : ''}`} />
                    </button>
                  </span>
@@ -861,7 +861,7 @@ NOTIFY pgrst, 'reload schema';
                               <li key={x} className="text-[10px] font-mono text-slate-600 truncate">{x}</li>
                             ))}
                           </ul>
-                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Urca toate dispozitivele" ca sa ajunga si in cloud.</p>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1">Apasa "Urca toate dispozitivele" ca sa ajunga si in cloud.</p>
                         </div>
                       )}
                       {diffResult.cloudOnly.length > 0 && (
@@ -874,7 +874,7 @@ NOTIFY pgrst, 'reload schema';
                               <li key={x} className="text-[10px] font-mono text-slate-600 truncate">{x}</li>
                             ))}
                           </ul>
-                          <p className="text-[9px] text-slate-400 font-bold mt-1">Apasa "Re-sincronizare" ca sa le aduci aici.</p>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1">Apasa "Re-sincronizare" ca sa le aduci aici.</p>
                         </div>
                       )}
                     </>
@@ -892,7 +892,7 @@ NOTIFY pgrst, 'reload schema';
           </div>
           <div className="mt-6 pt-4 border-t border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Versiune aplicatie</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Versiune aplicatie</span>
               <span className="text-[10px] font-mono font-bold text-slate-600">{BUILD_ID}</span>
             </div>
             <button onClick={handleHardReload}

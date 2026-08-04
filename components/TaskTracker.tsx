@@ -234,7 +234,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
       <div className="bg-white p-4 sm:p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
           <div className="relative flex-1 sm:max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
             <input 
               type="text"
               placeholder="Cauta tichete, departamente..."
@@ -262,7 +262,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             ] as [TaskViewMode, string, any][]).map(([mode, label, Icon]) => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 title={label}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}>
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-600 hover:text-slate-900'}`}>
                 <Icon className="w-4 h-4" />
                 <span className="hidden lg:inline">{label}</span>
               </button>
@@ -290,8 +290,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
             <CheckSquare className="w-16 h-16 text-slate-200" />
           </div>
-          <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">Nu exista tichete active</p>
-          <p className="text-xs text-slate-300 mt-2 font-bold uppercase">Toate solicitarile au fost rezolvate</p>
+          <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm">Nu exista tichete active</p>
+          <p className="text-xs text-slate-500 mt-2 font-bold uppercase">Toate solicitarile au fost rezolvate</p>
         </div>
       ) : viewMode === 'CARDS' ? (
         <div className="grid grid-cols-1 gap-4">
@@ -355,13 +355,13 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <td className="px-5 py-3.5 max-w-[180px]">
                       {task.deviceName
                         ? <span className="text-[11px] font-bold text-blue-600 truncate block" title={task.deviceName}>{task.deviceName}</span>
-                        : <span className="text-[11px] text-slate-300 font-bold">—</span>}
+                        : <span className="text-[11px] text-slate-500 font-bold">—</span>}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <button onClick={() => toggleStatus(task)}
@@ -375,14 +375,14 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       {task.dueDate
                         ? <span className={`text-[11px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-500'}`}>{task.dueDate}</span>
-                        : <span className="text-[11px] text-slate-300 font-bold">—</span>}
+                        : <span className="text-[11px] text-slate-500 font-bold">—</span>}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => handleEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza">
+                        <button onClick={() => handleEdit(task)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => setPendingDelete(task.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
+                        <button onClick={() => setPendingDelete(task.id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -429,23 +429,23 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition group"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-300 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
-                        <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-500 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
+                        <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-500 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                     <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
                     {task.deviceName && <p className="text-[11px] font-bold text-blue-600 truncate mt-1">{task.deviceName}</p>}
                     {(task.attachments || []).length > 0 && (
-                      <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1 mt-1"><Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length} atasamente</p>
+                      <p className="text-[11px] text-slate-500 font-bold flex items-center gap-1 mt-1"><Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length} atasamente</p>
                     )}
                     <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-50">
                       <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1">
                         <Building className="w-2.5 h-2.5" /> {task.department}
                       </span>
                       {task.dueDate && (
-                        <span className={`text-[11px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-400'}`}>
+                        <span className={`text-[11px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-500'}`}>
                           {task.dueDate}
                         </span>
                       )}
@@ -453,7 +453,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   </div>
                 ))}
                 {col.tasks.length === 0 && (
-                  <p className="py-10 text-center text-[11px] font-black text-slate-300 uppercase tracking-widest">Trage un tichet aici</p>
+                  <p className="py-10 text-center text-[11px] font-black text-slate-500 uppercase tracking-widest">Trage un tichet aici</p>
                 )}
               </div>
             </div>
@@ -497,7 +497,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     {editingTask ? `Editare ID: ${editingTask.id}` : 'Registru Tichete Service'}
                   </p>
                </div>
-               <button onClick={() => { setIsAdding(false); setEditingTask(null); }} className="p-3 text-slate-400 hover:bg-white hover:text-slate-900 rounded-2xl transition border border-slate-200 shadow-sm"><X className="w-6 h-6" /></button>
+               <button onClick={() => { setIsAdding(false); setEditingTask(null); }} className="p-3 text-slate-500 hover:bg-white hover:text-slate-900 rounded-2xl transition border border-slate-200 shadow-sm"><X className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
               <div className="space-y-2">
@@ -511,7 +511,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
                       {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
-                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
+                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -520,7 +520,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value as any})}>
                       {Object.values(TaskPriority).map(p => <option key={p} value={p}>{TASK_PRIORITY_RO[p]}</option>)}
                     </select>
-                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
+                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -531,7 +531,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <option value="">Fara dispozitiv</option>
                     {devices.map(d => <option key={d.id} value={d.id}>{d.name} ({d.serialNumber})</option>)}
                   </select>
-                  <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
+                  <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -589,7 +589,7 @@ const TaskCard = React.memo(({
       <div className="p-6 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
               <Building className="w-3 h-3" /> {task.department}
             </span>
@@ -604,7 +604,7 @@ const TaskCard = React.memo(({
               </span>
             )}
             {task.notes && (
-              <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1 border border-amber-100" title="Note tehnice disponibile">
+              <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1 border border-amber-100" title="Note tehnice disponibile">
                 <StickyNote className="w-2.5 h-2.5" /> Note
               </span>
             )}
@@ -643,7 +643,7 @@ const TaskCard = React.memo(({
 
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right hidden xl:block">
-            <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Creat la</p>
+            <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Creat la</p>
             <p className="text-xs font-bold text-slate-600">{task.createdAt}</p>
           </div>
           
@@ -659,14 +659,14 @@ const TaskCard = React.memo(({
             <div className="flex gap-1 border-l border-slate-100 pl-4 ml-2">
               <button 
                 onClick={() => onEdit(task)} 
-                className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                 title="Editeaza Tichet"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button 
                 onClick={() => onDelete(task.id)} 
-                className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                className="p-2.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                 title="Sterge Tichet"
               >
                 <Trash2 className="w-4 h-4" />
@@ -690,8 +690,8 @@ const getPriorityColor = (p: TaskPriority) => {
 
 const getPriorityText = (p: TaskPriority) => {
   switch(p) {
-    case TaskPriority.CRITICAL: return 'bg-red-50 text-red-600 border border-red-100';
-    case TaskPriority.HIGH: return 'bg-orange-50 text-orange-600 border border-orange-100';
+    case TaskPriority.CRITICAL: return 'bg-red-50 text-red-700 border border-red-100';
+    case TaskPriority.HIGH: return 'bg-orange-50 text-orange-700 border border-orange-100';
     case TaskPriority.MEDIUM: return 'bg-blue-50 text-blue-600 border border-blue-100';
     case TaskPriority.LOW: return 'bg-slate-50 text-slate-600 border border-slate-100';
   }
@@ -699,7 +699,7 @@ const getPriorityText = (p: TaskPriority) => {
 
 const getStatusStyles = (s: TaskStatus) => {
   switch(s) {
-    case TaskStatus.PENDING: return 'border-slate-200 text-slate-400 bg-white hover:border-slate-300';
+    case TaskStatus.PENDING: return 'border-slate-200 text-slate-500 bg-white hover:border-slate-300';
     case TaskStatus.IN_PROGRESS: return 'border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-50';
     case TaskStatus.COMPLETED: return 'border-green-200 text-green-600 bg-green-50/50 hover:bg-green-50';
   }

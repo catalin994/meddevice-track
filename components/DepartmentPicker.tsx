@@ -167,11 +167,11 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
           aria-haspopup="listbox"
           className="w-full flex items-center gap-3 px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-left transition-colors hover:border-slate-300 focus:border-blue-500 outline-none"
         >
-          <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className={`flex-1 min-w-0 truncate text-[15px] font-semibold ${value ? 'text-slate-900' : 'text-slate-400'}`}>
+          <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
+          <span className={`flex-1 min-w-0 truncate text-[15px] font-semibold ${value ? 'text-slate-900' : 'text-slate-500'}`}>
             {value || 'Alege sectia sau cabinetul'}
           </span>
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <Search className="w-4 h-4 text-slate-500 shrink-0" />
         </button>
 
         {open && pos && (
@@ -189,7 +189,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
           >
             <div className="p-2 border-b border-slate-100">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   ref={inputRef}
                   value={query}
@@ -201,7 +201,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
                 {query && (
                   <button type="button" onClick={() => { setQuery(''); inputRef.current?.focus(); }}
                     aria-label="Sterge cautarea"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600">
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-slate-600">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -229,7 +229,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
                     {opt}
                   </span>
                   {counts[opt] > 0 && (
-                    <span className="text-[11px] font-bold text-slate-400 shrink-0">
+                    <span className="text-[11px] font-bold text-slate-500 shrink-0">
                       {counts[opt]} {counts[opt] === 1 ? 'aparat' : 'aparate'}
                     </span>
                   )}
@@ -255,7 +255,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
               )}
 
               {matches.length === 0 && !canCreate && (
-                <p className="px-4 py-6 text-center text-sm font-semibold text-slate-400">
+                <p className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
                   Nicio sectie gasita
                 </p>
               )}

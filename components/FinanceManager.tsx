@@ -49,8 +49,8 @@ export const effectiveStatus = (inv: Invoice): InvoiceStatus => {
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   [InvoiceStatus.PAID]: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  [InvoiceStatus.UNPAID]: 'bg-amber-50 text-amber-600 border-amber-200',
-  [InvoiceStatus.OVERDUE]: 'bg-red-50 text-red-600 border-red-200',
+  [InvoiceStatus.UNPAID]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [InvoiceStatus.OVERDUE]: 'bg-red-50 text-red-700 border-red-200',
 };
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -508,7 +508,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
             <div>
               <h2 className="text-2xl sm:text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Financiar</h2>
-              <p className="text-sm text-slate-400 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
+              <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -531,7 +531,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             ['CONTRACTS', 'Contracte', ShieldCheck],
           ] as [FinanceTab, string, any][]).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:text-slate-900'}`}>
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
               <Icon className="w-4 h-4" /> {label}
             </button>
           ))}
@@ -565,18 +565,18 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 <CalendarClock className="w-4 h-4 text-amber-500" /> Contracte care expira (90 zile)
               </h3>
               {expiringContracts.length === 0 ? (
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest py-8 text-center">Niciun contract nu expira curand</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest py-8 text-center">Niciun contract nu expira curand</p>
               ) : (
                 <div className="space-y-3">
                   {expiringContracts.map(c => (
                     <div key={c.contractNumber} className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-100 rounded-2xl">
                       <div>
                         <p className="text-sm font-black text-slate-900">{c.provider}</p>
-                        <p className="text-[11px] font-mono text-slate-400">{c.contractNumber}</p>
+                        <p className="text-[11px] font-mono text-slate-500">{c.contractNumber}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-black text-amber-600">{c.endDate}</p>
-                        <p className="text-[11px] font-bold text-slate-400">{fmt(c.annualCost)}/an</p>
+                        <p className="text-[11px] font-bold text-slate-500">{fmt(c.annualCost)}/an</p>
                       </div>
                     </div>
                   ))}
@@ -590,7 +590,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 <TrendingUp className="w-4 h-4 text-blue-500" /> Top dispozitive dupa cost
               </h3>
               {topDevicesByCost.length === 0 ? (
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest py-8 text-center">Nicio factura asociata cu dispozitive</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest py-8 text-center">Nicio factura asociata cu dispozitive</p>
               ) : (
                 <div className="space-y-3">
                   {topDevicesByCost.map(({ device, total }, i) => (
@@ -598,7 +598,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                       <span className="w-7 h-7 shrink-0 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[11px] font-black">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900 truncate">{device!.name}</p>
-                        <p className="text-[11px] font-mono text-slate-400">SN: {device!.serialNumber}</p>
+                        <p className="text-[11px] font-mono text-slate-500">SN: {device!.serialNumber}</p>
                       </div>
                       <p className="text-sm font-black text-blue-600 shrink-0">{fmt(total)} {dominantCurrency}</p>
                     </div>
@@ -615,7 +615,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         <div className="space-y-4">
           <div className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1 min-w-[15rem]">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
               <input
                 value={listSearch}
                 onChange={e => setListSearch(e.target.value)}
@@ -626,7 +626,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             <div className="flex gap-2 flex-wrap items-center">
               {(['ALL', InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE] as const).map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
-                  className={`px-4 py-3 rounded-xl text-[11px] font-bold transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-900'}`}>
+                  className={`px-4 py-3 rounded-xl text-[11px] font-bold transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
                   {s === 'ALL' ? 'Toate' : STATUS_LABELS[s]}
                 </button>
               ))}
@@ -644,7 +644,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           {filteredInvoices.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
               <Receipt className="w-16 h-16 text-slate-100 mb-4" />
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Nicio factura inregistrata</p>
+              <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Nicio factura inregistrata</p>
               <button onClick={openNew} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">+ Adauga prima factura</button>
             </div>
           ) : (
@@ -654,7 +654,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 return (
                   <div key={inv.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-lg transition-all flex flex-col lg:flex-row lg:items-center gap-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`p-3 rounded-2xl shrink-0 ${st === InvoiceStatus.PAID ? 'bg-emerald-50 text-emerald-600' : st === InvoiceStatus.OVERDUE ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                      <div className={`p-3 rounded-2xl shrink-0 ${st === InvoiceStatus.PAID ? 'bg-emerald-50 text-emerald-600' : st === InvoiceStatus.OVERDUE ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
                         <Receipt className="w-6 h-6" />
                       </div>
                       <div className="min-w-0">
@@ -669,7 +669,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                         </div>
                         <p className="text-xs font-bold text-slate-500 mt-1 truncate">{inv.supplier} · {inv.issueDate}{inv.dueDate ? ` · scadenta ${inv.dueDate}` : ''}</p>
                         {inv.deviceIds.length > 0 && (
-                          <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">
+                          <p className="text-[11px] font-bold text-slate-500 mt-0.5 truncate">
                             {inv.deviceIds.slice(0, 3).map(id => devicesMap.get(id)?.name || id).join(', ')}
                             {inv.deviceIds.length > 3 ? ` +${inv.deviceIds.length - 3}` : ''}
                           </p>
@@ -677,16 +677,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                       </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
-                      <p className="text-lg font-black text-slate-900">{fmt(inv.amount)} <span className="text-xs text-slate-400">{inv.currency}</span></p>
+                      <p className="text-lg font-black text-slate-900">{fmt(inv.amount)} <span className="text-xs text-slate-500">{inv.currency}</span></p>
                       {(inv.filePath || inv.fileUrl) && (
-                        <button onClick={() => downloadInvoicePdf(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
+                        <button onClick={() => downloadInvoicePdf(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
                           <Download className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Editeaza">
+                      <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Editeaza">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setPendingDelete(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-red-600 rounded-xl transition" title="Sterge" aria-label={`Sterge factura ${inv.invoiceNumber}`}>
+                      <button onClick={() => setPendingDelete(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-red-600 rounded-xl transition" title="Sterge" aria-label={`Sterge factura ${inv.invoiceNumber}`}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -713,19 +713,19 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Centralizare Facturi PDF</h3>
-                <p className="text-[11px] text-slate-400 font-black uppercase mt-1 tracking-widest">
+                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">
                   {bulkDrafts.length} fisiere procesate · {bulkDrafts.filter(d => d.include).length} selectate pentru salvare
                   {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} duplicate detectate</span>}
                 </p>
               </div>
-              <button onClick={() => setBulkDrafts(null)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setBulkDrafts(null)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
               {/* Column headers */}
               <div className="hidden lg:grid grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 px-4 pb-1">
                 {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri'].map((h, i) => (
-                  <p key={i} className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{h}</p>
+                  <p key={i} className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{h}</p>
                 ))}
               </div>
               {bulkDrafts.map((d, i) => (
@@ -738,7 +738,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     <input value={d.invoiceNumber} onChange={e => updateBulkDraft(i, { invoiceNumber: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
                     {d.isDuplicate && <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
-                    <p className="text-[11px] text-slate-300 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
+                    <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
                   </div>
                   <input value={d.supplier} onChange={e => updateBulkDraft(i, { supplier: e.target.value })} placeholder="Furnizor"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
@@ -753,7 +753,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   <div className="flex flex-col gap-1">
                     {d.deviceIds.length > 0
                       ? <span className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[11px] font-bold text-center">{d.deviceIds.length} dispozitiv{d.deviceIds.length > 1 ? 'e' : ''}</span>
-                      : <span className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[11px] font-bold text-center">fara disp.</span>}
+                      : <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[11px] font-bold text-center">fara disp.</span>}
                     {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[11px] font-bold text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
                   </div>
                 </div>
@@ -786,9 +786,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">{editingId ? 'Editeaza Factura' : 'Factura Noua'}</h3>
-                <p className="text-[11px] text-slate-400 font-black uppercase mt-1 tracking-widest">Asociaza cu contracte si dispozitive</p>
+                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">Asociaza cu contracte si dispozitive</p>
               </div>
-              <button onClick={() => setIsEditing(false)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setIsEditing(false)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8">
@@ -867,7 +867,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   <span className="text-[11px] font-black text-blue-600 uppercase">{selectedDeviceIds.length} selectate</span>
                 </div>
                 <div className="relative mb-4">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                   <input value={deviceSearch} onChange={e => setDeviceSearch(e.target.value)} placeholder="Cauta dupa nume, serie sau departament..."
                     className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none" />
                 </div>
@@ -921,8 +921,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
 const KpiCard = ({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: 'blue' | 'amber' | 'red' | 'indigo' }) => {
   const tones = {
     blue: 'bg-blue-50 text-blue-600',
-    amber: 'bg-amber-50 text-amber-600',
-    red: 'bg-red-50 text-red-600',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
     indigo: 'bg-indigo-50 text-indigo-600',
   };
   return (
@@ -942,7 +942,7 @@ const DeviceRow = ({ device, selected, onToggle }: { device: MedicalDevice; sele
     </div>
     <div className="flex-1 min-w-0">
       <p className={`text-xs font-black truncate ${selected ? 'text-white' : 'text-slate-900'}`}>{device.name}</p>
-      <p className={`text-[11px] font-mono ${selected ? 'text-white/60' : 'text-slate-400'}`}>SN: {device.serialNumber} · {device.department}</p>
+      <p className={`text-[11px] font-mono ${selected ? 'text-white/60' : 'text-slate-500'}`}>SN: {device.serialNumber} · {device.department}</p>
     </div>
   </div>
 );

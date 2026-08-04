@@ -43,7 +43,7 @@
   }
 
   .tech-label {
-    @apply font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400;
+    @apply font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-slate-600;
   }
 
   .tech-value {
