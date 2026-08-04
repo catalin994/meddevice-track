@@ -465,7 +465,7 @@ NOTIFY pgrst, 'reload schema';
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
                 <div className="relative">
                   <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
-                  <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
                 </div>
               </div>
             </div>
@@ -498,7 +498,7 @@ NOTIFY pgrst, 'reload schema';
             </pre>
             <button 
               onClick={handleCopySql}
-              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+              className="absolute top-4 right-4 px-3 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copiat' : 'Copiaza SQL'}

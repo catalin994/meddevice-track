@@ -70,7 +70,7 @@ export const PageSizePicker: React.FC<{ value: number; onChange: (n: number) => 
     <select
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="px-3 py-2 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-bold text-slate-700 outline-none cursor-pointer"
+      className="px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-bold text-slate-700 outline-none cursor-pointer"
       title="Cate randuri se afiseaza pe o pagina"
     >
       {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}

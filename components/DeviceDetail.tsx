@@ -276,7 +276,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             {!isStandalone && (
               <button
                 onClick={onBack}
-                className="mb-3 sm:mb-4 inline-flex items-center gap-2 pl-2.5 pr-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[11px] uppercase tracking-widest transition active:scale-95 hover:bg-slate-900 hover:text-white group"
+                className="mb-3 sm:mb-4 inline-flex items-center gap-2 pl-3 pr-4 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[11px] uppercase tracking-widest transition active:scale-95 hover:bg-slate-900 hover:text-white group"
               >
                 <ArrowLeft className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
                 Inapoi la inventar

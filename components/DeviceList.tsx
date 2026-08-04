@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
 import Portal from './Portal';
 import Pager, { PAGE_SIZES, PageSizePicker } from './Pager';
@@ -671,33 +671,51 @@ const DeviceCard = React.memo(({
       className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
       style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 160px' } as React.CSSProperties}
     >
-      {/* Selection checkbox, with the device's position in the list under it */}
-      <div className="absolute top-6 left-6 md:static flex items-center gap-2 md:flex-col md:gap-1.5">
-        <input 
-          type="checkbox" 
-          className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all" 
-          checked={isSelected} 
-          onChange={() => onToggleSelection(device.id)} 
-        />
+      {/* Selection checkbox, with the device's position in the list under it.
+          It used to float over the top-left corner, which was free only while
+          an empty photo box pushed the name out of the way. Now it is a row of
+          its own on a phone, and the column it always was from md up. */}
+      <div className="w-full md:w-auto flex items-center gap-1 md:flex-col md:gap-1.5 shrink-0">
+        {/* The box stays 20px — a bigger one would look like a button — but the
+            label around it gives the thumb a 44px target. */}
+        <label className="p-3 -m-1 cursor-pointer flex items-center" aria-label={`Selecteaza ${device.name}`}>
+          <input
+            type="checkbox"
+            className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all"
+            checked={isSelected}
+            onChange={() => onToggleSelection(device.id)}
+          />
+        </label>
         <span className="font-mono text-xs font-bold text-slate-500 tabular-nums">{index}</span>
       </div>
 
-      {/* Asset Image/Icon */}
-      <div 
-        className="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center relative shadow-sm group-hover:scale-105 transition-transform shrink-0 cursor-pointer"
-        onClick={() => onSelect(device)}
-      >
-        {device.image ? (
-          <img src={device.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-        ) : (
-          <Box className="w-10 h-10 text-slate-200" />
-        )}
-        {device.isCNCAN && (
-          <div className="absolute top-0 right-0 p-1.5 bg-amber-500 rounded-bl-xl shadow-sm">
-            <ShieldAlert className="w-3.5 h-3.5 text-white" />
-          </div>
-        )}
-      </div>
+      {/*
+        The photo only takes room when there is a photo. Most devices have
+        none, and an empty grey square with a cube in it was costing a hundred
+        pixels a card on a phone — pure scrolling for nothing. The radiation
+        marker still needs somewhere to live, so it keeps a small box.
+      */}
+      {device.image ? (
+        <div
+          className="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center relative shadow-sm group-hover:scale-105 transition-transform shrink-0 cursor-pointer"
+          onClick={() => onSelect(device)}
+        >
+          <img src={device.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt={device.name} />
+          {device.isCNCAN && (
+            <div className="absolute top-0 right-0 p-1.5 bg-amber-500 rounded-bl-xl shadow-sm">
+              <ShieldAlert className="w-3.5 h-3.5 text-white" />
+            </div>
+          )}
+        </div>
+      ) : device.isCNCAN ? (
+        <div
+          className="w-11 h-11 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
+          onClick={() => onSelect(device)}
+          title="Sursa de radiatii — evidenta CNCAN"
+        >
+          <ShieldAlert className="w-5 h-5 text-white" />
+        </div>
+      ) : null}
 
       {/* Asset Info */}
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
@@ -769,6 +787,22 @@ const DeviceCard = React.memo(({
   );
 });
 
+/** One shape for all four desk tools, so none of them shouts louder than the list. */
+const ToolButton: React.FC<{
+  onClick: () => void; disabled?: boolean; icon: React.ReactNode; label: string; hint: string;
+}> = ({ onClick, disabled, icon, label, hint }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    title={hint}
+    aria-label={hint}
+    className="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-400 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+  >
+    {icon}
+    {label}
+  </button>
+);
+
 const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpdateDevice, onBulkUpdate, onAddDevice, onDelete, searchQuery: externalSearch = '', canDelete = true }) => {
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'ALL'>(listState.status);
   const [filterDept, setFilterDept] = useState<string | 'ALL'>(listState.dept);
@@ -777,6 +811,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [localSearch, setLocalSearch] = useState(listState.search);
   const [showQRSheet, setShowQRSheet] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [showTools, setShowTools] = useState(false);
 
   // Paged rendering: the user picks how many devices a page holds, which also
   // keeps the DOM small instead of mounting the whole fleet at once.
@@ -1117,44 +1152,55 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             {selectedIds.size > 0 && (
               <>
                 <span className="tech-label text-blue-600 font-black">{selectedIds.size} selectate</span>
-                <button className="px-4 py-2 bg-red-50 text-red-700 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Sterge selectia</button>
+                <button className="px-4 py-2.5 bg-red-50 text-red-700 rounded-xl tech-label hover:bg-red-100 transition-colors border border-red-100">Sterge selectia</button>
               </>
             )}
+
+            {/*
+              Export, import and label printing are desk work. On a phone they
+              were four saturated buttons standing between the search box and
+              the first device — and a red "PDF" next to a list where red also
+              means delete. They fold away here and stay inline from sm up.
+            */}
             <button
-              onClick={() => exportToExcel(filteredDevices)}
-              disabled={filteredDevices.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition active:scale-95 shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Exporta in Excel"
+              onClick={() => setShowTools(t => !t)}
+              aria-expanded={showTools}
+              className="sm:hidden flex items-center gap-2 px-4 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition active:scale-95"
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              Excel
+              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+              Export / Import
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${showTools ? 'rotate-180' : ''}`} />
             </button>
-            <button
-              onClick={() => exportToPDF(filteredDevices)}
-              disabled={filteredDevices.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition active:scale-95 shadow-lg shadow-red-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Exporta in PDF"
-            >
-              <FileText className="w-4 h-4" />
-              PDF
-            </button>
-            <button
-              onClick={() => importInputRef.current?.click()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-600/20"
-              title="Importa din Excel"
-            >
-              <Upload className="w-4 h-4" />
-              Import
-            </button>
-            <button
-              onClick={() => setShowQRSheet(true)}
-              disabled={filteredDevices.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Genereaza etichete QR printabile pentru dispozitivele filtrate"
-            >
-              <QrCode className="w-4 h-4" />
-              Etichete QR
-            </button>
+
+            <div className={`${showTools ? 'grid grid-cols-2' : 'hidden'} w-full gap-2 sm:flex sm:w-auto sm:gap-3`}>
+              <ToolButton
+                onClick={() => exportToExcel(filteredDevices)}
+                disabled={filteredDevices.length === 0}
+                icon={<FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-600" />}
+                label="Excel"
+                hint="Exporta lista filtrata in Excel"
+              />
+              <ToolButton
+                onClick={() => exportToPDF(filteredDevices)}
+                disabled={filteredDevices.length === 0}
+                icon={<FileText className="w-4 h-4 shrink-0 text-red-600" />}
+                label="PDF"
+                hint="Exporta lista filtrata in PDF"
+              />
+              <ToolButton
+                onClick={() => importInputRef.current?.click()}
+                icon={<Upload className="w-4 h-4 shrink-0 text-blue-600" />}
+                label="Import"
+                hint="Importa dispozitive dintr-un export Excel Biomedic"
+              />
+              <ToolButton
+                onClick={() => setShowQRSheet(true)}
+                disabled={filteredDevices.length === 0}
+                icon={<QrCode className="w-4 h-4 shrink-0 text-slate-700" />}
+                label="Etichete QR"
+                hint="Genereaza etichete QR printabile pentru dispozitivele filtrate"
+              />
+            </div>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFile} />
           </div>
         </div>

@@ -531,7 +531,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             ['CONTRACTS', 'Contracte', ShieldCheck],
           ] as [FinanceTab, string, any][]).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
+              className={`flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
               <Icon className="w-4 h-4" /> {label}
             </button>
           ))}

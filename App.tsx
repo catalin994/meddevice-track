@@ -70,6 +70,13 @@ const VIEW_LABELS: Record<string, string> = {
   FINANCE: 'Financiar',
 };
 
+/** Forms that fit the header of a phone without being cut mid-word. */
+const VIEW_LABELS_SHORT: Record<string, string> = {
+  DEVICE_DETAIL: 'Dispozitiv',
+  ADD_DEVICE: 'Adauga',
+  TASKS: 'Tichete',
+};
+
 /**
  * The three actions people reach for constantly. They sit in their own bar
  * under the header rather than as unlabelled dark icons among the utility
@@ -92,7 +99,7 @@ const PrimaryAction: React.FC<{
     <button
       onClick={onClick}
       title={hint}
-      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-3.5 text-white rounded-xl shadow-lg font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition active:scale-95`}
+      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-6 py-3.5 text-white rounded-xl shadow-lg font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition active:scale-95`}
     >
       {icon}
       <span className="sm:hidden">{shortLabel}</span>
@@ -870,7 +877,13 @@ const App: React.FC = () => {
                  <span className="text-[10px] font-black uppercase tracking-widest">Meniu</span>
                </button>
                <div className="min-w-0">
-                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">{VIEW_LABELS[view] || view.replace('_', ' ')}</h2>
+                 {/* On a phone the menu button and three icons leave about
+                     140px here, so the full label came out as "FISA DISP…".
+                     The short form fits; the long one returns from sm up. */}
+                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">
+                   <span className="sm:hidden">{VIEW_LABELS_SHORT[view] || VIEW_LABELS[view] || view.replace('_', ' ')}</span>
+                   <span className="hidden sm:inline">{VIEW_LABELS[view] || view.replace('_', ' ')}</span>
+                 </h2>
                  <p className="hidden sm:block text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
@@ -891,7 +904,7 @@ const App: React.FC = () => {
                 <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-black">Ctrl K</kbd>
               </button>
               {/* Mobile: compact search icon */}
-              <button onClick={() => setShowPalette(true)} className="md:hidden p-2.5 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl" title="Cautare">
+              <button onClick={() => setShowPalette(true)} className="md:hidden p-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl" title="Cautare" aria-label="Cauta in aplicatie">
                 <Search className="w-4 h-4" />
               </button>
               <div className="hidden sm:block h-8 w-px bg-slate-200" />
@@ -902,13 +915,13 @@ const App: React.FC = () => {
                 </div>
                 <button
                   onClick={toggleTheme}
-                  className="p-2.5 sm:p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-300 transition-colors"
+                  className="p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-300 transition-colors"
                   title={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
                   aria-label={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
                 >
                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
-                <button onClick={handleLogout} className="p-2.5 sm:p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare">
+                <button onClick={handleLogout} className="p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare" aria-label="Delogare">
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
@@ -1181,7 +1194,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
                 )}
 
                 <button onClick={loadAndSync} disabled={isSyncingNow}
-                  className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
                   {isSyncingNow && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {isSyncingNow ? 'In curs...' : 'Re-sincronizare'}
                 </button>

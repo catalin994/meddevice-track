@@ -262,7 +262,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             ] as [TaskViewMode, string, any][]).map(([mode, label, Icon]) => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 title={label}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-600 hover:text-slate-900'}`}>
+                className={`flex items-center gap-2 px-4 py-3.5 rounded-lg text-[11px] font-bold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-600 hover:text-slate-900'}`}>
                 <Icon className="w-4 h-4" />
                 <span className="hidden lg:inline">{label}</span>
               </button>
@@ -270,13 +270,13 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           </div>
           <button
             onClick={() => setIsReportingIncident(true)}
-            className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-red-600/20 hover:bg-red-700 transition flex items-center gap-2 active:scale-95"
+            className="px-6 py-3.5 bg-red-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-red-600/20 hover:bg-red-700 transition flex items-center gap-2 active:scale-95"
           >
             <Siren className="w-4 h-4" /> Raporteaza Incident
           </button>
           <button
             onClick={() => { resetForm(); setIsAdding(true); }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
+            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
           >
             <Plus className="w-4 h-4" /> Tichet Nou
           </button>

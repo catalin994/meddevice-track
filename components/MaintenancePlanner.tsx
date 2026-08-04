@@ -287,11 +287,11 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch gap-3 sm:gap-4 w-full 2xl:w-auto">
           <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl shrink-0">
             <button onClick={() => setViewMode('LIST')}
-              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
+              className={`px-5 py-3.5 rounded-xl text-[11px] font-bold transition ${viewMode === 'LIST' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
               Lista
             </button>
             <button onClick={() => setViewMode('CALENDAR')}
-              className={`px-5 py-3 rounded-xl text-[11px] font-bold transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
+              className={`px-5 py-3.5 rounded-xl text-[11px] font-bold transition ${viewMode === 'CALENDAR' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>
               Calendar
             </button>
           </div>
