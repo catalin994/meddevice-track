@@ -170,9 +170,12 @@ export const referatDocx = async (r: Referat, antet: Antet = {}): Promise<Blob> 
 
 export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Promise<Blob> => {
   const tip = FOUNDATION_DOC_RO[normaliseFoundationType(d.type)];
-  const precedenta = d.previousValue || 0;
-  const influenta = d.influence ?? ((d.amount || 0) - precedenta);
-  const actualizata = d.amount ?? (precedenta + influenta);
+  // Rotunjit la ban: altfel 19.360,02 + 3.226,67 duce un rest de virgula mobila
+  // in valoarea de plecare a lunii urmatoare.
+  const bani = (n: number) => Math.round(n * 100) / 100;
+  const precedenta = bani(d.previousValue || 0);
+  const influenta = bani(d.influence ?? ((d.amount || 0) - precedenta));
+  const actualizata = bani(d.amount ?? (precedenta + influenta));
 
   // Ce nu s-a scris se ia de unde documentele reale il iau: punctul 2 din
   // titlu, coloana 1 din tipul documentului, fraza din firma si numere.

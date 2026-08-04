@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FolderOpen, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Link2, Unlink, FileDown,
+  Paperclip, Link2, Unlink, FileDown, CalendarClock,
 } from 'lucide-react';
 import {
   FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat,
-  normaliseFoundationType,
+  normaliseFoundationType, lunaRo, lunaAcum, lunaUrmatoare, luniIntre, schimbaLuna,
 } from '../types';
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -79,6 +79,9 @@ const gol = () => ({
   referenceNumber: '',
   frameworkContract: '',
   reference: '',
+  recurring: false,
+  seriesId: '',
+  periodMonth: lunaAcum(),
   notes: '',
   filePath: undefined as string | undefined,
   fileUrl: '',
@@ -109,6 +112,61 @@ const frazaPropusa = (f: { type: FoundationDocType; supplier: string; referenceN
 };
 
 const fmt = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Rotunjeste la ban.
+ *
+ * 19.360,02 + 3.226,67 da 22.586,690000000002 in virgula mobila. Pe hartie nu
+ * se vede — se scrie cu doua zecimale — dar valoarea salvata devine punctul de
+ * plecare al lunii urmatoare, si eroarea se aduna de douasprezece ori pe an.
+ */
+const bani = (n: number) => Math.round(n * 100) / 100;
+
+/** O serie lunara: documentele aceluiasi contract, in ordinea lunilor. */
+interface Serie {
+  seriesId: string;
+  documente: FoundationDoc[];
+  /** Ultima luna facuta. */
+  ultimul: FoundationDoc;
+  /** Lunile care ar fi trebuit facute si nu sunt, de la cea mai veche. */
+  restante: string[];
+}
+
+/**
+ * Ce documente lunare mai sunt de facut.
+ *
+ * Contractele subsecvente cer cate un document pe luna, la nesfarsit, fiecare o
+ * revizuire a celui dinainte. Tinut minte de om, se uita — si se uita tocmai
+ * lunile in care s-a intamplat altceva. Aici se calculeaza din ce exista deja:
+ * ultima luna facuta a fiecarei serii, fata de luna curenta.
+ */
+const seriiRestante = (docs: FoundationDoc[], pana = lunaAcum()): Serie[] => {
+  const dupaSerie = new Map<string, FoundationDoc[]>();
+  for (const d of docs) {
+    if (!d.recurring) continue;
+    const cheie = d.seriesId || d.id;
+    (dupaSerie.get(cheie) || dupaSerie.set(cheie, []).get(cheie)!).push(d);
+  }
+  const serii: Serie[] = [];
+  for (const [seriesId, lista] of dupaSerie) {
+    const ordonate = [...lista].sort((a, b) =>
+      (a.periodMonth || a.date || '').localeCompare(b.periodMonth || b.date || ''));
+    const ultimul = ordonate[ordonate.length - 1];
+    const facute = new Set(ordonate.map(d => d.periodMonth).filter(Boolean) as string[]);
+    const start = ultimul.periodMonth;
+    const restante: string[] = [];
+    if (start) {
+      // Numai lunile de dupa ultima facuta, pana la luna curenta inclusiv. O
+      // serie oprita acum trei luni are trei documente de facut, nu unul.
+      for (let i = 1; i <= Math.max(0, luniIntre(start, pana)); i++) {
+        const luna = lunaUrmatoare(start, i);
+        if (!facute.has(luna)) restante.push(luna);
+      }
+    }
+    serii.push({ seriesId, documente: ordonate, ultimul, restante });
+  }
+  return serii.sort((a, b) => b.restante.length - a.restante.length);
+};
 
 /** Documentul de fundamentare, in Word, cu tabelul de valori si semnaturile. */
 const descarcaWord = async (d: FoundationDoc, referat?: Referat) => {
@@ -207,12 +265,75 @@ const FoundationDocManager: React.FC<Props> = ({
       currency: d.currency || 'RON',
       supplier: d.supplier || '', referenceNumber: d.referenceNumber || '',
       frameworkContract: d.frameworkContract || '', reference: d.reference || '',
+      recurring: !!d.recurring, seriesId: d.seriesId || '', periodMonth: d.periodMonth || lunaAcum(),
       notes: d.notes || '', filePath: d.filePath, fileUrl: d.fileUrl || '', fileName: d.fileName || '',
     });
     // Fraza scrisa deja nu se mai rescrie de la sine cand se schimba firma.
     setFrazaAtinsa(!!d.reference);
     setDataRevizieiAtinsa(!!d.revisionDate && d.revisionDate !== d.date);
     setIdEditat(d.id);
+    setEditez(true);
+  }, []);
+
+  const serii = useMemo(() => seriiRestante(docs), [docs]);
+  const deFacut = useMemo(() => serii.filter(s => s.restante.length > 0), [serii]);
+
+  /**
+   * Deschide documentul lunii urmatoare, gata completat din cel dinainte.
+   *
+   * Ce se schimba de la o luna la alta: revizuirea creste cu unu, valoarea de
+   * la revizia precedenta devine cat era totalul, influenta ramane rata lunara,
+   * si numele lunii se schimba peste tot unde apare. Ce nu se schimba, ramane.
+   *
+   * Numarul unic ramane gol intentionat: il da registratura, nu aplicatia.
+   */
+  const faLunaUrmatoare = useCallback((s: Serie, luna: string) => {
+    const p = s.ultimul;
+    const precedenta = p.amount || 0;
+    const influenta = p.influence || 0;
+    const lunaVeche = p.periodMonth || '';
+    const azi = new Date().toISOString().split('T')[0];
+    // Documentul se dateaza in luna pe care o acopera; daca luna a trecut, in
+    // prima ei zi, ca sa nu iasa un act din august datat in octombrie.
+    const data = luna === lunaAcum() ? azi : `${luna}-01`;
+    const schimba = (t?: string) => schimbaLuna(t || '', lunaVeche, luna);
+
+    setForm({
+      ...gol(),
+      referatId: p.referatId || '',
+      type: normaliseFoundationType(p.type),
+      number: '',
+      date: data,
+      revision: (p.revision ?? 0) + 1,
+      revisionDate: data,
+      compartment: p.compartment || '',
+      subject: schimba(p.subject),
+      shortDescription: schimba(p.shortDescription),
+      description: schimba(p.description),
+      budgetArticle: p.budgetArticle || '',
+      ssiCode: p.ssiCode || '',
+      program: p.program || '',
+      element: p.element || '',
+      parameters: p.parameters || '',
+      previousValue: precedenta,
+      influence: influenta,
+      remainingAmount: p.remainingAmount || 0,
+      currency: p.currency || 'RON',
+      supplier: p.supplier || '',
+      referenceNumber: p.referenceNumber || '',
+      frameworkContract: p.frameworkContract || '',
+      reference: schimba(p.reference),
+      recurring: true,
+      seriesId: s.seriesId,
+      periodMonth: luna,
+      notes: schimba(p.notes),
+      filePath: undefined,
+      fileUrl: '',
+      fileName: '',
+    });
+    setFrazaAtinsa(true);          // fraza vine din luna trecuta, nu se rescrie
+    setDataRevizieiAtinsa(true);
+    setIdEditat(null);
     setEditez(true);
   }, []);
 
@@ -246,7 +367,7 @@ const FoundationDocManager: React.FC<Props> = ({
 
     // Valoarea actualizata nu se tasteaza: e suma celorlalte doua, exact ca in
     // coloana "7 = 5 + 6" din formular.
-    const actualizata = (form.previousValue || 0) + (form.influence || 0);
+    const actualizata = bani((form.previousValue || 0) + (form.influence || 0));
 
     onUpsert({
       id,
@@ -274,6 +395,10 @@ const FoundationDocManager: React.FC<Props> = ({
       referenceNumber: form.referenceNumber.trim() || undefined,
       frameworkContract: form.frameworkContract.trim() || undefined,
       reference: form.reference.trim() || undefined,
+      recurring: form.recurring || undefined,
+      // Prima luna a unei serii isi da numele seriei; urmatoarele il mostenesc.
+      seriesId: form.recurring ? (form.seriesId || id) : undefined,
+      periodMonth: form.recurring ? form.periodMonth : undefined,
       notes: form.notes.trim() || undefined,
       filePath,
       fileUrl: inline,
@@ -302,6 +427,43 @@ const FoundationDocManager: React.FC<Props> = ({
           >
             Vezi toate documentele
           </button>
+        </div>
+      )}
+
+      {/*
+        Documentele lunare care n-au fost facute inca. Contractele subsecvente
+        cer cate unul pe luna; tinut minte de om, se uita — si se uita tocmai in
+        lunile aglomerate. Aici sunt scrise, cu butonul care le face.
+      */}
+      {deFacut.length > 0 && (
+        <div className="p-5 bg-amber-50 border-2 border-amber-200 rounded-[2rem] space-y-3">
+          <div className="flex items-center gap-3">
+            <CalendarClock className="w-5 h-5 text-amber-700 shrink-0" />
+            <p className="text-[13px] font-black text-amber-900 uppercase tracking-wide">
+              {deFacut.reduce((n, s) => n + s.restante.length, 0)} document
+              {deFacut.reduce((n, s) => n + s.restante.length, 0) === 1 ? '' : 'e'} lunar
+              {deFacut.reduce((n, s) => n + s.restante.length, 0) === 1 ? '' : 'e'} de facut
+            </p>
+          </div>
+          {deFacut.map(s => (
+            <div key={s.seriesId} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-white border border-amber-200 rounded-2xl">
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-bold text-slate-900 break-words">{s.ultimul.subject || 'Fara obiect'}</p>
+                <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                  {[s.ultimul.supplier, s.ultimul.referenceNumber].filter(Boolean).join(' · ')}
+                  {' · ultimul: '}{lunaRo(s.ultimul.periodMonth || '')}
+                  {s.restante.length > 1 && <span className="text-amber-700"> · {s.restante.length} luni in urma</span>}
+                </p>
+              </div>
+              <button
+                onClick={() => faLunaUrmatoare(s, s.restante[0])}
+                className="w-full sm:w-auto px-5 py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 shrink-0 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Fa documentul pe {lunaRo(s.restante[0])}
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -373,6 +535,13 @@ const FoundationDocManager: React.FC<Props> = ({
                         <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-bold"
                               title={`Revizuirea ${d.revision}${d.revisionDate ? ` din ${d.revisionDate}` : ''}`}>
                           rev. {d.revision}
+                        </span>
+                      )}
+                      {d.recurring && (
+                        <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                              title={`Document lunar${d.periodMonth ? ` pe ${lunaRo(d.periodMonth)}` : ''}`}>
+                          <CalendarClock className="w-3 h-3" />
+                          {d.periodMonth ? lunaRo(d.periodMonth) : 'lunar'}
                         </span>
                       )}
                       {ref ? (
@@ -632,7 +801,7 @@ const FoundationDocManager: React.FC<Props> = ({
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Valoare actualizata</label>
                       <div className="px-4 py-3.5 bg-slate-900 text-white rounded-2xl text-[15px] font-black tabular-nums">
-                        {fmt((form.previousValue || 0) + (form.influence || 0))}
+                        {fmt(bani((form.previousValue || 0) + (form.influence || 0)))}
                       </div>
                     </div>
                   </div>
@@ -643,6 +812,45 @@ const FoundationDocManager: React.FC<Props> = ({
                       placeholder="Gol, randul ramane cu puncte"
                       aria-label="Suma de pe randul ramane in suma de" className="camp bg-white" />
                   </Camp>
+                </div>
+
+                {/*
+                  Contractele cer cate un document pe luna. Bifat aici, tab-ul
+                  stie sa spuna cand a venit luna urmatoare si sa il faca din
+                  cel de acum, in loc sa fie tastat de la zero de doisprezece
+                  ori pe an.
+                */}
+                <div className={`p-5 rounded-2xl border-2 transition ${form.recurring ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={form.recurring}
+                      onChange={e => setForm(p => ({ ...p, recurring: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 accent-amber-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-black text-slate-900">Se face lunar, pe contract</p>
+                      <p className="text-[11px] font-semibold text-slate-500 mt-0.5 leading-relaxed">
+                        Aplicatia va cere documentul lunii urmatoare si il va completa din acesta —
+                        revizuirea creste, valoarea precedenta devine totalul de acum, iar numele lunii
+                        se schimba peste tot unde apare.
+                      </p>
+                    </div>
+                  </label>
+                  {form.recurring && (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Camp eticheta="Luna acoperita">
+                        <input type="month" value={form.periodMonth}
+                          onChange={e => setForm(p => ({ ...p, periodMonth: e.target.value }))}
+                          aria-label="Luna pe care o acopera documentul" className="camp bg-white" />
+                      </Camp>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Seria</label>
+                        <div className="px-4 py-3.5 bg-white border-2 border-slate-100 rounded-2xl text-[13px] font-bold text-slate-600 truncate">
+                          {form.seriesId
+                            ? `Luna ${docs.filter(d => (d.seriesId || d.id) === form.seriesId).length + (idEditat ? 0 : 1)} a acestui contract`
+                            : 'Prima luna a unei serii noi'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Camp eticheta="Observatii">

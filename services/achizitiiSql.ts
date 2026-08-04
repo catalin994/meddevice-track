@@ -78,6 +78,9 @@ CREATE TABLE IF NOT EXISTS public.documente_fundamentare (
   "referenceNumber"   TEXT,
   "frameworkContract" TEXT,
   "reference"         TEXT,
+  "recurring"         BOOLEAN,
+  "seriesId"          TEXT,
+  "periodMonth"       TEXT,
   "notes"             TEXT,
   "filePath"          TEXT,
   "fileUrl"           TEXT,
@@ -92,11 +95,19 @@ ALTER TABLE public.documente_fundamentare
   ADD COLUMN IF NOT EXISTS "element"           TEXT,
   ADD COLUMN IF NOT EXISTS "reference"         TEXT,
   ADD COLUMN IF NOT EXISTS "frameworkContract" TEXT,
-  ADD COLUMN IF NOT EXISTS "remainingAmount"   NUMERIC;
+  ADD COLUMN IF NOT EXISTS "remainingAmount"   NUMERIC,
+  -- documentele lunare de pe contracte: ce serie, ce luna
+  ADD COLUMN IF NOT EXISTS "recurring"         BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "seriesId"          TEXT,
+  ADD COLUMN IF NOT EXISTS "periodMonth"       TEXT;
 
 -- Cautarea dupa referatul sustinut, pe dosarele mari.
 CREATE INDEX IF NOT EXISTS documente_fundamentare_referat_idx
   ON public.documente_fundamentare ("referatId");
+
+-- Lunile aceleiasi serii se citesc impreuna la fiecare deschidere a tab-ului.
+CREATE INDEX IF NOT EXISTS documente_fundamentare_serie_idx
+  ON public.documente_fundamentare ("seriesId", "periodMonth");
 
 -- ── 3. ACCES, dupa aceleasi reguli ca restul datelor ────────────────────────
 ALTER TABLE public.referate                ENABLE ROW LEVEL SECURITY;

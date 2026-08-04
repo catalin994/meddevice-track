@@ -302,12 +302,83 @@ export interface FoundationDoc {
    *  din campurile de mai sus, dar se poate scrie orice — documentele reale nu
    *  au doua la fel. */
   reference?: string;
+  /**
+   * Documentele de pe un contract se fac lunar, unul pentru fiecare luna, ca
+   * revizuiri succesive ale aceluiasi document. Cele trei campuri de mai jos
+   * leaga lunile intre ele.
+   */
+  recurring?: boolean;
+  /** Toate lunile aceluiasi contract poarta acelasi seriesId — id-ul primeia. */
+  seriesId?: string;
+  /** Luna acoperita, "2026-08". Dupa ea se stie ce mai e de facut. */
+  periodMonth?: string;
   notes?: string;
   filePath?: string;
   fileUrl?: string;
   fileName?: string;
   updated_at?: string;
 }
+
+export const LUNI_RO = [
+  'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+  'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie',
+] as const;
+
+/** "2026-08" → "august 2026". */
+export const lunaRo = (perioada: string): string => {
+  const [an, luna] = (perioada || '').split('-');
+  const i = parseInt(luna, 10) - 1;
+  return i >= 0 && i < 12 ? `${LUNI_RO[i]} ${an}` : perioada || '';
+};
+
+/** Luna curenta, in forma in care se tin perioadele. */
+export const lunaAcum = (d = new Date()): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+/** "2026-08" + 1 → "2026-09". */
+export const lunaUrmatoare = (perioada: string, pasi = 1): string => {
+  const [an, luna] = perioada.split('-').map(Number);
+  const d = new Date(an, luna - 1 + pasi, 1);
+  return lunaAcum(d);
+};
+
+/** Cate luni sunt intre doua perioade. Negativ daca a doua e mai veche. */
+export const luniIntre = (de: string, la: string): number => {
+  const [a1, l1] = de.split('-').map(Number);
+  const [a2, l2] = la.split('-').map(Number);
+  return (a2 - a1) * 12 + (l2 - l1);
+};
+
+/**
+ * Schimba numele lunii dintr-un text, pastrand felul in care era scris.
+ *
+ * "Alocarea sumei necesare pentru luna AUGUST" devine "...pentru luna
+ * SEPTEMBRIE", nu "septembrie". Fara asta, documentul pe luna noua ar purta
+ * numele lunii vechi in titlu si in descriere — greseala care trece cel mai
+ * usor neobservata, fiindca restul documentului e corect.
+ *
+ * "mai" e si cuvant obisnuit ("mai multe", "mai mult"). De aceea se inlocuieste
+ * doar scris cu majuscule sau precedat de "luna".
+ */
+export const schimbaLuna = (text: string, dinPerioada: string, inPerioada: string): string => {
+  if (!text) return text;
+  const iVechi = parseInt((dinPerioada || '').split('-')[1], 10) - 1;
+  const iNou = parseInt((inPerioada || '').split('-')[1], 10) - 1;
+  if (!(iVechi >= 0 && iVechi < 12) || !(iNou >= 0 && iNou < 12) || iVechi === iNou) return text;
+  const vechi = LUNI_RO[iVechi];
+  const nou = LUNI_RO[iNou];
+  const laFel = (gasit: string) =>
+    gasit === gasit.toUpperCase() ? nou.toUpperCase()
+    : gasit[0] === gasit[0].toUpperCase() ? nou[0].toUpperCase() + nou.slice(1)
+    : nou;
+
+  if (vechi === 'mai') {
+    return text
+      .replace(/\bMAI\b/g, () => laFel('MAI'))
+      .replace(/(\bluna\s+)(mai|Mai)\b/gi, (_, p, g) => p + laFel(g));
+  }
+  return text.replace(new RegExp(`\\b${vechi}\\b`, 'gi'), g => laFel(g));
+};
 
 export interface DeviceFile {
   id: string;
