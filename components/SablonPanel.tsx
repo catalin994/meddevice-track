@@ -2,32 +2,35 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FileCog, Upload, Trash2, Check, Loader2, X } from 'lucide-react';
 import Portal from './Portal';
 import useEscape from './useEscape';
-import { FelSablon, SEMNE, iaSablon, punSablon, scoateSablon } from '../services/sabloane';
+import {
+  FelSablon, SursaSablon, SEMNE, punSablon, scoateSablon, sablonulFolosit,
+} from '../services/sabloane';
 import { semneleDin } from '../services/sablonWord';
 import { notify } from '../services/notices';
 
 /**
- * Unde se pune sablonul Word al institutiei.
+ * Ce sablon Word sta in spatele documentelor generate.
  *
- * Fara el documentul iese corect dar nu identic — aplicatia il deseneaza din
- * nimic si nu are de unde sti sigla, antetul si stilurile spitalului. Cu el,
- * se porneste de la hartia lor si se schimba doar valorile.
+ * Aplicatia vine cu formularele institutiei deja puse, asa ca panoul nu mai e
+ * un pas obligatoriu — e locul unde se vede pe ce se genereaza si unde se poate
+ * pune altceva, cand formularul se schimba.
  *
- * Panoul spune si ce semne a gasit in fisierul urcat, ca sa se vada dintr-o
- * privire daca unul a fost scris gresit — altfel campul ar iesi gol pe hartie
- * si nimeni n-ar sti de ce.
+ * Spune si ce semne a gasit in fisier, ca sa se vada dintr-o privire daca unul
+ * a fost scris gresit — altfel campul ar iesi gol pe hartie si nimeni n-ar sti
+ * de ce.
  */
 const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }) => {
   const [deschis, setDeschis] = useState(false);
-  const [are, setAre] = useState<boolean | null>(null);
+  const [sursa, setSursa] = useState<SursaSablon | null>(null);
   const [lucreaza, setLucreaza] = useState(false);
   const [gasite, setGasite] = useState<string[] | null>(null);
   useEscape(() => setDeschis(false), deschis);
+  const are = sursa === null ? null : sursa !== 'niciunul';
 
   const verifica = useCallback(async () => {
-    const b = await iaSablon(fel).catch(() => null);
-    setAre(!!b);
-    if (b) setGasite(await semneleDin(b).catch(() => []));
+    const { blob, sursa: s } = await sablonulFolosit(fel).catch(() => ({ blob: null, sursa: 'niciunul' as SursaSablon }));
+    setSursa(s);
+    setGasite(blob ? await semneleDin(blob).catch(() => []) : null);
   }, [fel]);
 
   useEffect(() => { verifica(); }, [verifica]);
@@ -50,7 +53,7 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
       }
       const ok = await punSablon(fel, f);
       setGasite(semne);
-      setAre(true);
+      setSursa('propriu');
       notify(ok
         ? `Sablon salvat — ${semne.length} semne recunoscute`
         : 'Sablon salvat local; se urca in cloud la urmatoarea sincronizare', ok ? 'success' : 'info');
@@ -64,9 +67,10 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
   const sterge = useCallback(async () => {
     setLucreaza(true);
     await scoateSablon(fel);
-    setAre(false); setGasite(null); setLucreaza(false);
-    notify('Sablonul a fost scos — documentele se genereaza din formatul aplicatiei', 'info');
-  }, [fel]);
+    await verifica();
+    setLucreaza(false);
+    notify('Sablonul vostru a fost scos — documentele se genereaza pe formularul inclus', 'info');
+  }, [fel, verifica]);
 
   const cunoscute = new Set(SEMNE[fel].map(s => s.semn));
   const necunoscute = (gasite || []).filter(s => !cunoscute.has(s));
@@ -108,9 +112,11 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
                   are ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
                 }`}>
                   <p className={`text-[13px] font-bold ${are ? 'text-emerald-900' : 'text-amber-900'}`}>
-                    {are
-                      ? 'Sablonul e pus. Documentele ies exact in formatul lui.'
-                      : 'Nu e pus niciun sablon. Documentele ies in formatul aplicatiei — corect, dar fara sigla si antetul institutiei.'}
+                    {sursa === 'propriu'
+                      ? 'Se genereaza pe sablonul pus de voi. Documentele ies exact in formatul lui.'
+                      : sursa === 'inclus'
+                        ? 'Se genereaza pe formularul inclus in aplicatie — cu sigla, antetul si subsolul institutiei. Nu trebuie sa incarcati nimic.'
+                        : 'Nu e pus niciun sablon. Documentele ies in formatul aplicatiei — corect, dar fara sigla si antetul institutiei.'}
                   </p>
                 </div>
 
@@ -119,11 +125,12 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
                     lucreaza ? 'bg-slate-100 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
                   }`}>
                     {lucreaza ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    {are ? 'Inlocuieste sablonul' : 'Incarca sablonul'}
+                    {sursa === 'propriu' ? 'Inlocuieste sablonul' : 'Pune sablonul vostru'}
                     <input type="file" accept=".docx" onChange={incarca} disabled={lucreaza} className="hidden" />
                   </label>
-                  {are && (
+                  {sursa === 'propriu' && (
                     <button onClick={sterge} disabled={lucreaza}
+                      title="Scoate sablonul vostru si revino la formularul inclus"
                       className="px-5 py-4 bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest hover:text-red-600 hover:border-red-200 transition flex items-center justify-center gap-2">
                       <Trash2 className="w-4 h-4" /> Scoate
                     </button>
@@ -166,6 +173,7 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
                     Sablonul e documentul vostru obisnuit, in care valorile care se schimba de la un act
                     la altul sunt inlocuite cu semnele de mai sus. Randul de tabel care poarta semne
                     <span className="font-mono"> rand.*</span> se repeta o data pentru fiecare pozitie.
+                    Cel inclus in aplicatie e chiar formularul institutiei, deja pregatit asa.
                   </p>
                 </div>
               </div>

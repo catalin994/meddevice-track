@@ -2,28 +2,52 @@ import { uploadFile, fetchFile, removeFile } from './fileStorage';
 import { cacheBlob, getCachedBlob, deleteCachedBlob } from './storageService';
 
 /**
- * Sablonul Word al institutiei, tinut o data si folosit de toata lumea.
+ * Sablonul Word din care se genereaza documentele de achizitie.
  *
  * Documentul generat trebuie sa arate exact ca hartia spitalului — cu sigla,
  * antetul, subsolul si stilurile ei. Singura cale sigura pentru asta e sa se
  * porneasca de la fisierul lor, nu de la o reconstructie a lui.
  *
- * Calea e fixa, nu retinuta local: altfel un sablon pus de pe calculatorul din
- * birou n-ar fi gasit de pe telefonul din sectie.
+ * Sunt doua straturi. Aplicatia vine cu formularele institutiei deja puse, ca
+ * primul referat sa iasa pe hartia corecta fara sa fi urcat cineva nimic. Peste
+ * ele se poate pune un sablon propriu, cand formularul se schimba sau cand un
+ * alt compartiment il vrea altfel; scos, se cade inapoi pe cel inclus.
+ *
+ * Calea celui propriu e fixa, nu retinuta local: altfel un sablon pus de pe
+ * calculatorul din birou n-ar fi gasit de pe telefonul din sectie.
  */
 
 export type FelSablon = 'referat' | 'fundamentare';
+
+/** De unde vine sablonul folosit acum. */
+export type SursaSablon = 'propriu' | 'inclus' | 'niciunul';
 
 const CAI: Record<FelSablon, string> = {
   referat: 'sabloane/referat.docx',
   fundamentare: 'sabloane/fundamentare.docx',
 };
 
+/** Sablonul livrat cu aplicatia. E precachat, deci se deschide si fara semnal. */
+const caleInclusa = (fel: FelSablon) => `${import.meta.env.BASE_URL}sabloane/${fel}.docx`;
+
+export interface SablonPus { blob: Blob | null; sursa: SursaSablon }
+
 /** O copie locala, ca sa nu se ceara de la cloud la fiecare document. */
-const memorie = new Map<FelSablon, Blob | null>();
+const memorie = new Map<FelSablon, SablonPus>();
+
+const iaInclus = async (fel: FelSablon): Promise<Blob | null> => {
+  try {
+    const r = await fetch(caleInclusa(fel));
+    if (!r.ok) return null;
+    const b = await r.blob();
+    return b.size > 0 ? b : null;
+  } catch {
+    return null;
+  }
+};
 
 export const punSablon = async (fel: FelSablon, fisier: Blob): Promise<boolean> => {
-  memorie.set(fel, fisier);
+  memorie.set(fel, { blob: fisier, sursa: 'propriu' });
   // Copia locala se pune si se pastreaza indiferent de cloud. uploadFile o
   // sterge cand urcarea esueaza — corect pentru un document atasat unui
   // aparat, gresit pentru sablon: cineva l-ar pune fara semnal, ar genera
@@ -34,19 +58,32 @@ export const punSablon = async (fel: FelSablon, fisier: Blob): Promise<boolean> 
   return !!rezultat.path;
 };
 
-export const iaSablon = async (fel: FelSablon): Promise<Blob | null> => {
-  if (memorie.has(fel)) return memorie.get(fel) || null;
-  // Intai copia locala — merge si fara semnal — apoi cloud-ul.
+/** Sablonul care se foloseste acum: cel propriu daca exista, altfel cel inclus. */
+export const iaSablon = async (fel: FelSablon): Promise<Blob | null> =>
+  (await sablonulFolosit(fel)).blob;
+
+export const sablonulFolosit = async (fel: FelSablon): Promise<SablonPus> => {
+  const stiut = memorie.get(fel);
+  if (stiut) return stiut;
+
+  // Intai cel propriu: copia locala, care merge si fara semnal, apoi cloud-ul.
+  // Abia daca nu s-a pus niciunul se cade pe formularul livrat cu aplicatia.
   const local = await getCachedBlob(CAI[fel]).catch(() => null);
-  const blob = local || (await fetchFile(CAI[fel]).catch(() => null));
-  memorie.set(fel, blob || null);
-  return blob || null;
+  const propriu = local || (await fetchFile(CAI[fel]).catch(() => null));
+  const inclus = propriu ? null : await iaInclus(fel);
+  const pus: SablonPus = propriu
+    ? { blob: propriu, sursa: 'propriu' }
+    : { blob: inclus, sursa: inclus ? 'inclus' : 'niciunul' };
+
+  memorie.set(fel, pus);
+  return pus;
 };
 
+/** Scoate sablonul propriu. Documentele se genereaza mai departe pe cel inclus. */
 export const scoateSablon = async (fel: FelSablon): Promise<void> => {
   await deleteCachedBlob(CAI[fel]).catch(() => {});
   await removeFile(CAI[fel]).catch(() => {});
-  memorie.set(fel, null);
+  memorie.delete(fel);
 };
 
 /** Ca panoul sa poata spune "pus" sau "lipseste" fara sa descarce fisierul. */

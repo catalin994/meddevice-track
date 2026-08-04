@@ -52,7 +52,11 @@ export default defineConfig(({ mode }) => {
             // the runtime cache when the phone reloads with no signal.
             // The heavy optional chunks stay out: precaching them would turn
             // installing the app into a ~4MB download.
-            globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js}'],
+            // .docx: sabloanele institutiei. Sunt ~240K impreuna, dar fara ele
+            // un referat facut in sectie, fara semnal, ar iesi pe formatul
+            // aplicatiei in loc de hartia spitalului — adica altfel decat cel
+            // facut in birou, si nimeni n-ar intelege de ce.
+            globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js,docx}'],
             globIgnores: [
               '**/vendor-exceljs-*.js',   // 920K — export Excel
               '**/vendor-xlsx-*.js',      // 420K — import Excel
