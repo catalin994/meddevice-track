@@ -15,6 +15,7 @@ import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
+import { notify } from '../services/notices';
 import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 const ReferatManager = lazy(() => import('./ReferatManager'));
@@ -71,6 +72,8 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 
 interface BulkDraft {
+  /** Cheie stabila: randurile se sterg din lista, iar indicele se muta. */
+  key: string;
   include: boolean;
   isDuplicate: boolean;
   invoiceNumber: string;
@@ -81,9 +84,25 @@ interface BulkDraft {
   currency: string;
   contractNumber: string;
   deviceIds: string[];
-  fileUrl: string;
+  /**
+   * Fisierul de pe disc, nu continutul lui.
+   *
+   * Un folder de doua sute de facturi ar fi insemnat vreo cincizeci de
+   * megaocteti de base64 tinuti in memorie cat timp cineva se uita prin lista.
+   * File-ul e doar o trimitere spre disc; se citeste la salvare, pentru cele
+   * pastrate, si la deschiderea previzualizarii.
+   */
+  file: File | null;
   fileName: string;
+  /** Ce n-a mers la citire, ca sa nu para o factura goala. */
+  eroare?: string;
+  /** Din ce subfolder vine, cand folderul ales are mai multe. */
+  cale?: string;
 }
+
+/** Browserele care nu stiu de webkitdirectory lasa sa se aleaga doar fisiere. */
+const stieFoldere = typeof HTMLInputElement !== 'undefined'
+  && 'webkitdirectory' in HTMLInputElement.prototype;
 
 /** Invoice PDFs live in Storage now; older ones are still inline. */
 const downloadInvoicePdf = async (inv: Invoice) => {
@@ -128,6 +147,19 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
+  /** Cautare in lista: un folder de o luna are peste o suta de facturi. */
+  const [bulkFiltru, setBulkFiltru] = useState('');
+
+  const bifate = useMemo(() => (bulkDrafts || []).filter(d => d.include).length, [bulkDrafts]);
+  const bulkVizibile = useMemo(() => {
+    const q = bulkFiltru.toLowerCase().trim();
+    if (!q) return bulkDrafts || [];
+    return (bulkDrafts || []).filter(d =>
+      d.invoiceNumber.toLowerCase().includes(q)
+      || d.supplier.toLowerCase().includes(q)
+      || d.fileName.toLowerCase().includes(q)
+      || (d.cale || '').toLowerCase().includes(q));
+  }, [bulkDrafts, bulkFiltru]);
 
   const devicesMap = useMemo(() => new Map(devices.map(d => [d.id, d])), [devices]);
 
@@ -317,8 +349,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
   // ---- Bulk folder import ----
   const handleBulkImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-    if (files.length === 0) return;
+    const toate = Array.from(e.target.files || []);
+    const files = toate.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+    if (files.length === 0) {
+      // Un folder de facturi are si altceva in el. Tacerea ar parea defectiune.
+      notify(toate.length
+        ? `Folderul are ${toate.length} fisier${toate.length === 1 ? '' : 'e'}, dar niciun PDF.`
+        : 'Nu s-a ales niciun fisier.', 'warning');
+      if (bulkInputRef.current) bulkInputRef.current.value = '';
+      return;
+    }
 
     setIsBulkProcessing(true);
     setBulkProgress({ done: 0, total: files.length });
@@ -333,14 +373,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     for (let fi = 0; fi < files.length; fi++) {
       const file = files[fi];
+      const cale = ((file as any).webkitRelativePath as string || '')
+        .split('/').slice(0, -1).join('/');
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
-        });
-
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pagini: string[] = [];
         for (let p = 1; p <= pdf.numPages; p++) {
@@ -355,6 +391,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         if (numKey) seenInBatch.add(numKey);
 
         drafts.push({
+          key: `${fi}-${file.name}`,
           include: !isDuplicate,
           isDuplicate,
           invoiceNumber: fields.invoiceNumber || file.name.replace(/\.pdf$/i, ''),
@@ -365,15 +402,18 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           currency: fields.currency,
           contractNumber: fields.contractNumber,
           deviceIds: fields.deviceIds,
-          fileUrl: base64,
+          file,
           fileName: file.name,
+          cale,
         });
-      } catch {
+      } catch (err: any) {
         drafts.push({
+          key: `${fi}-${file.name}`,
           include: false, isDuplicate: false,
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
           issueDate: new Date().toISOString().split('T')[0], dueDate: '',
-          contractNumber: '', deviceIds: [], fileUrl: '', fileName: `${file.name} (eroare la citire)`,
+          contractNumber: '', deviceIds: [], file, fileName: file.name, cale,
+          eroare: err?.message ? `Nu s-a putut citi: ${err.message}` : 'Nu s-a putut citi PDF-ul',
         });
       }
       setBulkProgress({ done: fi + 1, total: files.length });
@@ -384,8 +424,31 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     if (bulkInputRef.current) bulkInputRef.current.value = '';
   }, [devices, globalContracts, invoices]);
 
-  const updateBulkDraft = useCallback((index: number, updates: Partial<BulkDraft>) => {
-    setBulkDrafts(prev => prev ? prev.map((d, i) => i === index ? { ...d, ...updates } : d) : prev);
+  const updateBulkDraft = useCallback((key: string, updates: Partial<BulkDraft>) => {
+    setBulkDrafts(prev => prev ? prev.map(d => d.key === key ? { ...d, ...updates } : d) : prev);
+  }, []);
+
+  /** Scoate din lista facturile de care nu e nevoie. Fisierele raman pe disc. */
+  const stergeDinLista = useCallback((chei: string[]) => {
+    const deScos = new Set(chei);
+    setBulkDrafts(prev => prev ? prev.filter(d => !deScos.has(d.key)) : prev);
+  }, []);
+
+  const bifeazaToate = useCallback((valoare: boolean) => {
+    setBulkDrafts(prev => prev ? prev.map(d => ({ ...d, include: valoare })) : prev);
+  }, []);
+
+  /**
+   * Deschide PDF-ul, ca sa se poata alege uitandu-te la el, nu ghicind dupa
+   * numele fisierului.
+   */
+  const vezuPdf = useCallback((d: BulkDraft) => {
+    if (!d.file) return;
+    const url = URL.createObjectURL(d.file);
+    const fereastra = window.open(url, '_blank', 'noopener');
+    if (!fereastra) notify('Browserul a blocat fereastra cu factura.', 'warning');
+    // Nu imediat: Chrome nu apuca sa citeasca blob-ul daca se elibereaza acum.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }, []);
 
   const handleBulkSave = useCallback(async () => {
@@ -393,15 +456,26 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     const toSave = bulkDrafts.filter(d => d.include && d.invoiceNumber.trim());
     if (toSave.length === 0) return;
     setIsBulkSaving(true);
-    for (const d of toSave) {
+    setBulkProgress({ done: 0, total: toSave.length });
+    for (let i = 0; i < toSave.length; i++) {
+      const d = toSave[i];
       const id = crypto.randomUUID();
-      // Each PDF goes to Storage rather than into the invoice row
+      // PDF-ul se citeste de pe disc abia acum, doar pentru cele pastrate.
       let filePath: string | undefined;
-      let inlineUrl: string | undefined = d.fileUrl || undefined;
+      let inlineUrl: string | undefined;
+      if (d.file) {
+        inlineUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(d.file!);
+        }).catch(() => undefined);
+      }
       if (inlineUrl?.startsWith('data:')) {
         const uploaded = await uploadDataUrl(buildPath('invoices', id, id, d.fileName || 'factura.pdf'), inlineUrl);
         if (uploaded.path) { filePath = uploaded.path; inlineUrl = undefined; }
       }
+      setBulkProgress({ done: i + 1, total: toSave.length });
       await onUpsertInvoice({
         id,
         invoiceNumber: d.invoiceNumber.trim(),
@@ -421,6 +495,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     setIsBulkSaving(false);
     setBulkDrafts(null);
     setTab('INVOICES');
+    notify(`${toSave.length} factur${toSave.length === 1 ? 'a salvata' : 'i salvate'}`, 'success');
   }, [bulkDrafts, onUpsertInvoice]);
 
   // ---- Centralizator Excel export ----
@@ -566,11 +641,22 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             </div>
           </div>
           <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' ? 'hidden' : 'flex'}`}>
-            <input ref={bulkInputRef} type="file" accept="application/pdf" multiple onChange={handleBulkImport} className="hidden" />
+            {/*
+              webkitdirectory: fara el butonul spunea "Import Folder PDF" dar
+              deschidea un selector de fisiere — folderul nu se putea alege.
+              Nu e in tipurile React, si nu exista pe iOS; acolo se alege ca
+              pana acum, mai multe fisiere odata, iar textul o spune.
+            */}
+            <input ref={bulkInputRef} type="file" accept="application/pdf" multiple
+              {...(stieFoldere ? { webkitdirectory: '', directory: '' } as any : {})}
+              onChange={handleBulkImport} className="hidden" />
             <button onClick={() => bulkInputRef.current?.click()} disabled={isBulkProcessing}
+              title={stieFoldere ? 'Alege un folder cu facturi PDF' : 'Alege facturile PDF'}
               className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center gap-2 disabled:opacity-50">
               {isBulkProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <FolderOpen className="w-5 h-5" />}
-              {isBulkProcessing ? `Procesare ${bulkProgress.done}/${bulkProgress.total}...` : 'Import Folder PDF'}
+              {isBulkProcessing
+                ? `Se citesc ${bulkProgress.done}/${bulkProgress.total}...`
+                : stieFoldere ? 'Alege un folder' : 'Alege facturi PDF'}
             </button>
             <button onClick={openNew} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2">
               <Plus className="w-5 h-5" /> Adauga Factura
@@ -816,42 +902,87 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <div>
-                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Centralizare Facturi PDF</h3>
+              <div className="min-w-0">
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Facturile din folder</h3>
                 <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">
-                  {bulkDrafts.length} fisiere procesate · {bulkDrafts.filter(d => d.include).length} selectate pentru salvare
-                  {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} duplicate detectate</span>}
+                  {bulkDrafts.length} in lista · {bifate} de pastrat
+                  {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} exista deja</span>}
+                  {bulkDrafts.some(d => d.eroare) && <span className="text-red-500"> · {bulkDrafts.filter(d => d.eroare).length} necitite</span>}
                 </p>
               </div>
-              <button onClick={() => setBulkDrafts(null)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => setBulkDrafts(null)} aria-label="Inchide" className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            {/* Ce se poate face cu lista intreaga, ca sa nu se bifeze o suta de randuri unul cate unul */}
+            <div className="px-4 sm:px-6 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2 shrink-0">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input value={bulkFiltru} onChange={e => setBulkFiltru(e.target.value)}
+                  placeholder="Cauta dupa numar, furnizor sau nume de fisier..."
+                  aria-label="Cauta in facturile din folder"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
+              </div>
+              <button onClick={() => bifeazaToate(true)}
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition">
+                Bifeaza toate
+              </button>
+              <button onClick={() => bifeazaToate(false)}
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition">
+                Debifeaza toate
+              </button>
+              <button
+                onClick={() => stergeDinLista(bulkDrafts.filter(d => !d.include).map(d => d.key))}
+                disabled={bifate === bulkDrafts.length}
+                title="Scoate din lista facturile nebifate. Fisierele raman pe disc."
+                className="px-4 py-2.5 bg-red-50 border border-red-100 text-red-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-red-100 transition disabled:opacity-40">
+                <Trash2 className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                Sterge nebifatele ({bulkDrafts.length - bifate})
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
               {/* Column headers */}
-              <div className="hidden lg:grid grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 px-4 pb-1">
-                {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri'].map((h, i) => (
+              <div className="hidden lg:grid grid-cols-[24px_1.1fr_1.3fr_140px_120px_88px_112px_76px] gap-3 px-4 pb-1">
+                {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri', ''].map((h, i) => (
                   <p key={i} className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{h}</p>
                 ))}
               </div>
-              {bulkDrafts.map((d, i) => (
-                <div key={i} className={`grid grid-cols-1 lg:grid-cols-[24px_1.2fr_1.4fr_110px_130px_90px_120px] gap-3 items-center p-4 rounded-2xl border transition ${d.isDuplicate ? 'bg-amber-50/60 border-amber-200' : d.include ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
-                  <button onClick={() => updateBulkDraft(i, { include: !d.include })}
+              {bulkVizibile.length === 0 && (
+                <div className="py-16 text-center">
+                  <FolderOpen className="w-14 h-14 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">
+                    {bulkDrafts.length === 0 ? 'Ai scos toate facturile din lista' : 'Nicio factura cu textul cautat'}
+                  </p>
+                </div>
+              )}
+              {bulkVizibile.map(d => (
+                <div key={d.key} className={`grid grid-cols-1 lg:grid-cols-[24px_1.1fr_1.3fr_140px_120px_88px_112px_76px] gap-3 items-center p-4 rounded-2xl border transition ${d.eroare ? 'bg-red-50/60 border-red-200' : d.isDuplicate ? 'bg-amber-50/60 border-amber-200' : d.include ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                  <button onClick={() => updateBulkDraft(d.key, { include: !d.include })}
+                    aria-label={`${d.include ? 'Nu pastra' : 'Pastreaza'} factura ${d.invoiceNumber}`}
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${d.include ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
                     {d.include && <CheckCircle className="w-4 h-4" />}
                   </button>
                   <div className="min-w-0">
-                    <input value={d.invoiceNumber} onChange={e => updateBulkDraft(i, { invoiceNumber: e.target.value })}
+                    <input value={d.invoiceNumber} onChange={e => updateBulkDraft(d.key, { invoiceNumber: e.target.value })}
+                      aria-label="Numarul facturii"
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
                     {d.isDuplicate && <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
-                    <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5" title={d.fileName}>{d.fileName}</p>
+                    {d.eroare && <p className="text-[11px] font-black text-red-600 mt-1">{d.eroare}</p>}
+                    <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5" title={d.cale ? `${d.cale}/${d.fileName}` : d.fileName}>
+                      {d.cale ? `${d.cale}/` : ''}{d.fileName}
+                    </p>
                   </div>
-                  <input value={d.supplier} onChange={e => updateBulkDraft(i, { supplier: e.target.value })} placeholder="Furnizor"
+                  <input value={d.supplier} onChange={e => updateBulkDraft(d.key, { supplier: e.target.value })} placeholder="Furnizor"
+                    aria-label="Furnizorul"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
-                  <input type="date" value={d.issueDate} onChange={e => updateBulkDraft(i, { issueDate: e.target.value })}
+                  <input type="date" value={d.issueDate} onChange={e => updateBulkDraft(d.key, { issueDate: e.target.value })}
+                    aria-label="Data emiterii"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none" />
-                  <input type="number" step="0.01" value={d.amount || ''} onChange={e => updateBulkDraft(i, { amount: parseFloat(e.target.value) || 0 })} placeholder="0.00"
+                  <input type="number" step="0.01" value={d.amount || ''} onChange={e => updateBulkDraft(d.key, { amount: parseFloat(e.target.value) || 0 })} placeholder="0.00"
+                    aria-label="Suma"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none text-right" />
-                  <select value={d.currency} onChange={e => updateBulkDraft(i, { currency: e.target.value })}
+                  <select value={d.currency} onChange={e => updateBulkDraft(d.key, { currency: e.target.value })}
+                    aria-label="Moneda"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none">
                     <option>RON</option><option>EUR</option><option>USD</option>
                   </select>
@@ -861,20 +992,35 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                       : <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[11px] font-bold text-center">fara disp.</span>}
                     {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[11px] font-bold text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
                   </div>
+                  {/* Deschide factura si scoate-o din lista: alegerea se face uitandu-te la ea */}
+                  <div className="flex items-center gap-2 justify-end">
+                    <button onClick={() => vezuPdf(d)} disabled={!d.file}
+                      title="Deschide factura" aria-label={`Deschide factura ${d.fileName}`}
+                      className="p-2.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-200 transition disabled:opacity-30">
+                      <FileText className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => stergeDinLista([d.key])}
+                      title="Scoate din lista" aria-label={`Scoate din lista factura ${d.fileName}`}
+                      className="p-2.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-200 transition">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Facturile se salveaza ca neincarcate in ConectX — le bifezi dupa ce le urci
+                {isBulkSaving
+                  ? `Se salveaza ${bulkProgress.done}/${bulkProgress.total}...`
+                  : 'Facturile se salveaza ca neincarcate in ConectX — le bifezi dupa ce le urci'}
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
-                <button onClick={handleBulkSave} disabled={isBulkSaving || bulkDrafts.filter(d => d.include).length === 0}
+                <button onClick={handleBulkSave} disabled={isBulkSaving || bifate === 0}
                   className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
                   {isBulkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  Salveaza {bulkDrafts.filter(d => d.include).length} facturi
+                  Salveaza {bifate} factur{bifate === 1 ? 'a' : 'i'}
                 </button>
               </div>
             </div>

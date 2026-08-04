@@ -296,12 +296,12 @@ const gasesteNumar = (linii: string[]): string => {
   const UMPLUTURA = '(?:fiscal[aă]|fiscala|proforma|storno|seria|serie|si|and|electronica|document|nr\\.?|no\\.?|num[aă]rul|num[aă]r|number|#|:|\\.)';
   const TIPARE: RegExp[] = [
     // "Seria MSF nr. 2024-0451" — numarul e ce urmeaza dupa "nr"
-    new RegExp(`seri[ae]\\s+[A-Z0-9]{1,10}\\s*(?:nr\\.?|no\\.?|num[aă]rul)\\s*[:.]?\\s*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
+    new RegExp(`seri[ae]\\s+[A-Z0-9]{1,10}\\s*(?:nr\\.?|no\\.?|num[aă]rul)\\s*[:.]?\\s*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{0,24})`, 'i'),
     // "Serie si numar: MSF 2024-0451" — forma din e-Factura
-    new RegExp(`seri[ae]\\s+si\\s+num[aă]r\\s*[:.]?\\s*(?:[A-Z]{1,10}\\s+)?([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
-    new RegExp(`(?:factur[aă]|invoice|proforma|chitan[țt][aă])\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
-    new RegExp(`(?:nr\\.?|no\\.?|num[aă]rul|num[aă]r|number)\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
-    /#\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{1,24})/,
+    new RegExp(`seri[ae]\\s+si\\s+num[aă]r\\s*[:.]?\\s*(?:[A-Z]{1,10}\\s+)?([A-Za-z0-9][A-Za-z0-9\\-\\/._]{0,24})`, 'i'),
+    new RegExp(`(?:factur[aă]|invoice|proforma|chitan[țt][aă])\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{0,24})`, 'i'),
+    new RegExp(`(?:nr\\.?|no\\.?|num[aă]rul|num[aă]r|number)\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{0,24})`, 'i'),
+    /#\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{0,24})/,
   ];
   // "Str. Aviatorilor nr. 12" si "Reg. Com. J40/1234/2015" contin si ele "nr".
   const CONTEXT_GRESIT = /\bstr\.?\b|strada|\bbd\.?\b|bulevard|calea|sos\.?|soseaua|reg\.?\s*com|\bj\d{1,2}\s*\/|cod\s+postal|sector\s*\d|cont\s+ib|iban/i;
