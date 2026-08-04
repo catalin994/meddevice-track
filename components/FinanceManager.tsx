@@ -3,9 +3,9 @@ import React, { useState, useMemo, useCallback, useRef, Suspense, lazy } from 'r
 import {
   Receipt, ShieldCheck, TrendingUp, Plus, X, Search, Loader2, Upload, FileText,
   CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark,
-  FolderOpen, FileSpreadsheet
+  FolderOpen, FileSpreadsheet, FileSignature
 } from 'lucide-react';
-import { MedicalDevice, Invoice, InvoiceStatus, Contract, normaliseInvoiceStatus } from '../types';
+import { MedicalDevice, Invoice, InvoiceStatus, Contract, Referat, FoundationDoc, normaliseInvoiceStatus } from '../types';
 import ContractManager from './ContractManager';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
@@ -17,16 +17,25 @@ import ConfirmDialog from './ConfirmDialog';
 import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
 import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
+const ReferatManager = lazy(() => import('./ReferatManager'));
+const FoundationDocManager = lazy(() => import('./FoundationDocManager'));
 
 interface FinanceManagerProps {
   devices: MedicalDevice[];
   invoices: Invoice[];
+  referate: Referat[];
+  foundationDocs: FoundationDoc[];
   onUpsertInvoice: (invoice: Invoice) => void;
   onDeleteInvoice: (id: string) => void;
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
+  onUpsertReferat: (r: Referat) => void;
+  onDeleteReferat: (id: string) => void;
+  onUpsertFoundationDoc: (d: FoundationDoc) => void;
+  onDeleteFoundationDoc: (id: string) => void;
+  canDelete: boolean;
 }
 
-type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'CONTRACTS';
+type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'REFERATE' | 'FUNDAMENTARE' | 'CONTRACTS';
 
 const emptyForm = () => ({
   invoiceNumber: '',
@@ -84,8 +93,16 @@ const downloadInvoicePdf = async (inv: Invoice) => {
   }
 };
 
-const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUpsertInvoice, onDeleteInvoice, onSaveContract }) => {
+const FinanceManager: React.FC<FinanceManagerProps> = ({
+  devices, invoices, referate, foundationDocs,
+  onUpsertInvoice, onDeleteInvoice, onSaveContract,
+  onUpsertReferat, onDeleteReferat, onUpsertFoundationDoc, onDeleteFoundationDoc,
+  canDelete,
+}) => {
   const [tab, setTab] = useState<FinanceTab>('OVERVIEW');
+  // Cand se apasa pe insigna de documente a unui referat, se trece pe tab-ul
+  // celalalt cu lista deja restransa la dosarul lui.
+  const [dosarReferat, setDosarReferat] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
@@ -545,10 +562,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
             <div>
               <h2 className="text-2xl sm:text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Financiar</h2>
-              <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Facturi & Contracte Service</p>
+              <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Dosarul achizitiei, de la referat la factura</p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' ? 'hidden' : 'flex'}`}>
             <input ref={bulkInputRef} type="file" accept="application/pdf" multiple onChange={handleBulkImport} className="hidden" />
             <button onClick={() => bulkInputRef.current?.click()} disabled={isBulkProcessing}
               className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center gap-2 disabled:opacity-50">
@@ -563,13 +580,17 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
 
         <div className="flex flex-wrap gap-2 mt-8">
           {([
-            ['OVERVIEW', 'Sumar', TrendingUp],
-            ['INVOICES', 'Facturi', Receipt],
-            ['CONTRACTS', 'Contracte', ShieldCheck],
-          ] as [FinanceTab, string, any][]).map(([key, label, Icon]) => (
+            ['OVERVIEW', 'Sumar', TrendingUp, 'Sumar'],
+            ['INVOICES', 'Facturi', Receipt, 'Facturi'],
+            ['REFERATE', 'Referate', FileSignature, 'Referate'],
+            ['FUNDAMENTARE', 'Documente de fundamentare', FolderOpen, 'Fundamentare'],
+            ['CONTRACTS', 'Contracte', ShieldCheck, 'Contracte'],
+          ] as [FinanceTab, string, any, string][]).map(([key, label, Icon, scurt]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
-              <Icon className="w-4 h-4" /> {label}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'}`}>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="lg:hidden">{scurt || label}</span>
+              <span className="hidden lg:inline">{label}</span>
             </button>
           ))}
         </div>
@@ -752,6 +773,36 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
             </div>
           )}
         </div>
+      )}
+
+      {/* ============ REFERATE ============ */}
+      {tab === 'REFERATE' && (
+        <Suspense fallback={<div className="py-20 text-center text-slate-500 font-bold text-sm">Se incarca...</div>}>
+          <ReferatManager
+            referate={referate}
+            devices={devices}
+            foundationDocs={foundationDocs}
+            onUpsert={onUpsertReferat}
+            onDelete={onDeleteReferat}
+            canDelete={canDelete}
+            onShowDocs={(id) => { setDosarReferat(id); setTab('FUNDAMENTARE'); }}
+          />
+        </Suspense>
+      )}
+
+      {/* ============ DOCUMENTE DE FUNDAMENTARE ============ */}
+      {tab === 'FUNDAMENTARE' && (
+        <Suspense fallback={<div className="py-20 text-center text-slate-500 font-bold text-sm">Se incarca...</div>}>
+          <FoundationDocManager
+            docs={foundationDocs}
+            referate={referate}
+            onUpsert={onUpsertFoundationDoc}
+            onDelete={onDeleteFoundationDoc}
+            canDelete={canDelete}
+            filtruReferat={dosarReferat}
+            onClearFiltruReferat={() => setDosarReferat(null)}
+          />
+        </Suspense>
       )}
 
       {/* ============ CONTRACTS ============ */}

@@ -47,9 +47,9 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, hasPermission, ROLE_LABELS } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, hasPermission, ROLE_LABELS } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB } from './services/storageService';
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
@@ -141,6 +141,9 @@ const App: React.FC = () => {
   const [devices, setDevices] = useState<MedicalDevice[]>([]);
   const [tasks, setTasks] = useState<MedicalTask[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  // Dosarul achizitiei: referatul de necesitate si documentele care il sustin
+  const [referate, setReferate] = useState<Referat[]>([]);
+  const [foundationDocs, setFoundationDocs] = useState<FoundationDoc[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -354,6 +357,8 @@ const App: React.FC = () => {
         getAllInvoicesFromDB().catch(() => [] as Invoice[]),
         getAllDeletionsFromDB().catch(() => [] as Deletion[])
       ]);
+      getAllReferateFromDB().then(setReferate).catch(() => {});
+      getAllFoundationDocsFromDB().then(setFoundationDocs).catch(() => {});
       
       const deviceMap = new Map<string, MedicalDevice>();
       localDevices.forEach(d => deviceMap.set(d.id, d));
@@ -497,41 +502,54 @@ const App: React.FC = () => {
              await upsertInChunks('tasks', localTasks);
           }
 
-          // Sync Invoices (tolerant — table may not exist yet)
-          try {
-            const invoiceRes = await fetchAllRows<Invoice>('invoices');
-            if (!invoiceRes.error && invoiceRes.data) {
-              const cloudInvoices: Invoice[] = invoiceRes.data;
-              const invoiceMap = new Map<string, Invoice>(localInvoices.map(i => [i.id, i]));
-
-              cloudInvoices.forEach(ci => {
-                const local = invoiceMap.get(ci.id);
-                const cloudTime = ci.updated_at ? new Date(ci.updated_at).getTime() : 0;
-                const localTime = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
-                if (!local || !local.updated_at || cloudTime > localTime) {
-                  invoiceMap.set(ci.id, ci);
-                }
-              });
-
-              const finalInvoices = Array.from(invoiceMap.values());
-              setInvoices(finalInvoices);
-              await saveInvoicesToDB(finalInvoices);
-
-              const newerLocalInvoices = finalInvoices.filter(i => {
-                const cloud = cloudInvoices.find(ci => ci.id === i.id);
-                const cloudTime = cloud?.updated_at ? new Date(cloud.updated_at).getTime() : 0;
-                const localTime = i.updated_at ? new Date(i.updated_at).getTime() : 0;
-                return !cloud || localTime > cloudTime;
-              });
-              if (newerLocalInvoices.length > 0) {
-                await upsertInChunks('invoices', newerLocalInvoices);
+          /*
+           * Facturi, referate si documente de fundamentare se sincronizeaza la
+           * fel: se ia ce e in cloud, se pastreaza versiunea mai noua dupa
+           * updated_at, se salveaza local si se urca inapoi ce e mai nou aici.
+           * Scris o data — trei copii ale aceluiasi bloc de treizeci de randuri
+           * ar fi insemnat trei locuri de reparat cand tiparul se schimba.
+           */
+          const sincronizeaza = async <T extends { id: string; updated_at?: string }>(
+            tabel: string,
+            locale: T[],
+            aplica: (finale: T[]) => void,
+            salveaza: (items: T[]) => Promise<void>,
+          ) => {
+            try {
+              const res = await fetchAllRows<T>(tabel);
+              if (res.error || !res.data) {
+                console.warn(`[App] ${tabel}: sincronizare sarita (tabelul poate lipsi)`);
+                return;
               }
-            } else if (invoiceRes.error) {
-              console.warn("[App] Invoices sync skipped (table might be missing)");
+              const dinCloud = res.data;
+              const harta = new Map<string, T>(locale.map(i => [i.id, i]));
+              for (const c of dinCloud) {
+                const local = harta.get(c.id);
+                const tCloud = c.updated_at ? new Date(c.updated_at).getTime() : 0;
+                const tLocal = local?.updated_at ? new Date(local.updated_at).getTime() : 0;
+                if (!local || !local.updated_at || tCloud > tLocal) harta.set(c.id, c);
+              }
+              const finale = Array.from(harta.values());
+              aplica(finale);
+              await salveaza(finale);
+
+              const maiNoiLocal = finale.filter(i => {
+                const c = dinCloud.find(x => x.id === i.id);
+                const tCloud = c?.updated_at ? new Date(c.updated_at).getTime() : 0;
+                const tLocal = i.updated_at ? new Date(i.updated_at).getTime() : 0;
+                return !c || tLocal > tCloud;
+              });
+              if (maiNoiLocal.length > 0) await upsertInChunks(tabel, maiNoiLocal);
+            } catch {
+              console.warn(`[App] ${tabel}: sincronizare sarita`);
             }
-          } catch {
-            console.warn("[App] Invoices sync skipped");
-          }
+          };
+
+          await sincronizeaza<Invoice>('invoices', localInvoices, setInvoices, saveInvoicesToDB);
+          await sincronizeaza<Referat>('referate',
+            await getAllReferateFromDB().catch(() => []), setReferate, saveReferateToDB);
+          await sincronizeaza<FoundationDoc>('documente_fundamentare',
+            await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB);
 
           setSyncStatus('cloud');
           setSyncMessage('');
@@ -675,6 +693,99 @@ const App: React.FC = () => {
       setIsSyncing(false);
     }
   }, [isSupabaseConfigured, invoices, logAudit, recordDeletion]);
+
+  /*
+   * Referate si documente de fundamentare — salvare si stergere, dupa acelasi
+   * tipar ca facturile: local intai, cloud pe urma, si o piatra de mormant
+   * pentru ca stergerea sa nu se intoarca de pe alt dispozitiv.
+   */
+  const handleUpsertReferat = useCallback(async (referat: Referat) => {
+    const payload: Referat = { ...referat, updated_at: new Date().toISOString() };
+    logAudit(referate.some(r => r.id === payload.id) ? 'update' : 'create', 'referat',
+      payload.id, payload.number, `${payload.department} · ${payload.subject}`);
+    setReferate(prev => {
+      const map = new Map(prev.map(r => [r.id, r]));
+      map.set(payload.id, payload);
+      return Array.from(map.values());
+    });
+    setIsSyncing(true);
+    try {
+      await saveReferateToDB([payload]);
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('referate').upsert([payload], { onConflict: 'id' });
+        if (error) console.warn('[Referate] sincronizare amanata:', error.message);
+      }
+    } catch (err) {
+      console.error('[Referate] sincronizare amanata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, referate, logAudit]);
+
+  const handleDeleteReferat = useCallback(async (id: string) => {
+    if (!canDelete) { const m = 'Doar un administrator poate sterge referate.';
+      setSyncMessage(m); notify(m, 'error'); return; }
+    if (!id) return;
+    const target = referate.find(r => r.id === id);
+    logAudit('delete', 'referat', id, target?.number || id, target?.subject);
+    setReferate(prev => prev.filter(r => r.id !== id));
+    // Documentele raman, dar isi pierd legatura: sunt acte in sine, iar
+    // stergerea lor odata cu referatul ar arunca dovezi fara sa intrebe.
+    const orfane = foundationDocs.filter(d => d.referatId === id);
+    if (orfane.length > 0) {
+      const dezlegate = orfane.map(d => ({ ...d, referatId: undefined, updated_at: new Date().toISOString() }));
+      setFoundationDocs(prev => prev.map(d => dezlegate.find(x => x.id === d.id) || d));
+      await saveFoundationDocsToDB(dezlegate).catch(() => {});
+      if (isSupabaseConfigured && supabase) {
+        await supabase.from('documente_fundamentare').upsert(dezlegate, { onConflict: 'id' });
+      }
+      notify(`${orfane.length} document(e) de fundamentare au ramas fara referat`, 'info');
+    }
+    setIsSyncing(true);
+    try {
+      await deleteReferatFromDB(id);
+      await recordDeletion('referat', id);
+      if (isSupabaseConfigured && supabase) await supabase.from('referate').delete().eq('id', id);
+    } catch (err) {
+      console.error('[Referate] stergere esuata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, referate, foundationDocs, logAudit, canDelete, recordDeletion]);
+
+  const handleUpsertFoundationDoc = useCallback(async (doc: FoundationDoc) => {
+    const payload: FoundationDoc = { ...doc, updated_at: new Date().toISOString() };
+    logAudit(foundationDocs.some(d => d.id === payload.id) ? 'update' : 'create', 'fundamentare',
+      payload.id, payload.number || payload.type, payload.supplier);
+    setFoundationDocs(prev => {
+      const map = new Map(prev.map(d => [d.id, d]));
+      map.set(payload.id, payload);
+      return Array.from(map.values());
+    });
+    setIsSyncing(true);
+    try {
+      await saveFoundationDocsToDB([payload]);
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('documente_fundamentare').upsert([payload], { onConflict: 'id' });
+        if (error) console.warn('[Fundamentare] sincronizare amanata:', error.message);
+      }
+    } catch (err) {
+      console.error('[Fundamentare] sincronizare amanata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, foundationDocs, logAudit]);
+
+  const handleDeleteFoundationDoc = useCallback(async (id: string) => {
+    if (!canDelete) { const m = 'Doar un administrator poate sterge documente de fundamentare.';
+      setSyncMessage(m); notify(m, 'error'); return; }
+    if (!id) return;
+    const target = foundationDocs.find(d => d.id === id);
+    logAudit('delete', 'fundamentare', id, target?.number || target?.type || id, target?.supplier);
+    setFoundationDocs(prev => prev.filter(d => d.id !== id));
+    setIsSyncing(true);
+    try {
+      await deleteFoundationDocFromDB(id);
+      await recordDeletion('fundamentare', id);
+      if (isSupabaseConfigured && supabase) await supabase.from('documente_fundamentare').delete().eq('id', id);
+    } catch (err) {
+      console.error('[Fundamentare] stergere esuata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, foundationDocs, logAudit, canDelete, recordDeletion]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
     if (!canDelete) { const m = 'Doar un administrator poate sterge facturi.';
@@ -1027,8 +1138,15 @@ const App: React.FC = () => {
                   <FinanceManager
                     devices={devices}
                     invoices={invoices}
+                    referate={referate}
+                    foundationDocs={foundationDocs}
                     onUpsertInvoice={handleUpsertInvoice}
                     onDeleteInvoice={handleDeleteInvoice}
+                    onUpsertReferat={handleUpsertReferat}
+                    onDeleteReferat={handleDeleteReferat}
+                    onUpsertFoundationDoc={handleUpsertFoundationDoc}
+                    onDeleteFoundationDoc={handleDeleteFoundationDoc}
+                    canDelete={canDelete}
                     onSaveContract={handleSaveContract}
                   />
                 )}

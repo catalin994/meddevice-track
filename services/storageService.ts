@@ -1,5 +1,4 @@
-
-import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion } from '../types';
+import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion, Referat, FoundationDoc } from '../types';
 
 // Numele bazei locale ramane cel vechi dupa redenumirea aplicatiei: schimbarea
 // lui ar deschide o baza noua, goala, si ar abandona datele de pe fiecare telefon.
@@ -10,7 +9,9 @@ const STORE_INVOICES = 'invoices';
 const STORE_AUDIT = 'audit';
 const STORE_DELETIONS = 'deletions';
 const STORE_BLOBS = 'fileblobs';
-const DB_VERSION = 7;
+const STORE_REFERATE = 'referate';
+const STORE_FUNDAMENTARE = 'fundamentare';
+const DB_VERSION = 8;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -62,6 +63,9 @@ const openOnce = (): Promise<IDBDatabase> =>
       if (!db.objectStoreNames.contains(STORE_DELETIONS)) db.createObjectStore(STORE_DELETIONS, { keyPath: 'id' });
       // Documents fetched from Storage, so they stay readable without signal
       if (!db.objectStoreNames.contains(STORE_BLOBS))     db.createObjectStore(STORE_BLOBS);
+      // v8: dosarul achizitiei — referatul si documentele care il sustin
+      if (!db.objectStoreNames.contains(STORE_REFERATE))     db.createObjectStore(STORE_REFERATE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_FUNDAMENTARE)) db.createObjectStore(STORE_FUNDAMENTARE, { keyPath: 'id' });
     };
 
     // Another window still holds an older version. Waiting for the timeout
@@ -256,6 +260,43 @@ export const getAllInvoicesFromDB = async (): Promise<Invoice[]> => {
     request.onerror = (event: any) => reject(event.target.error);
   });
 };
+
+/*
+ * Referate si documente de fundamentare — aceleasi trei operatii ca la
+ * facturi, pe store-urile lor.
+ */
+const salveaza = <T extends { id: string }>(store: string, items: T[]): Promise<void> =>
+  initDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const os = tx.objectStore(store);
+    for (const it of items) os.put(it);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+
+const sterge = (store: string, id: string): Promise<void> =>
+  initDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+
+const citesteTot = <T>(store: string): Promise<T[]> =>
+  initDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  }));
+
+export const saveReferateToDB = (r: Referat[]) => salveaza(STORE_REFERATE, r);
+export const deleteReferatFromDB = (id: string) => sterge(STORE_REFERATE, id);
+export const getAllReferateFromDB = () => citesteTot<Referat>(STORE_REFERATE);
+
+export const saveFoundationDocsToDB = (d: FoundationDoc[]) => salveaza(STORE_FUNDAMENTARE, d);
+export const deleteFoundationDocFromDB = (id: string) => sterge(STORE_FUNDAMENTARE, id);
+export const getAllFoundationDocsFromDB = () => citesteTot<FoundationDoc>(STORE_FUNDAMENTARE);
 
 export const saveAuditToDB = async (entries: AuditEntry[]): Promise<void> => {
   const db = await initDB();

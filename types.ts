@@ -66,7 +66,7 @@ export type DeviceCategory = typeof DEVICE_CATEGORIES[number];
  */
 export interface Deletion {
   id: string;                                  // "device:DEV-0001"
-  entity: 'device' | 'task' | 'invoice';
+  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare';
   entityId: string;
   deletedAt: string;
   updated_at?: string;
@@ -120,6 +120,91 @@ export interface Contract {
   coverageDetails: string;
   contactPhone: string;
   annualCost: number;
+}
+
+/**
+ * Dosarul unei achizitii, in ordinea in care se aduna.
+ *
+ * Referatul de necesitate deschide procedura: sectia scrie ce ii trebuie si
+ * de ce. Documentele de fundamentare sustin valoarea estimata din el — nota
+ * justificativa, studiul de piata, ofertele. Contractul si facturile vin
+ * dupa, si erau deja aici; lipsea inceputul.
+ */
+export enum ReferatStatus {
+  DRAFT = 'Draft',
+  SUBMITTED = 'Submitted',
+  APPROVED = 'Approved',
+  REJECTED = 'Rejected',
+  CLOSED = 'Closed',
+}
+
+export const REFERAT_STATUS_RO: Record<ReferatStatus, string> = {
+  [ReferatStatus.DRAFT]: 'In lucru',
+  [ReferatStatus.SUBMITTED]: 'Depus',
+  [ReferatStatus.APPROVED]: 'Aprobat',
+  [ReferatStatus.REJECTED]: 'Respins',
+  [ReferatStatus.CLOSED]: 'Finalizat',
+};
+
+export interface Referat {
+  id: string;
+  /** Numarul de inregistrare, asa cum apare pe hartie. */
+  number: string;
+  date: string;
+  /** Sectia care solicita. */
+  department: string;
+  /** Ce se cere, pe scurt. */
+  subject: string;
+  /** De ce se cere — justificarea din referat. */
+  justification?: string;
+  estimatedValue: number;
+  currency: string;
+  status: ReferatStatus;
+  /** Aparatele vizate, cand referatul e legat de echipamente existente. */
+  deviceIds: string[];
+  filePath?: string;
+  fileUrl?: string;
+  fileName?: string;
+  updated_at?: string;
+}
+
+export enum FoundationDocType {
+  NOTA_VALOARE = 'NotaValoare',
+  STUDIU_PIATA = 'StudiuPiata',
+  OFERTA = 'Oferta',
+  CAIET_SARCINI = 'CaietSarcini',
+  NOTA_OPORTUNITATE = 'NotaOportunitate',
+  SPECIFICATII = 'Specificatii',
+  ALTUL = 'Altul',
+}
+
+export const FOUNDATION_DOC_RO: Record<FoundationDocType, string> = {
+  [FoundationDocType.NOTA_VALOARE]: 'Nota justificativa valoare estimata',
+  [FoundationDocType.STUDIU_PIATA]: 'Studiu de piata',
+  [FoundationDocType.OFERTA]: 'Oferta de pret',
+  [FoundationDocType.CAIET_SARCINI]: 'Caiet de sarcini',
+  [FoundationDocType.NOTA_OPORTUNITATE]: 'Nota de oportunitate',
+  [FoundationDocType.SPECIFICATII]: 'Specificatii tehnice',
+  [FoundationDocType.ALTUL]: 'Alt document',
+};
+
+export interface FoundationDoc {
+  id: string;
+  /** Referatul pe care il sustine. Gol cand documentul e inca nelegat. */
+  referatId?: string;
+  type: FoundationDocType;
+  /** Numarul de inregistrare, daca are unul. */
+  number?: string;
+  date: string;
+  /** Cine a emis oferta sau studiul. */
+  supplier?: string;
+  amount?: number;
+  currency?: string;
+  notes?: string;
+  filePath?: string;
+  fileUrl?: string;
+  fileName?: string;
+  updated_at?: string;
 }
 
 export interface DeviceFile {
@@ -275,7 +360,7 @@ export interface AuditEntry {
   timestamp: string;
   userName: string;
   action: 'create' | 'update' | 'delete';
-  entity: 'device' | 'task' | 'invoice';
+  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare';
   entityId: string;
   entityName: string;
   details?: string;

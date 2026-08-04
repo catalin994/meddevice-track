@@ -254,10 +254,43 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     "dueDate" TEXT,
     amount NUMERIC DEFAULT 0,
     currency TEXT DEFAULT 'RON',
-    status TEXT DEFAULT 'Unpaid',
+    status TEXT DEFAULT 'NotUploaded',
     "contractNumber" TEXT,
     "deviceIds" JSONB DEFAULT '[]'::jsonb,
     description TEXT,
+    "fileUrl" TEXT,
+    "fileName" TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.referate (
+    id TEXT PRIMARY KEY,
+    number TEXT NOT NULL,
+    date TEXT,
+    department TEXT,
+    subject TEXT,
+    justification TEXT,
+    "estimatedValue" NUMERIC DEFAULT 0,
+    currency TEXT DEFAULT 'RON',
+    status TEXT DEFAULT 'Draft',
+    "deviceIds" JSONB DEFAULT '[]'::jsonb,
+    "filePath" TEXT,
+    "fileUrl" TEXT,
+    "fileName" TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.documente_fundamentare (
+    id TEXT PRIMARY KEY,
+    "referatId" TEXT,
+    type TEXT,
+    number TEXT,
+    date TEXT,
+    supplier TEXT,
+    amount NUMERIC,
+    currency TEXT DEFAULT 'RON',
+    notes TEXT,
+    "filePath" TEXT,
     "fileUrl" TEXT,
     "fileName" TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
@@ -343,6 +376,8 @@ ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS "deviceName" TEXT;
 ALTER TABLE public.devices    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.referate   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.documente_fundamentare ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deletions  ENABLE ROW LEVEL SECURITY;
 
