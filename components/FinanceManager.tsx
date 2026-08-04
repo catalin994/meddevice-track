@@ -15,6 +15,7 @@ import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
+import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 
 interface FinanceManagerProps {
@@ -100,6 +101,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
   const [statusFilter, setStatusFilter] = useState<'ALL' | InvoiceStatus>('ALL');
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractNote, setExtractNote] = useState('');
+  // Ce a citit efectiv din PDF. Cand un camp iese gresit, asta e diferenta
+  // dintre "textul e bun, tiparul a gresit" si "PDF-ul nu contine text".
+  const [readLines, setReadLines] = useState<string[]>([]);
+  const [showRead, setShowRead] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk folder import
@@ -219,8 +224,32 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         const content = await (await pdf.getPage(i)).getTextContent();
         pagini.push(pdfItemsToText(content.items as any));
       }
-      const text = pagini.join('\n');
+      let text = pagini.join('\n');
+
+      // Textul propriu al PDF-ului se arata din acest moment, chiar daca e
+      // slab si chiar daca OCR-ul de mai jos nu porneste: "PDF-ul nu contine
+      // text" e un raspuns, "citirea a esuat" nu e.
+      setReadLines(text.split('\n').filter(Boolean));
+
+      // Factura scanata nu are text, are o poza a paginii. Fara asta, toate
+      // campurile ieseau goale si nimic nu spunea de ce.
+      let prinOcr = false;
+      let ocrEsuat = '';
+      if (needsOcr(text)) {
+        setExtractNote('PDF-ul pare scanat — se citeste cu OCR, dureaza putin...');
+        try {
+          text = await ocrPdf(pdf, (pag, din, procent) =>
+            setExtractNote(`Se citeste cu OCR: pagina ${pag} din ${din} (${procent}%)`));
+          prinOcr = true;
+        } catch {
+          // Motorul OCR se descarca la prima folosire. Fara internet, sau in
+          // spatele unui proxy care blocheaza CDN-ul, nu porneste — si merita
+          // spus asta, nu "a esuat".
+          ocrEsuat = 'PDF-ul e scanat (nu contine text), iar motorul OCR nu s-a putut incarca — verifica internetul sau completeaza manual';
+        }
+      }
       const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
+      if (prinOcr) setReadLines(fields.lines);
 
       setForm(prev => ({
         ...prev,
@@ -256,11 +285,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         !fields.issueDate && 'data',
       ].filter(Boolean);
       setExtractNote(
-        (gasit.length ? `Detectat: ${gasit.join(' · ')}` : 'PDF atasat')
-        + (lipsa.length ? ` — completeaza ${lipsa.join(' si ')}` : '')
+        ocrEsuat ? ocrEsuat
+        : (prinOcr ? 'Scanat, citit cu OCR. ' : '')
+          + (gasit.length ? `Detectat: ${gasit.join(' · ')}` : 'PDF atasat, dar nu am recunoscut niciun camp')
+          + (lipsa.length ? ` — completeaza ${lipsa.join(' si ')}` : '')
       );
-    } catch {
-      setExtractNote('PDF atasat (extragerea automata a esuat)');
+    } catch (err: any) {
+      setExtractNote(`PDF atasat, dar citirea a esuat${err?.message ? `: ${err.message}` : ''}`);
     } finally {
       setIsExtracting(false);
       if (pdfInputRef.current) pdfInputRef.current.value = '';
@@ -797,6 +828,31 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                   <div className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                     <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                     <p className="text-[11px] font-bold text-emerald-300">{extractNote}</p>
+                  </div>
+                )}
+
+                {/*
+                  Cand un camp iese gresit, singura intrebare care conteaza e
+                  daca textul citit din PDF e bun. Daca e, tiparul a gresit;
+                  daca e gol sau amestecat, PDF-ul e de vina. Fara asta,
+                  raspunsul e "nu merge" si atat.
+                */}
+                {readLines.length > 0 && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowRead(v => !v)}
+                      aria-expanded={showRead}
+                      className="flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-white/60 hover:text-white transition"
+                    >
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                      {showRead ? 'Ascunde' : 'Vezi'} textul citit din PDF ({readLines.length} randuri)
+                    </button>
+                    {showRead && (
+                      <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-black/40 border border-white/10 p-3 text-[11px] leading-relaxed text-white/70 whitespace-pre-wrap break-words">
+                        {readLines.join('\n')}
+                      </pre>
+                    )}
                   </div>
                 )}
               </div>

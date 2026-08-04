@@ -21,7 +21,25 @@ export interface InvoiceFields {
   supplier: string;
   contractNumber: string;
   deviceIds: string[];
+  /** The lines the parser actually saw, so a wrong reading can be diagnosed. */
+  lines: string[];
 }
+
+/**
+ * Whether the PDF carries real text at all.
+ *
+ * A scanned invoice — photographed, or printed and put through the copier —
+ * is a picture of a page. pdf.js returns nothing or a handful of stray
+ * characters for it, and every field then comes out empty with no explanation.
+ * The caller uses this to decide whether to fall back to OCR.
+ */
+export const hasUsableText = (text: string): boolean => {
+  const curat = text.replace(/\s+/g, ' ').trim();
+  if (curat.length < 60) return false;
+  // Cifre trebuie sa existe: o factura fara nicio cifra nu e o factura citita.
+  const cifre = (curat.match(/\d/g) || []).length;
+  return cifre >= 6;
+};
 
 /** Anything with a serial number and an id — the real MedicalDevice is wider. */
 interface DeviceLike { id: string; serialNumber?: string }
@@ -134,8 +152,8 @@ const numereDinLinie = (linie: string): { text: string; valoare: number; poz: nu
  */
 const ETICHETE_SUMA: { re: RegExp; rang: number }[] = [
   { re: /rest\s+de\s+plata/i,                                    rang: 0 },
-  { re: /(total|suma)\s+de\s+plata|de\s+plata\s*:|total\s+plata/i, rang: 1 },
-  { re: /total\s+(general|factura)|valoare\s+total[ae]|total\s+amount\s+due|amount\s+due|grand\s+total|total\s+to\s+pay/i, rang: 2 },
+  { re: /(total|suma|valoare)\s+(de\s+)?plata|de\s+plata\s*[:( ]|total\s+plata|de\s+achitat|suma\s+datorata/i, rang: 1 },
+  { re: /total\s+(general|factura|documentat?)|valoare\s+total[ae]|total\s+cu\s+tva|total\s+amount\s+due|amount\s+due|grand\s+total|total\s+to\s+pay|total\s+incl/i, rang: 2 },
   { re: /^\s*total\b|[^a-z]total\s*:/i,                          rang: 3 },
 ];
 
@@ -179,8 +197,10 @@ const dataDinLinie = (linie: string, deLa = 0): string => {
   return '';
 };
 
-const ETICHETE_EMITERE = /data\s+(emiterii|emitere|facturii|facturarii)|emisa\s+la\s+data(\s+de)?|invoice\s+date|issue\s+date|\bdata\b|\bdin\b|\bdate\b/i;
-const ETICHETE_SCADENTA = /data\s+scadent[ae]i?|scadent[ae]|termen\s+de\s+plata|termen\s+plata\s*:|due\s+date|payment\s+due|platibil\s+pana/i;
+const ETICHETE_EMITERE = /data\s+(emiterii|emitere|facturii|facturarii|document)|emisa\s+la\s+data(\s+de)?|data\s+si\s+ora|invoice\s+date|issue\s+date|\bdata\b|\bdin\b|\bdate\b/i;
+/** Dates that are on the invoice but are not the date it was issued. */
+const ALTE_DATE = /data\s+(livrarii|livrare|primirii|inregistrarii|scadent|expedierii|receptiei)|delivery\s+date/i;
+const ETICHETE_SCADENTA = /data\s+scadent[ae]i?|scadent[ae]|termen\s+de\s+plata|termen\s+plata\s*:|termen\s*:|due\s+date|payment\s+due|platibil\s+pana|plata\s+pana\s+la/i;
 
 /** The company-form suffixes that mark a line as an organisation's name. */
 const FORMA_JURIDICA = /\b(s\.?r\.?l\.?|s\.?a\.?|p\.?f\.?a\.?|s\.?c\.?|gmbh|ag|ltd|limited|inc|b\.?v\.?|n\.?v\.?|plc|kft|spa|s\.?p\.?a\.?)\b/i;
@@ -213,12 +233,14 @@ const gasesteFurnizor = (linii: string[]): string => {
 };
 
 const gasesteNumar = (linii: string[]): string => {
-  const UMPLUTURA = '(?:fiscal[aă]|fiscala|proforma|storno|seria|serie|electronica|nr\\.?|no\\.?|num[aă]r|number|#|:|\\.)';
+  const UMPLUTURA = '(?:fiscal[aă]|fiscala|proforma|storno|seria|serie|si|and|electronica|document|nr\\.?|no\\.?|num[aă]rul|num[aă]r|number|#|:|\\.)';
   const TIPARE: RegExp[] = [
     // "Seria MSF nr. 2024-0451" — numarul e ce urmeaza dupa "nr"
-    new RegExp(`seria\\s+[A-Z0-9]{1,10}\\s*(?:nr\\.?|no\\.?)\\s*[:.]?\\s*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
+    new RegExp(`seri[ae]\\s+[A-Z0-9]{1,10}\\s*(?:nr\\.?|no\\.?|num[aă]rul)\\s*[:.]?\\s*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
+    // "Serie si numar: MSF 2024-0451" — forma din e-Factura
+    new RegExp(`seri[ae]\\s+si\\s+num[aă]r\\s*[:.]?\\s*(?:[A-Z]{1,10}\\s+)?([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
     new RegExp(`(?:factur[aă]|invoice|proforma|chitan[țt][aă])\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
-    new RegExp(`(?:nr\\.?|no\\.?|num[aă]r|number)\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
+    new RegExp(`(?:nr\\.?|no\\.?|num[aă]rul|num[aă]r|number)\\s*(?:${UMPLUTURA}\\s*)*([A-Za-z0-9][A-Za-z0-9\\-\\/._]{1,24})`, 'i'),
     /#\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{1,24})/,
   ];
   // "Str. Aviatorilor nr. 12" si "Reg. Com. J40/1234/2015" contin si ele "nr".
@@ -300,8 +322,11 @@ const gasesteDate = (linii: string[]): { issueDate: string; dueDate: string } =>
     }
     if (!issueDate) {
       const m = n.match(ETICHETE_EMITERE);
-      // "data scadentei" contine "data": scadenta are prioritate pe randul ei
-      if (m && m.index !== undefined && !ETICHETE_SCADENTA.test(n.slice(0, m.index + 20))) {
+      // "Data scadentei" si "Data livrarii" contin amandoua "data": eticheta
+      // exacta bate una generica pe acelasi rand.
+      if (m && m.index !== undefined
+          && !ETICHETE_SCADENTA.test(n.slice(0, m.index + 20))
+          && !ALTE_DATE.test(n.slice(0, m.index + 20))) {
         issueDate = dataDinLinie(linie, m.index);
       }
     }
@@ -355,5 +380,6 @@ export const extractInvoiceFields = (
     supplier,
     contractNumber: contract?.contractNumber || '',
     deviceIds,
+    lines: linii,
   };
 };
