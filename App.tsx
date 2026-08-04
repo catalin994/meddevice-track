@@ -54,6 +54,7 @@ import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange,
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import { buildPath, uploadDataUrl } from './services/fileStorage';
+import { notify } from './services/notices';
 import LoginScreen from './components/LoginScreen';
 import { LogoTile, LogoMark } from './components/Logo';
 
@@ -373,6 +374,7 @@ const App: React.FC = () => {
           else if (connection.errorType === 'table') setSyncStatus('table-missing');
           else setSyncStatus('error');
           setSyncMessage(connection.message || 'Conexiunea la cloud a esuat');
+          notify(connection.message || 'Conexiunea la cloud a esuat — lucrezi pe datele de pe telefon', 'warning');
           setIsSyncingNow(false);
           return;
         }
@@ -531,6 +533,7 @@ const App: React.FC = () => {
           console.error("[App] Cloud sync error:", e);
           setSyncStatus('error');
           setSyncMessage(e?.message || String(e) || 'Eroare la sincronizare');
+          notify(e?.message || 'Sincronizarea a esuat — modificarile raman pe telefon', 'error');
         }
       } else {
         setSyncMessage('Cloud neconfigurat — datele ramin doar pe acest dispozitiv');
@@ -539,6 +542,7 @@ const App: React.FC = () => {
       console.error("[App] Registry engine failure:", err);
       setSyncStatus('error');
       setSyncMessage(err?.message || 'Eroare la citirea datelor');
+      notify(err?.message || 'Nu s-au putut citi datele', 'error');
       setIsLoading(false);
     } finally {
       setIsSyncingNow(false);
@@ -552,7 +556,8 @@ const App: React.FC = () => {
 
   const handleDeleteDevice = useCallback(async (id: string) => {
     if (!id) return;
-    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge echipamente.'); return; }
+    if (!canDelete) { const m = 'Doar un administrator poate sterge echipamente.';
+      setSyncMessage(m); notify(m, 'error'); return; }
     const safeId = String(id).trim();
     const target = devicesMap.get(safeId);
     logAudit('delete', 'device', safeId, target?.name || safeId, target ? `SN: ${target.serialNumber}` : undefined);
@@ -665,7 +670,8 @@ const App: React.FC = () => {
   }, [isSupabaseConfigured, invoices, logAudit, recordDeletion]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
-    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge facturi.'); return; }
+    if (!canDelete) { const m = 'Doar un administrator poate sterge facturi.';
+      setSyncMessage(m); notify(m, 'error'); return; }
     if (!id) return;
     const target = invoices.find(i => i.id === id);
     logAudit('delete', 'invoice', id, target?.invoiceNumber || id, target ? `${target.supplier} · ${target.amount} ${target.currency}` : undefined);
@@ -795,7 +801,8 @@ const App: React.FC = () => {
 
   const handleDeleteTask = useCallback(async (id: string) => {
     if (!id) return;
-    if (!canDelete) { setSyncMessage('Doar un administrator poate sterge tichete.'); return; }
+    if (!canDelete) { const m = 'Doar un administrator poate sterge tichete.';
+      setSyncMessage(m); notify(m, 'error'); return; }
     const safeId = String(id).trim();
     const target = tasks.find(t => t.id === safeId);
     logAudit('delete', 'task', safeId, target?.title || safeId, target?.deviceName);
