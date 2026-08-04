@@ -357,9 +357,17 @@ const ReferatManager: React.FC<Props> = ({
       {/* ── formular ── */}
       {editez && (
         <Portal>
-          <div className="fixed inset-0 z-[600] scrim flex items-start sm:items-center justify-center p-0 sm:p-6 overflow-y-auto">
-            <form onSubmit={salveaza} className="modal-shell w-full max-w-3xl my-0 sm:my-8 rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
-              <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-none sm:rounded-t-[2.5rem]">
+          {/*
+            Invelisul are fundal propriu si deruleaza pe dinauntru. Fara
+            bg-white se vedea pagina prin formular — titlul, tab-urile,
+            butoanele — iar cu derularea pusa pe scrim antetul si subsolul
+            "sticky" nu aveau fata de ce sa se lipeasca, si pluteau prin
+            mijlocul paginii.
+          */}
+          <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-0 sm:p-6">
+            <form onSubmit={salveaza}
+              className="bg-white w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
+              <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                     {idEditat ? 'Editeaza referatul' : 'Referat de necesitate'}
@@ -373,7 +381,7 @@ const ReferatManager: React.FC<Props> = ({
                 </button>
               </div>
 
-              <div className="p-6 sm:p-8 space-y-5">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-6 sm:p-8 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Camp eticheta="Numar referat" obligatoriu>
                     <input required value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
@@ -542,7 +550,7 @@ const ReferatManager: React.FC<Props> = ({
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input value={cautaDispozitiv} onChange={e => setCautaDispozitiv(e.target.value)}
                       placeholder="Cauta dupa nume, serie sau sectie..."
-                      aria-label="Cauta dispozitive" className="camp pl-11" />
+                      aria-label="Cauta dispozitive" className="camp" style={{ paddingLeft: '2.75rem' }} />
                   </div>
                   <div className="max-h-52 overflow-y-auto custom-scrollbar border-2 border-slate-100 rounded-2xl divide-y divide-slate-50">
                     {dispozitiveFiltrate.map(d => {
@@ -559,7 +567,6 @@ const ReferatManager: React.FC<Props> = ({
                     })}
                   </div>
                 </div>
-              </div>
 
                 {/* Se completeaza o data si se retine: acelasi birou, aceeasi
                     persoana de contact pe fiecare referat. */}
@@ -589,12 +596,13 @@ const ReferatManager: React.FC<Props> = ({
                     </div>
                   )}
                 </div>
+              </div>
 
-              <div className="px-6 sm:px-8 py-5 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-none sm:rounded-b-[2.5rem]">
+              <div className="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-white shrink-0">
                 <button type="button" onClick={() => setEditez(false)}
-                  className="px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest">Anuleaza</button>
+                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
                 <button type="submit" disabled={seSalveaza}
-                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center gap-2 disabled:opacity-60">
+                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
                   {seSalveaza && <Loader2 className="w-4 h-4 animate-spin" />}
                   {idEditat ? 'Salveaza modificarile' : 'Inregistreaza referatul'}
                 </button>
@@ -624,14 +632,14 @@ const ReferatManager: React.FC<Props> = ({
 
 const MicCamp = ({ eticheta, children }: { eticheta: string; children: React.ReactNode }) => (
   <div className="space-y-1 min-w-0">
-    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{eticheta}</label>
+    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1">{eticheta}</label>
     {children}
   </div>
 );
 
 const Camp = ({ eticheta, obligatoriu, children }: { eticheta: string; obligatoriu?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">
       {eticheta}{obligatoriu && <span className="text-red-500 ml-0.5">*</span>}
     </label>
     {children}

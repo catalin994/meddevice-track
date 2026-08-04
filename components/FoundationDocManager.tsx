@@ -351,9 +351,17 @@ const FoundationDocManager: React.FC<Props> = ({
 
       {editez && (
         <Portal>
-          <div className="fixed inset-0 z-[600] scrim flex items-start sm:items-center justify-center p-0 sm:p-6 overflow-y-auto">
-            <form onSubmit={salveaza} className="modal-shell w-full max-w-2xl my-0 sm:my-8 rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
-              <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 sticky top-0 bg-white z-10">
+          {/*
+            Invelisul are fundal propriu si deruleaza pe dinauntru. Fara
+            bg-white se vedea pagina prin formular — titlul, tab-urile,
+            butoanele — iar cu derularea pusa pe scrim antetul si subsolul
+            "sticky" nu aveau fata de ce sa se lipeasca, si pluteau prin
+            mijlocul paginii.
+          */}
+          <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-0 sm:p-6">
+            <form onSubmit={salveaza}
+              className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
+              <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                     {idEditat ? 'Editeaza documentul' : 'Document de fundamentare'}
@@ -367,7 +375,7 @@ const FoundationDocManager: React.FC<Props> = ({
                 </button>
               </div>
 
-              <div className="p-6 sm:p-8 space-y-5">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-6 sm:p-8 space-y-5">
                 <Camp eticheta="Referatul sustinut">
                   <select value={form.referatId} onChange={e => setForm(p => ({ ...p, referatId: e.target.value }))}
                     aria-label="Referatul pe care il sustine documentul" className="camp">
@@ -510,11 +518,11 @@ const FoundationDocManager: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className="px-6 sm:px-8 py-5 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
+              <div className="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-white shrink-0">
                 <button type="button" onClick={() => setEditez(false)}
-                  className="px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest">Anuleaza</button>
+                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
                 <button type="submit" disabled={seSalveaza}
-                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center gap-2 disabled:opacity-60">
+                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
                   {seSalveaza && <Loader2 className="w-4 h-4 animate-spin" />}
                   {idEditat ? 'Salveaza modificarile' : 'Inregistreaza documentul'}
                 </button>
@@ -546,7 +554,7 @@ const FoundationDocManager: React.FC<Props> = ({
 
 const Camp = ({ eticheta, obligatoriu, children }: { eticheta: string; obligatoriu?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">
       {eticheta}{obligatoriu && <span className="text-red-500 ml-0.5">*</span>}
     </label>
     {children}
