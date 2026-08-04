@@ -40,8 +40,20 @@ const TIP_STYLES: Record<FoundationDocType, string> = {
   [FoundationDocType.ALTUL]: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
-/** Compartimentul emitent se repeta pe fiecare document al aceluiasi serviciu. */
-const CHEIE_COMPARTIMENT = 'meditrack_df_compartiment';
+/**
+ * Ce se repeta identic pe fiecare document al aceluiasi serviciu. Pe cele doua
+ * documente reale compartimentul, programul si codul SSI sunt aceleasi cuvant
+ * cu cuvant — tastate din nou de fiecare data.
+ */
+const RETINUTE = {
+  compartment: 'meditrack_df_compartiment',
+  program: 'meditrack_df_program',
+  ssiCode: 'meditrack_df_ssi',
+} as const;
+
+const retinut = (cheie: keyof typeof RETINUTE) => {
+  try { return localStorage.getItem(RETINUTE[cheie]) || ''; } catch { return ''; }
+};
 
 const gol = () => ({
   referatId: '',
@@ -50,23 +62,51 @@ const gol = () => ({
   date: new Date().toISOString().split('T')[0],
   revision: 0,
   revisionDate: new Date().toISOString().split('T')[0],
-  compartment: (() => { try { return localStorage.getItem(CHEIE_COMPARTIMENT) || ''; } catch { return ''; } })(),
+  compartment: retinut('compartment'),
   subject: '',
+  shortDescription: '',
   description: '',
   budgetArticle: '',
-  ssiCode: '',
-  program: '',
+  ssiCode: retinut('ssiCode'),
+  program: retinut('program'),
+  element: '',
   parameters: '',
   previousValue: 0,
   influence: 0,
+  remainingAmount: 0,
   currency: 'RON',
   supplier: '',
   referenceNumber: '',
+  frameworkContract: '',
+  reference: '',
   notes: '',
   filePath: undefined as string | undefined,
   fileUrl: '',
   fileName: '',
 });
+
+/**
+ * Fraza care leaga documentul de oferta sau de contract.
+ *
+ * Se propune, nu se impune: pe DF 17835 scrie "Reparația se poate realiza
+ * conform ofertei atasate de firma Deltamed...", iar pe DF 17979 e un paragraf
+ * intreg despre acordul-cadru. Nicio formula fixa nu le acopera pe amandoua, si
+ * o fraza compusa de aplicatie care nu seamana cu niciuna e mai rea decat una
+ * scrisa de om.
+ */
+const frazaPropusa = (f: { type: FoundationDocType; supplier: string; referenceNumber: string; frameworkContract: string }) => {
+  const firma = f.supplier.trim();
+  const nr = f.referenceNumber.trim();
+  const cadru = f.frameworkContract.trim();
+  if (!firma && !nr && !cadru) return '';
+  if (f.type === FoundationDocType.CONTRACT_SUBSECVENT || cadru) {
+    return `Este necesară alocarea sumei aferente contractului subsecvent`
+      + `${nr ? ` cu numărul ${nr}` : ''}${firma ? `, încheiat cu firma ${firma}` : ''}`
+      + `${cadru ? `, în conformitate cu prevederile acordului-cadru ${cadru}` : ''}.`;
+  }
+  return `Achiziţia se poate realiza conform ofertei ataşate`
+    + `${firma ? ` de firma ${firma}` : ''}${nr ? `, conform ofertei cu numărul ${nr}` : ''}.`;
+};
 
 const fmt = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -108,6 +148,10 @@ const FoundationDocManager: React.FC<Props> = ({
   const [form, setForm] = useState(gol());
   const [deSters, setDeSters] = useState<FoundationDoc | null>(null);
   const [seSalveaza, setSeSalveaza] = useState(false);
+  /** Cat timp nimeni n-a scris in ea, fraza se recompune singura. */
+  const [frazaAtinsa, setFrazaAtinsa] = useState(false);
+  /** La fel, data reviziei o urmeaza pe cea a documentului pana e schimbata. */
+  const [dataRevizieiAtinsa, setDataRevizieiAtinsa] = useState(false);
   useEscape(() => setEditez(false), editez);
 
   const referateDupaId = useMemo(() => new Map(referate.map(r => [r.id, r])), [referate]);
@@ -130,6 +174,8 @@ const FoundationDocManager: React.FC<Props> = ({
         || (d.description || '').toLowerCase().includes(q)
         || (d.budgetArticle || '').toLowerCase().includes(q)
         || (d.referenceNumber || '').toLowerCase().includes(q)
+        || (d.frameworkContract || '').toLowerCase().includes(q)
+        || (d.element || '').toLowerCase().includes(q)
         || FOUNDATION_DOC_RO[normaliseFoundationType(d.type)].toLowerCase().includes(q)
         || (referateDupaId.get(d.referatId || '')?.number || '').toLowerCase().includes(q))
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -140,6 +186,7 @@ const FoundationDocManager: React.FC<Props> = ({
 
   const deschideNou = useCallback(() => {
     setForm({ ...gol(), referatId: filtruReferat || '' });
+    setFrazaAtinsa(false); setDataRevizieiAtinsa(false);
     setIdEditat(null); setEditez(true);
   }, [filtruReferat]);
 
@@ -149,15 +196,22 @@ const FoundationDocManager: React.FC<Props> = ({
       number: d.number || '', date: d.date,
       revision: d.revision ?? 0, revisionDate: d.revisionDate || d.date,
       compartment: d.compartment || '',
-      subject: d.subject || '', description: d.description || '',
+      subject: d.subject || '', shortDescription: d.shortDescription || '',
+      description: d.description || '',
       budgetArticle: d.budgetArticle || '', ssiCode: d.ssiCode || '', program: d.program || '',
+      element: d.element || '',
       parameters: d.parameters || '',
       previousValue: d.previousValue || 0,
       influence: d.influence ?? ((d.amount || 0) - (d.previousValue || 0)),
+      remainingAmount: d.remainingAmount || 0,
       currency: d.currency || 'RON',
       supplier: d.supplier || '', referenceNumber: d.referenceNumber || '',
+      frameworkContract: d.frameworkContract || '', reference: d.reference || '',
       notes: d.notes || '', filePath: d.filePath, fileUrl: d.fileUrl || '', fileName: d.fileName || '',
     });
+    // Fraza scrisa deja nu se mai rescrie de la sine cand se schimba firma.
+    setFrazaAtinsa(!!d.reference);
+    setDataRevizieiAtinsa(!!d.revisionDate && d.revisionDate !== d.date);
     setIdEditat(d.id);
     setEditez(true);
   }, []);
@@ -184,7 +238,11 @@ const FoundationDocManager: React.FC<Props> = ({
       const urcat = await uploadDataUrl(buildPath('fundamentare', id, id, form.fileName || 'document.pdf'), inline);
       if (urcat.path) { filePath = urcat.path; inline = undefined; }
     }
-    try { localStorage.setItem(CHEIE_COMPARTIMENT, form.compartment); } catch { /* comoditate */ }
+    try {
+      for (const c of Object.keys(RETINUTE) as (keyof typeof RETINUTE)[]) {
+        localStorage.setItem(RETINUTE[c], form[c]);
+      }
+    } catch { /* comoditate */ }
 
     // Valoarea actualizata nu se tasteaza: e suma celorlalte doua, exact ca in
     // coloana "7 = 5 + 6" din formular.
@@ -200,17 +258,22 @@ const FoundationDocManager: React.FC<Props> = ({
       revisionDate: form.revisionDate || form.date,
       compartment: form.compartment.trim() || undefined,
       subject: form.subject.trim() || undefined,
+      shortDescription: form.shortDescription.trim() || undefined,
       description: form.description.trim() || undefined,
       budgetArticle: form.budgetArticle.trim() || undefined,
       ssiCode: form.ssiCode.trim() || undefined,
       program: form.program.trim() || undefined,
+      element: form.element.trim() || undefined,
       parameters: form.parameters.trim() || undefined,
       previousValue: form.previousValue || undefined,
       influence: form.influence || undefined,
       amount: actualizata || undefined,
+      remainingAmount: form.remainingAmount || undefined,
       currency: actualizata ? form.currency : undefined,
       supplier: form.supplier.trim() || undefined,
       referenceNumber: form.referenceNumber.trim() || undefined,
+      frameworkContract: form.frameworkContract.trim() || undefined,
+      reference: form.reference.trim() || undefined,
       notes: form.notes.trim() || undefined,
       filePath,
       fileUrl: inline,
@@ -409,9 +472,9 @@ const FoundationDocManager: React.FC<Props> = ({
                 </Camp>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Camp eticheta="Element de fundamentare" obligatoriu>
+                  <Camp eticheta="Tipul documentului" obligatoriu>
                     <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FoundationDocType }))}
-                      aria-label="Elementul de fundamentare" className="camp">
+                      aria-label="Tipul documentului" className="camp">
                       {Object.values(FoundationDocType).map(t => (
                         <option key={t} value={t}>{FOUNDATION_DOC_RO[t]}</option>
                       ))}
@@ -429,8 +492,16 @@ const FoundationDocManager: React.FC<Props> = ({
                     <input required value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
                       placeholder="ex. 17835" className="camp" />
                   </Camp>
+                  {/*
+                    Data reviziei o urmeaza pe cea a documentului cat timp
+                    nimeni n-a schimbat-o: pe amandoua documentele reale sunt
+                    aceeasi zi, si o data ramasa in urma trece neobservata.
+                  */}
                   <Camp eticheta="Data" obligatoriu>
-                    <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} className="camp" />
+                    <input required type="date" value={form.date}
+                      onChange={e => setForm(p => ({ ...p, date: e.target.value,
+                        revisionDate: dataRevizieiAtinsa ? p.revisionDate : e.target.value }))}
+                      className="camp" />
                   </Camp>
                   <Camp eticheta="Revizuirea">
                     <input type="number" min="0" step="1" value={form.revision}
@@ -439,31 +510,68 @@ const FoundationDocManager: React.FC<Props> = ({
                   </Camp>
                   <Camp eticheta="Data reviziei">
                     <input type="date" value={form.revisionDate}
-                      onChange={e => setForm(p => ({ ...p, revisionDate: e.target.value }))} className="camp" />
+                      onChange={e => { setDataRevizieiAtinsa(true); setForm(p => ({ ...p, revisionDate: e.target.value })); }}
+                      className="camp" />
                   </Camp>
                 </div>
 
-                <Camp eticheta="Descrierea pe scurt a obiectului" obligatoriu>
+                {/* Titlul de pe prima pagina. */}
+                <Camp eticheta="Obiectul documentului (titlul)" obligatoriu>
                   <input required value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
                     placeholder="ex. Reparatie defibrilator Corpuls Elicopter 336" className="camp" />
                 </Camp>
 
-                <Camp eticheta="Descrierea pe larg a starii de fapt si de drept">
+                {/*
+                  Punctul 2 nu e mereu titlul. Pe DF 17979 titlul e "Contract
+                  subsecvent Papapostolul", iar punctul 2 spune "Servicii de
+                  intretinere preventiva si reparatii aparatura medicala...".
+                  Lasat gol, se ia titlul — ca pe DF 17835, unde sunt la fel.
+                */}
+                <Camp eticheta="2. Descrierea pe scurt / motivul revizuirii">
+                  <textarea value={form.shortDescription} onChange={e => setForm(p => ({ ...p, shortDescription: e.target.value }))}
+                    placeholder={form.subject ? `Gol, se scrie: ${form.subject}` : 'Gol, se scrie titlul de mai sus'}
+                    aria-label="Descrierea pe scurt a obiectului sau motivul revizuirii"
+                    className="camp min-h-[70px] resize-none" />
+                </Camp>
+
+                <Camp eticheta="3. Descrierea pe larg a starii de fapt si de drept">
                   <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                     placeholder="Ce defectiuni are, de ce e necesara interventia, pe ce oferta sau contract se sprijina..."
                     className="camp min-h-[130px] resize-none" />
                 </Camp>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Camp eticheta="Firma ofertanta / contractanta">
-                    <input value={form.supplier} onChange={e => setForm(p => ({ ...p, supplier: e.target.value }))}
+                    <input value={form.supplier}
+                      onChange={e => setForm(p => ({ ...p, supplier: e.target.value,
+                        reference: frazaAtinsa ? p.reference : frazaPropusa({ ...p, supplier: e.target.value }) }))}
                       placeholder="ex. Deltamed" className="camp" />
                   </Camp>
                   <Camp eticheta="Nr. oferta / contract">
-                    <input value={form.referenceNumber} onChange={e => setForm(p => ({ ...p, referenceNumber: e.target.value }))}
+                    <input value={form.referenceNumber}
+                      onChange={e => setForm(p => ({ ...p, referenceNumber: e.target.value,
+                        reference: frazaAtinsa ? p.reference : frazaPropusa({ ...p, referenceNumber: e.target.value }) }))}
                       placeholder="ex. 17834/31.07.2026" className="camp" />
                   </Camp>
+                  <Camp eticheta="Nr. acord-cadru">
+                    <input value={form.frameworkContract}
+                      onChange={e => setForm(p => ({ ...p, frameworkContract: e.target.value,
+                        reference: frazaAtinsa ? p.reference : frazaPropusa({ ...p, frameworkContract: e.target.value }) }))}
+                      placeholder="ex. 3467/09.02.2024" className="camp" />
+                  </Camp>
                 </div>
+
+                {/*
+                  Fraza se propune din campurile de mai sus, dar ramane a lor:
+                  pe cele doua documente reale nu seamana una cu alta.
+                */}
+                <Camp eticheta="Fraza cu oferta / contractul, asa cum apare in document">
+                  <textarea value={form.reference}
+                    onChange={e => { setFrazaAtinsa(true); setForm(p => ({ ...p, reference: e.target.value })); }}
+                    placeholder="Se completeaza singura din firma si numerele de mai sus. Se poate rescrie."
+                    aria-label="Fraza cu oferta sau contractul"
+                    className="camp min-h-[80px] resize-none" />
+                </Camp>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Camp eticheta="Articol bugetar">
@@ -493,10 +601,23 @@ const FoundationDocManager: React.FC<Props> = ({
                       <option>RON</option><option>EUR</option><option>USD</option>
                     </select>
                   </div>
-                  <Camp eticheta="Parametrii de fundamentare">
-                    <input value={form.parameters} onChange={e => setForm(p => ({ ...p, parameters: e.target.value }))}
-                      placeholder="ex. 1x 3.226,67" className="camp bg-white" />
-                  </Camp>
+                  {/*
+                    Coloana 1 nu e tipul documentului. Pe DF 17979 scrie
+                    "Contract subsecvent", dar pe DF 17835 scrie obiectul —
+                    "Reparație defibrilator Corpuls Elicopter 336". Gol, se ia
+                    tipul, fiindca asa e mai des.
+                  */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Camp eticheta="Element de fundamentare (coloana 1)">
+                      <input value={form.element} onChange={e => setForm(p => ({ ...p, element: e.target.value }))}
+                        placeholder={`Gol, se scrie: ${FOUNDATION_DOC_RO[form.type]}`}
+                        aria-label="Elementul de fundamentare din coloana 1" className="camp bg-white" />
+                    </Camp>
+                    <Camp eticheta="Parametrii de fundamentare">
+                      <input value={form.parameters} onChange={e => setForm(p => ({ ...p, parameters: e.target.value }))}
+                        placeholder="ex. 1x 3.226,67" className="camp bg-white" />
+                    </Camp>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Camp eticheta="Revizia precedenta">
                       <input type="number" step="0.01" value={form.previousValue || ''}
@@ -515,6 +636,13 @@ const FoundationDocManager: React.FC<Props> = ({
                       </div>
                     </div>
                   </div>
+                  {/* Randul de bifat de sub tabel, completat pe amandoua documentele reale. */}
+                  <Camp eticheta="Ramane in suma de ___ lei (randul de sub tabel)">
+                    <input type="number" step="0.01" value={form.remainingAmount || ''}
+                      onChange={e => setForm(p => ({ ...p, remainingAmount: parseFloat(e.target.value) || 0 }))}
+                      placeholder="Gol, randul ramane cu puncte"
+                      aria-label="Suma de pe randul ramane in suma de" className="camp bg-white" />
+                  </Camp>
                 </div>
 
                 <Camp eticheta="Observatii">

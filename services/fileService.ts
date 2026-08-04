@@ -16,6 +16,21 @@ export const dataUrlToBlob = (dataUrl: string): Blob | null => {
   }
 };
 
+/**
+ * Scoate diacriticele din numele fisierului.
+ *
+ * Un <a download="Reparație defibrilator.docx"> nu da un nume cu diacritice —
+ * Chromium arunca numele intreg si salveaza fisierul ca "download", fara
+ * extensie, deci Word nici nu-l deschide. Se pierde la orice document al carui
+ * obiect e scris corect romaneste, adica la aproape toate.
+ */
+const faraDiacritice = (nume: string): string =>
+  nume
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // ă â î → a a i
+    .replace(/[șşȘŞ]/g, 's').replace(/[țţȚŢ]/g, 't')  // sedila nu se desparte
+    .replace(/[^\x20-\x7e]/g, '')                      // orice a mai ramas
+    .replace(/\s+/g, ' ').trim();
+
 const extensionFor = (name: string, mime: string): string => {
   const fromName = name.match(/\.[a-z0-9]{1,5}$/i)?.[0];
   if (fromName) return fromName;
@@ -36,8 +51,9 @@ export const saveFileAs = async (fileName: string, source: string | Blob): Promi
   const blob = typeof source === 'string' ? dataUrlToBlob(source) : source;
   if (!blob) return 'failed';
 
-  const ext = extensionFor(fileName, blob.type);
-  const suggestedName = fileName.match(/\.[a-z0-9]{1,5}$/i) ? fileName : `${fileName}${ext}`;
+  const curat = faraDiacritice(fileName) || 'document';
+  const ext = extensionFor(curat, blob.type);
+  const suggestedName = curat.match(/\.[a-z0-9]{1,5}$/i) ? curat : `${curat}${ext}`;
 
   const picker = (window as any).showSaveFilePicker;
   if (typeof picker === 'function') {

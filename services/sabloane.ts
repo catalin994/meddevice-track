@@ -120,7 +120,8 @@ export const SEMNE: Record<FelSablon, { semn: string; ce: string }[]> = {
     { semn: 'rand.caracteristici', ce: 'Rând de tabel: caracteristicile' },
   ],
   fundamentare: [
-    { semn: 'obiect', ce: 'Obiectul documentului' },
+    { semn: 'obiect', ce: 'Obiectul documentului (titlul)' },
+    { semn: 'descriere_scurta', ce: 'Punctul 2: descrierea pe scurt' },
     { semn: 'numar', ce: 'Numărul unic' },
     { semn: 'data', ce: 'Data' },
     { semn: 'revizie', ce: 'A câta revizuire' },
@@ -136,5 +137,6 @@ export const SEMNE: Record<FelSablon, { semn: string; ce: string }[]> = {
     { semn: 'val_precedenta', ce: 'Valoarea la revizia precedentă' },
     { semn: 'influenta', ce: 'Influenţa +/−' },
     { semn: 'val_actualizata', ce: 'Valoarea actualizată' },
+    { semn: 'ramane', ce: '„Rămâne în sumă de ___ lei"' },
   ],
 };

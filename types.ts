@@ -265,14 +265,23 @@ export interface FoundationDoc {
   revisionDate?: string;
   /** "Compartiment de specialitate: Serviciul Tehnic" */
   compartment?: string;
-  /** Punctul 2: descrierea pe scurt a obiectului. */
+  /** Titlul de pe prima pagina — "Reparatie defibrilator Corpuls Elicopter 336". */
   subject?: string;
+  /** Punctul 2: descrierea pe scurt / motivul revizuirii. Nu e mereu acelasi
+   *  lucru cu titlul: pe DF 17979 titlul e "Contract subsecvent Papapostolul",
+   *  iar punctul 2 spune "Servicii de intretinere preventiva si reparatii
+   *  aparatura medicala Contract subsecvent cu Papapostolul". Gol, se ia titlul. */
+  shortDescription?: string;
   /** Punctul 3: descrierea pe larg a starii de fapt si de drept. */
   description?: string;
   /** Articolul bugetar si codul SSI din tabelul de valori. */
   budgetArticle?: string;
   ssiCode?: string;
   program?: string;
+  /** Coloana 1 din tabelul de valori. Pe un contract subsecvent scrie tipul
+   *  ("Contract subsecvent"), pe o reparatie scrie obiectul ("Reparatie
+   *  defibrilator Corpuls Elicopter 336") — deci nu se poate deduce din tip. */
+  element?: string;
   /** "1x 3.226,67" — cum s-a ajuns la suma. */
   parameters?: string;
   /** Valoarea de la revizia precedenta, influenta, si totalul actualizat.
@@ -281,9 +290,18 @@ export interface FoundationDoc {
   influence?: number;
   amount?: number;
   currency?: string;
+  /** "[ ] ramane in suma de ___ lei, conform fundamentarii aprobate intr-o
+   *  revizuire anterioara". */
+  remainingAmount?: number;
   /** Firma si numarul ofertei sau contractului pe care se sprijina. */
   supplier?: string;
   referenceNumber?: string;
+  /** Acordul-cadru pe care se sprijina un contract subsecvent. */
+  frameworkContract?: string;
+  /** Frazele care leaga documentul de oferta sau de contract. Se propune una
+   *  din campurile de mai sus, dar se poate scrie orice — documentele reale nu
+   *  au doua la fel. */
+  reference?: string;
   notes?: string;
   filePath?: string;
   fileUrl?: string;

@@ -174,29 +174,38 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
   const influenta = d.influence ?? ((d.amount || 0) - precedenta);
   const actualizata = d.amount ?? (precedenta + influenta);
 
+  // Ce nu s-a scris se ia de unde documentele reale il iau: punctul 2 din
+  // titlu, coloana 1 din tipul documentului, fraza din firma si numere.
+  const descriereScurta = d.shortDescription || d.subject || '';
+  const element = d.element || tip;
+  const referinta = d.reference
+    || (d.supplier || d.referenceNumber
+      ? `Se realizează conform ofertei / contractului${d.supplier ? ` de la firma ${d.supplier}` : ''}`
+        + `${d.referenceNumber ? `, cu numărul ${d.referenceNumber}` : ''}.`
+      : '');
+
   const sablon = await iaSablon('fundamentare');
   if (sablon) {
     return completeazaSablon(sablon, {
       valori: {
         obiect: d.subject || '',
+        descriere_scurta: descriereScurta,
         numar: d.number || '',
         data: dataRo(d.date),
         revizie: String(d.revision ?? 0),
         data_revizie: dataRo(d.revisionDate || d.date),
         compartiment: d.compartment || '',
         descriere: d.description || '',
-        referinta: d.supplier || d.referenceNumber
-          ? `Se realizează conform ofertei / contractului${d.supplier ? ` de la firma ${d.supplier}` : ''}`
-            + `${d.referenceNumber ? `, cu numărul ${d.referenceNumber}` : ''}.`
-          : '',
+        referinta,
         articol: d.budgetArticle || '',
-        element: tip,
+        element,
         program: d.program || '',
         cod_ssi: d.ssiCode || '',
         parametri: d.parameters || '',
         val_precedenta: suma(precedenta),
         influenta: suma(influenta),
         val_actualizata: suma(actualizata),
+        ramane: d.remainingAmount ? suma(d.remainingAmount) : '.................',
       },
     });
   }
@@ -215,7 +224,7 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
       text: t, width: L[i], style: { size: 8, align: 'center' as const, italic: true },
     })),
     [
-      { text: tip, width: L[0], style: { size: 9 } },
+      { text: element, width: L[0], style: { size: 9 } },
       { text: d.program || '', width: L[1], style: { size: 9, align: 'center' as const } },
       { text: d.ssiCode || '', width: L[2], style: { size: 9, align: 'center' as const } },
       { text: d.parameters || '', width: L[3], style: { size: 9, align: 'center' as const } },
@@ -256,14 +265,11 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
     par('Secţiunea A: Obiectul documentului de fundamentare', { bold: true, size: 12, after: 8 }),
 
     par(`1. Compartiment de specialitate:  ${d.compartment || ''}`, { size: 11 }),
-    par(`2. Descrierea pe scurt a obiectului documentului de fundamentare / motivul revizuirii:  ${d.subject || ''}`,
+    par(`2. Descrierea pe scurt a obiectului documentului de fundamentare / motivul revizuirii:  ${descriereScurta}`,
       { size: 11 }),
     par('3. Descrierea pe larg a stării de fapt şi de drept:', { size: 11, after: 2 }),
     par(d.description || '', { size: 11, align: 'both' }),
-    d.supplier || d.referenceNumber
-      ? par(`Se realizează conform ofertei / contractului${d.supplier ? ` de la firma ${d.supplier}` : ''}`
-            + `${d.referenceNumber ? `, cu numărul ${d.referenceNumber}` : ''}.`, { size: 11 })
-      : '',
+    referinta ? par(referinta, { size: 11 }) : '',
     d.budgetArticle
       ? par(`Articolul bugetar aferent achiziţiei este ${d.budgetArticle}`, { size: 11, after: 10 })
       : gol(),
@@ -271,7 +277,10 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
     par('4. Valoarea angajamentelor legale (pe toată perioada de valabilitate a documentului de fundamentare):',
       { bold: true, size: 11, after: 6 }),
     tabel(valori),
-    gol(),
+    d.remainingAmount
+      ? par(`Rămâne în sumă de ${suma(d.remainingAmount)} lei, conform fundamentării aprobate `
+            + 'într-o revizuire anterioară a prezentului document de fundamentare.', { size: 10, after: 8 })
+      : gol(),
 
     referat
       ? par(`Prezentul document susţine referatul de necesitate nr. ${referat.number} din ${dataRo(referat.date)} — ${referat.subject}.`,
