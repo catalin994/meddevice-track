@@ -14,6 +14,7 @@ import Portal from './Portal';
 import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
+import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 
 interface FinanceManagerProps {
@@ -60,52 +61,6 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
   [InvoiceStatus.OVERDUE]: 'Restanta',
 };
 
-// Shared PDF field extraction — used by both single upload and bulk folder import
-const extractInvoiceFields = (text: string, fileName: string, devices: MedicalDevice[], contracts: Contract[]) => {
-  const lower = text.toLowerCase();
-
-  const deviceIds = devices
-    .filter(d => d.serialNumber && d.serialNumber !== 'N/A' && d.serialNumber.length >= 3)
-    .filter(d => lower.includes(d.serialNumber.toLowerCase().trim()))
-    .map(d => d.id);
-
-  const invMatch = text.match(/(?:factur[aă]|invoice)[\s#:nr.]*([A-Z0-9][A-Z0-9\-\/]{1,20})/i);
-
-  // "Total de plata: 1.250,50" / "Total: 890.00" / "total general 12.500,00"
-  const amountMatch = text.match(/total(?:\s+(?:de\s+plat[aă]|general))?\s*:?\s*([\d][\d.,]{2,14})/i);
-  let amount = 0;
-  if (amountMatch) {
-    const raw = amountMatch[1].trim().replace(/\.(?=\d{3})/g, '').replace(/,(?=\d{3})/g, '').replace(',', '.');
-    amount = parseFloat(raw) || 0;
-  }
-
-  const currencyMatch = text.match(/\b(RON|LEI|EUR|USD|€|\$)\b/i);
-  const currency = currencyMatch
-    ? currencyMatch[1].toUpperCase().replace('LEI', 'RON').replace('€', 'EUR').replace('$', 'USD')
-    : 'RON';
-
-  // Issue date: dd.mm.yyyy / dd/mm/yyyy / dd-mm-yyyy or ISO yyyy-mm-dd
-  let issueDate = '';
-  const dmyMatch = text.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
-  const isoMatch = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
-  if (dmyMatch) {
-    issueDate = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
-  } else if (isoMatch) {
-    issueDate = isoMatch[0];
-  }
-
-  const foundContract = contracts.find(c => c.contractNumber && lower.includes(c.contractNumber.toLowerCase()));
-
-  // Supplier: matched contract provider → "Furnizor: X" (stops before the next field keyword) → file name
-  let supplier = foundContract?.provider || '';
-  if (!supplier) {
-    const supMatch = text.match(/furnizor\s*:?\s*(.{2,60}?)(?=\s+(?:data|cui|cif|reg\.?|nr\.?|adresa|total|emis)\b|$)/i);
-    if (supMatch) supplier = supMatch[1].trim();
-  }
-  if (!supplier) supplier = fileName.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim();
-
-  return { invoiceNumber: invMatch?.[1] || '', amount, currency, issueDate, supplier, contractNumber: foundContract?.contractNumber || '', deviceIds };
-};
 
 interface BulkDraft {
   include: boolean;
@@ -113,6 +68,7 @@ interface BulkDraft {
   invoiceNumber: string;
   supplier: string;
   issueDate: string;
+  dueDate: string;
   amount: number;
   currency: string;
   contractNumber: string;
@@ -256,12 +212,14 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let text = '';
+      // O pagina o data: coordonatele o iau de la capat la fiecare pagina, iar
+      // randurile se reconstruiesc din ele.
+      const pagini: string[] = [];
       for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((it: any) => it.str).join(' ') + '\n';
+        const content = await (await pdf.getPage(i)).getTextContent();
+        pagini.push(pdfItemsToText(content.items as any));
       }
+      const text = pagini.join('\n');
       const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
 
       setForm(prev => ({
@@ -270,6 +228,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         amount: fields.amount || prev.amount,
         currency: fields.currency,
         issueDate: fields.issueDate || prev.issueDate,
+        // Scadenta era citita si aruncata: campul exista in formular, dar nimic
+        // nu il completa, si se tasta de mana la fiecare factura.
+        dueDate: fields.dueDate || prev.dueDate,
         contractNumber: fields.contractNumber || prev.contractNumber,
         supplier: fields.supplier || prev.supplier,
         fileUrl: base64,
@@ -278,8 +239,25 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       if (fields.deviceIds.length > 0) {
         setSelectedDeviceIds(prev => Array.from(new Set([...prev, ...fields.deviceIds])));
       }
+      // Spune si ce a gasit, si ce n-a gasit: un camp ramas gol se vede greu
+      // intr-un formular lung, iar suma gresita se corecteaza doar daca stii
+      // ca trebuie sa te uiti la ea.
+      const gasit = [
+        fields.invoiceNumber && `nr. ${fields.invoiceNumber}`,
+        fields.amount && `${fields.amount.toLocaleString('ro-RO', { minimumFractionDigits: 2 })} ${fields.currency}`,
+        fields.issueDate && `emisa ${fields.issueDate}`,
+        fields.dueDate && `scadenta ${fields.dueDate}`,
+        fields.deviceIds.length && `${fields.deviceIds.length} dispozitiv${fields.deviceIds.length === 1 ? '' : 'e'}`,
+        fields.contractNumber && `contract ${fields.contractNumber}`,
+      ].filter(Boolean);
+      const lipsa = [
+        !fields.invoiceNumber && 'numarul',
+        !fields.amount && 'suma',
+        !fields.issueDate && 'data',
+      ].filter(Boolean);
       setExtractNote(
-        `Detectat: ${fields.invoiceNumber ? 'nr. factura' : ''}${fields.amount ? (fields.invoiceNumber ? ', ' : '') + 'suma' : ''}${fields.deviceIds.length ? `, ${fields.deviceIds.length} dispozitiv(e)` : ''}${fields.contractNumber ? ', contract' : ''}` || 'PDF atasat'
+        (gasit.length ? `Detectat: ${gasit.join(' · ')}` : 'PDF atasat')
+        + (lipsa.length ? ` — completeaza ${lipsa.join(' si ')}` : '')
       );
     } catch {
       setExtractNote('PDF atasat (extragerea automata a esuat)');
@@ -316,12 +294,12 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         });
 
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let text = '';
+        const pagini: string[] = [];
         for (let p = 1; p <= pdf.numPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          text += content.items.map((it: any) => it.str).join(' ') + '\n';
+          const content = await (await pdf.getPage(p)).getTextContent();
+          pagini.push(pdfItemsToText(content.items as any));
         }
+        const text = pagini.join('\n');
 
         const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
         const numKey = fields.invoiceNumber.toLowerCase().trim();
@@ -334,6 +312,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
           invoiceNumber: fields.invoiceNumber || file.name.replace(/\.pdf$/i, ''),
           supplier: fields.supplier,
           issueDate: fields.issueDate || new Date().toISOString().split('T')[0],
+          dueDate: fields.dueDate,
           amount: fields.amount,
           currency: fields.currency,
           contractNumber: fields.contractNumber,
@@ -345,7 +324,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         drafts.push({
           include: false, isDuplicate: false,
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
-          issueDate: new Date().toISOString().split('T')[0],
+          issueDate: new Date().toISOString().split('T')[0], dueDate: '',
           contractNumber: '', deviceIds: [], fileUrl: '', fileName: `${file.name} (eroare la citire)`,
         });
       }
@@ -380,6 +359,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         invoiceNumber: d.invoiceNumber.trim(),
         supplier: d.supplier.trim() || 'Necunoscut',
         issueDate: d.issueDate,
+        dueDate: d.dueDate || undefined,
         amount: d.amount,
         currency: d.currency,
         status: InvoiceStatus.UNPAID,
