@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import {
   FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat,
+  normaliseFoundationType,
 } from '../types';
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -14,32 +15,50 @@ import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 /**
- * Documentele care sustin valoarea estimata dintr-un referat.
+ * Documentul de fundamentare, in forma pe care o cere legea.
  *
- * Nota justificativa, studiul de piata, ofertele — actele pe care le cere
- * dosarul achizitiei ca sa arate de unde vine suma. Fiecare stie carui referat
- * ii apartine, ca sa se poata deschide dosarul intr-un singur loc; unul
- * nelegat ramane valabil, doar ca se vede ca atare.
+ * Prima varianta il trata ca pe o anexa la referat — o oferta, un studiu de
+ * piata. Documentele reale arata altceva: e actul care justifica angajamentul
+ * bugetar, cu numar unic de inregistrare, cu revizii succesive ale aceluiasi
+ * document, si cu valoarea in trei coloane — cat era la revizia precedenta,
+ * cu cat se schimba, cat devine. Ofertele sunt anexe la referat, nu documente
+ * de fundamentare.
+ *
+ * Fiecare stie carui referat ii apartine, cand porneste de la unul; alocarile
+ * lunare pe un contract subsecvent nu pornesc, si raman nelegate.
  */
 
 const TIP_STYLES: Record<FoundationDocType, string> = {
-  [FoundationDocType.NOTA_VALOARE]: 'bg-blue-50 text-blue-700 border-blue-200',
-  [FoundationDocType.STUDIU_PIATA]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  [FoundationDocType.OFERTA]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  [FoundationDocType.CAIET_SARCINI]: 'bg-amber-50 text-amber-700 border-amber-200',
-  [FoundationDocType.NOTA_OPORTUNITATE]: 'bg-purple-50 text-purple-700 border-purple-200',
-  [FoundationDocType.SPECIFICATII]: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  [FoundationDocType.ACHIZITIE_DIRECTA]: 'bg-blue-50 text-blue-700 border-blue-200',
+  [FoundationDocType.CONTRACT_SUBSECVENT]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  [FoundationDocType.ACORD_CADRU]: 'bg-purple-50 text-purple-700 border-purple-200',
+  [FoundationDocType.CONTRACT]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [FoundationDocType.COMANDA]: 'bg-cyan-50 text-cyan-700 border-cyan-200',
   [FoundationDocType.ALTUL]: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
+/** Compartimentul emitent se repeta pe fiecare document al aceluiasi serviciu. */
+const CHEIE_COMPARTIMENT = 'meditrack_df_compartiment';
+
 const gol = () => ({
   referatId: '',
-  type: FoundationDocType.OFERTA,
+  type: FoundationDocType.ACHIZITIE_DIRECTA,
   number: '',
   date: new Date().toISOString().split('T')[0],
-  supplier: '',
-  amount: 0,
+  revision: 0,
+  revisionDate: new Date().toISOString().split('T')[0],
+  compartment: (() => { try { return localStorage.getItem(CHEIE_COMPARTIMENT) || ''; } catch { return ''; } })(),
+  subject: '',
+  description: '',
+  budgetArticle: '',
+  ssiCode: '',
+  program: '',
+  parameters: '',
+  previousValue: 0,
+  influence: 0,
   currency: 'RON',
+  supplier: '',
+  referenceNumber: '',
   notes: '',
   filePath: undefined as string | undefined,
   fileUrl: '',
@@ -94,7 +113,11 @@ const FoundationDocManager: React.FC<Props> = ({
         || (d.number || '').toLowerCase().includes(q)
         || (d.supplier || '').toLowerCase().includes(q)
         || (d.notes || '').toLowerCase().includes(q)
-        || FOUNDATION_DOC_RO[d.type].toLowerCase().includes(q)
+        || (d.subject || '').toLowerCase().includes(q)
+        || (d.description || '').toLowerCase().includes(q)
+        || (d.budgetArticle || '').toLowerCase().includes(q)
+        || (d.referenceNumber || '').toLowerCase().includes(q)
+        || FOUNDATION_DOC_RO[normaliseFoundationType(d.type)].toLowerCase().includes(q)
         || (referateDupaId.get(d.referatId || '')?.number || '').toLowerCase().includes(q))
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [docs, cauta, filtruTip, filtruReferat, referateDupaId]);
@@ -109,8 +132,17 @@ const FoundationDocManager: React.FC<Props> = ({
 
   const deschideEditare = useCallback((d: FoundationDoc) => {
     setForm({
-      referatId: d.referatId || '', type: d.type, number: d.number || '', date: d.date,
-      supplier: d.supplier || '', amount: d.amount || 0, currency: d.currency || 'RON',
+      referatId: d.referatId || '', type: normaliseFoundationType(d.type),
+      number: d.number || '', date: d.date,
+      revision: d.revision ?? 0, revisionDate: d.revisionDate || d.date,
+      compartment: d.compartment || '',
+      subject: d.subject || '', description: d.description || '',
+      budgetArticle: d.budgetArticle || '', ssiCode: d.ssiCode || '', program: d.program || '',
+      parameters: d.parameters || '',
+      previousValue: d.previousValue || 0,
+      influence: d.influence ?? ((d.amount || 0) - (d.previousValue || 0)),
+      currency: d.currency || 'RON',
+      supplier: d.supplier || '', referenceNumber: d.referenceNumber || '',
       notes: d.notes || '', filePath: d.filePath, fileUrl: d.fileUrl || '', fileName: d.fileName || '',
     });
     setIdEditat(d.id);
@@ -139,16 +171,34 @@ const FoundationDocManager: React.FC<Props> = ({
       const urcat = await uploadDataUrl(buildPath('fundamentare', id, id, form.fileName || 'document.pdf'), inline);
       if (urcat.path) { filePath = urcat.path; inline = undefined; }
     }
+    try { localStorage.setItem(CHEIE_COMPARTIMENT, form.compartment); } catch { /* comoditate */ }
+
+    // Valoarea actualizata nu se tasteaza: e suma celorlalte doua, exact ca in
+    // coloana "7 = 5 + 6" din formular.
+    const actualizata = (form.previousValue || 0) + (form.influence || 0);
+
     onUpsert({
       id,
       referatId: form.referatId || undefined,
       type: form.type,
       number: form.number.trim() || undefined,
       date: form.date,
+      revision: form.revision || 0,
+      revisionDate: form.revisionDate || form.date,
+      compartment: form.compartment.trim() || undefined,
+      subject: form.subject.trim() || undefined,
+      description: form.description.trim() || undefined,
+      budgetArticle: form.budgetArticle.trim() || undefined,
+      ssiCode: form.ssiCode.trim() || undefined,
+      program: form.program.trim() || undefined,
+      parameters: form.parameters.trim() || undefined,
+      previousValue: form.previousValue || undefined,
+      influence: form.influence || undefined,
+      amount: actualizata || undefined,
+      currency: actualizata ? form.currency : undefined,
       supplier: form.supplier.trim() || undefined,
-      amount: form.amount || undefined,
-      currency: form.amount ? form.currency : undefined,
-      notes: form.notes || undefined,
+      referenceNumber: form.referenceNumber.trim() || undefined,
+      notes: form.notes.trim() || undefined,
       filePath,
       fileUrl: inline,
       fileName: form.fileName || undefined,
@@ -236,10 +286,16 @@ const FoundationDocManager: React.FC<Props> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${TIP_STYLES[d.type]}`}>
-                        {FOUNDATION_DOC_RO[d.type]}
+                      <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${TIP_STYLES[normaliseFoundationType(d.type)]}`}>
+                        {FOUNDATION_DOC_RO[normaliseFoundationType(d.type)]}
                       </span>
-                      {d.number && <p className="text-sm font-black text-slate-900">{d.number}</p>}
+                      {d.number && <p className="text-sm font-black text-slate-900">{d.number}/{d.date}</p>}
+                      {!!d.revision && (
+                        <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-bold"
+                              title={`Revizuirea ${d.revision}${d.revisionDate ? ` din ${d.revisionDate}` : ''}`}>
+                          rev. {d.revision}
+                        </span>
+                      )}
                       {ref ? (
                         <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-[11px] font-bold flex items-center gap-1">
                           <Link2 className="w-3 h-3" />{ref.number}
@@ -251,17 +307,26 @@ const FoundationDocManager: React.FC<Props> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-bold text-slate-500 mt-1.5">
-                      {[d.supplier, d.date].filter(Boolean).join(' · ')}
+                    {d.subject && <p className="text-[15px] font-bold text-slate-800 mt-1 break-words">{d.subject}</p>}
+                    <p className="text-xs font-bold text-slate-500 mt-1">
+                      {[d.compartment, d.supplier, d.referenceNumber].filter(Boolean).join(' · ')}
+                      {d.budgetArticle ? ` · art. ${d.budgetArticle}` : ''}
                     </p>
                     {d.notes && <p className="text-[13px] font-semibold text-slate-600 mt-1 break-words">{d.notes}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   {!!d.amount && (
-                    <p className="text-lg font-black text-slate-900">
-                      {fmt(d.amount)} <span className="text-xs text-slate-500">{d.currency}</span>
-                    </p>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-slate-900">
+                        {fmt(d.amount)} <span className="text-xs text-slate-500">{d.currency}</span>
+                      </p>
+                      {!!d.influence && (
+                        <p className={`text-[11px] font-bold ${d.influence > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {d.influence > 0 ? '+' : ''}{fmt(d.influence)} fata de rev. {Math.max(0, (d.revision || 1) - 1)}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {(d.filePath || d.fileUrl) && (
                     <button onClick={() => descarcaPdf(d)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul" aria-label="Descarca documentul">
@@ -314,42 +379,113 @@ const FoundationDocManager: React.FC<Props> = ({
                 </Camp>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Camp eticheta="Tipul documentului" obligatoriu>
+                  <Camp eticheta="Element de fundamentare" obligatoriu>
                     <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FoundationDocType }))}
-                      aria-label="Tipul documentului" className="camp">
+                      aria-label="Elementul de fundamentare" className="camp">
                       {Object.values(FoundationDocType).map(t => (
                         <option key={t} value={t}>{FOUNDATION_DOC_RO[t]}</option>
                       ))}
                     </select>
                   </Camp>
+                  <Camp eticheta="Compartiment de specialitate">
+                    <input value={form.compartment} onChange={e => setForm(p => ({ ...p, compartment: e.target.value }))}
+                      placeholder="ex. Serviciul Tehnic" className="camp" />
+                  </Camp>
+                </div>
+
+                {/* "Numar unic de inregistrare: 17835/31.07.2026, revizuirea 7 / data 03.08.2026" */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <Camp eticheta="Numar unic" obligatoriu>
+                    <input required value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
+                      placeholder="ex. 17835" className="camp" />
+                  </Camp>
                   <Camp eticheta="Data" obligatoriu>
                     <input required type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} className="camp" />
                   </Camp>
+                  <Camp eticheta="Revizuirea">
+                    <input type="number" min="0" step="1" value={form.revision}
+                      onChange={e => setForm(p => ({ ...p, revision: parseInt(e.target.value) || 0 }))}
+                      aria-label="A cata revizuire" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Data reviziei">
+                    <input type="date" value={form.revisionDate}
+                      onChange={e => setForm(p => ({ ...p, revisionDate: e.target.value }))} className="camp" />
+                  </Camp>
                 </div>
+
+                <Camp eticheta="Descrierea pe scurt a obiectului" obligatoriu>
+                  <input required value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
+                    placeholder="ex. Reparatie defibrilator Corpuls Elicopter 336" className="camp" />
+                </Camp>
+
+                <Camp eticheta="Descrierea pe larg a starii de fapt si de drept">
+                  <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Ce defectiuni are, de ce e necesara interventia, pe ce oferta sau contract se sprijina..."
+                    className="camp min-h-[130px] resize-none" />
+                </Camp>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Camp eticheta="Numar inregistrare">
-                    <input value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
-                      placeholder="ex. 4471/2026" className="camp" />
-                  </Camp>
-                  <Camp eticheta="Emitent / furnizor">
+                  <Camp eticheta="Firma ofertanta / contractanta">
                     <input value={form.supplier} onChange={e => setForm(p => ({ ...p, supplier: e.target.value }))}
-                      placeholder="ex. Rafi Medical S.R.L" className="camp" />
+                      placeholder="ex. Deltamed" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Nr. oferta / contract">
+                    <input value={form.referenceNumber} onChange={e => setForm(p => ({ ...p, referenceNumber: e.target.value }))}
+                      placeholder="ex. 17834/31.07.2026" className="camp" />
                   </Camp>
                 </div>
 
-                <Camp eticheta="Valoare">
-                  <div className="flex gap-2">
-                    <input type="number" step="0.01" min="0" value={form.amount || ''}
-                      onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
-                      placeholder="lasa gol daca documentul nu poarta o suma"
-                      className="camp" style={{ flex: '1 1 auto', minWidth: 0 }} />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Camp eticheta="Articol bugetar">
+                    <input value={form.budgetArticle} onChange={e => setForm(p => ({ ...p, budgetArticle: e.target.value }))}
+                      placeholder="ex. 200109" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Cod SSI">
+                    <input value={form.ssiCode} onChange={e => setForm(p => ({ ...p, ssiCode: e.target.value }))}
+                      placeholder="ex. 02F660601200109" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Program">
+                    <input value={form.program} onChange={e => setForm(p => ({ ...p, program: e.target.value }))}
+                      placeholder="ex. 0000000000" className="camp" />
+                  </Camp>
+                </div>
+
+                {/*
+                  Valoarea, exact ca in tabelul din formular: coloana 5 e cat
+                  era la revizia precedenta, 6 e influenta, iar 7 = 5 + 6 se
+                  calculeaza — nu se tasteaza si nu se poate gresi.
+                */}
+                <div className="p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Valoarea angajamentelor legale</p>
                     <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
-                      aria-label="Moneda" className="camp" style={{ flex: '0 0 auto', width: '6.5rem' }}>
+                      aria-label="Moneda" className="camp bg-white" style={{ width: '6.5rem' }}>
                       <option>RON</option><option>EUR</option><option>USD</option>
                     </select>
                   </div>
-                </Camp>
+                  <Camp eticheta="Parametrii de fundamentare">
+                    <input value={form.parameters} onChange={e => setForm(p => ({ ...p, parameters: e.target.value }))}
+                      placeholder="ex. 1x 3.226,67" className="camp bg-white" />
+                  </Camp>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Camp eticheta="Revizia precedenta">
+                      <input type="number" step="0.01" value={form.previousValue || ''}
+                        onChange={e => setForm(p => ({ ...p, previousValue: parseFloat(e.target.value) || 0 }))}
+                        placeholder="0.00" className="camp bg-white" />
+                    </Camp>
+                    <Camp eticheta="Influente +/−">
+                      <input type="number" step="0.01" value={form.influence || ''}
+                        onChange={e => setForm(p => ({ ...p, influence: parseFloat(e.target.value) || 0 }))}
+                        placeholder="0.00" className="camp bg-white" />
+                    </Camp>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Valoare actualizata</label>
+                      <div className="px-4 py-3.5 bg-slate-900 text-white rounded-2xl text-[15px] font-black tabular-nums">
+                        {fmt((form.previousValue || 0) + (form.influence || 0))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <Camp eticheta="Observatii">
                   <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
@@ -394,7 +530,7 @@ const FoundationDocManager: React.FC<Props> = ({
         icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
         body={<>
           <span className="font-black text-slate-900">
-            {deSters ? FOUNDATION_DOC_RO[deSters.type] : ''}{deSters?.number ? ` ${deSters.number}` : ''}
+            {deSters ? FOUNDATION_DOC_RO[normaliseFoundationType(deSters.type)] : ''}{deSters?.number ? ` ${deSters.number}` : ''}
           </span>{' '}
           se sterge definitiv, impreuna cu fisierul atasat.
         </>}

@@ -4,8 +4,8 @@ import {
   Paperclip, Building2, CheckCircle,
 } from 'lucide-react';
 import {
-  MedicalDevice, Referat, ReferatStatus, REFERAT_STATUS_RO, FoundationDoc,
-  getUniqueDepartments,
+  MedicalDevice, Referat, ReferatItem, ReferatStatus, REFERAT_STATUS_RO,
+  FoundationDoc, referatTotal, getUniqueDepartments,
 } from '../types';
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -31,19 +31,44 @@ const STATUS_STYLES: Record<ReferatStatus, string> = {
   [ReferatStatus.CLOSED]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
 };
 
-const gol = () => ({
-  number: '',
-  date: new Date().toISOString().split('T')[0],
-  department: '',
-  subject: '',
-  justification: '',
-  estimatedValue: 0,
-  currency: 'RON',
-  status: ReferatStatus.DRAFT,
-  filePath: undefined as string | undefined,
-  fileUrl: '',
-  fileName: '',
+/*
+ * Antetul referatului se repeta identic pe fiecare hartie a aceluiasi birou:
+ * compartimentul emitent, seful care aproba, persoana de contact. Se retin de
+ * la ultimul referat, ca sa nu fie tastate din nou de fiecare data.
+ */
+const CHEIE_ANTET = 'meditrack_referat_antet';
+const antetSalvat = () => {
+  try { return JSON.parse(localStorage.getItem(CHEIE_ANTET) || '{}'); } catch { return {}; }
+};
+
+const pozitieNoua = (): ReferatItem => ({
+  id: crypto.randomUUID(), name: '', unit: 'Buc', quantity: 1, unitPrice: 0, specs: '',
 });
+
+const gol = () => {
+  const a = antetSalvat();
+  return {
+    number: '',
+    date: new Date().toISOString().split('T')[0],
+    issuedBy: a.issuedBy || '',
+    approvedBy: a.approvedBy || '',
+    department: '',
+    subject: '',
+    justification: '',
+    budgetArticle: '',
+    offerProvider: '',
+    offerNumbers: '',
+    currency: 'RON',
+    status: ReferatStatus.DRAFT,
+    contactName: a.contactName || '',
+    contactRole: a.contactRole || '',
+    contactEmail: a.contactEmail || '',
+    contactPhone: a.contactPhone || '',
+    filePath: undefined as string | undefined,
+    fileUrl: '',
+    fileName: '',
+  };
+};
 
 const fmt = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -73,7 +98,9 @@ const ReferatManager: React.FC<Props> = ({
   const [editez, setEditez] = useState(false);
   const [idEditat, setIdEditat] = useState<string | null>(null);
   const [form, setForm] = useState(gol());
+  const [pozitii, setPozitii] = useState<ReferatItem[]>([pozitieNoua()]);
   const [dispozitive, setDispozitive] = useState<string[]>([]);
+  const [aratAntet, setAratAntet] = useState(false);
   const [cautaDispozitiv, setCautaDispozitiv] = useState('');
   const [deSters, setDeSters] = useState<Referat | null>(null);
   const [seSalveaza, setSeSalveaza] = useState(false);
@@ -97,7 +124,9 @@ const ReferatManager: React.FC<Props> = ({
         || r.number.toLowerCase().includes(q)
         || r.subject.toLowerCase().includes(q)
         || (r.department || '').toLowerCase().includes(q)
-        || (r.justification || '').toLowerCase().includes(q))
+        || (r.justification || '').toLowerCase().includes(q)
+        || (r.budgetArticle || '').toLowerCase().includes(q)
+        || (r.items || []).some(it => it.name.toLowerCase().includes(q)))
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [referate, cauta, filtruStatus]);
 
@@ -105,16 +134,28 @@ const ReferatManager: React.FC<Props> = ({
     usePagination(filtrate, 'meditrack_referate_page_size');
 
   const deschideNou = useCallback(() => {
-    setForm(gol()); setDispozitive([]); setIdEditat(null); setEditez(true);
+    setForm(gol()); setPozitii([pozitieNoua()]); setDispozitive([]);
+    setIdEditat(null); setEditez(true);
   }, []);
 
   const deschideEditare = useCallback((r: Referat) => {
     setForm({
-      number: r.number, date: r.date, department: r.department, subject: r.subject,
-      justification: r.justification || '', estimatedValue: r.estimatedValue,
+      number: r.number, date: r.date,
+      issuedBy: r.issuedBy || '', approvedBy: r.approvedBy || '',
+      department: r.department, subject: r.subject,
+      justification: r.justification || '',
+      budgetArticle: r.budgetArticle || '',
+      offerProvider: r.offerProvider || '', offerNumbers: r.offerNumbers || '',
       currency: r.currency, status: r.status,
+      contactName: r.contactName || '', contactRole: r.contactRole || '',
+      contactEmail: r.contactEmail || '', contactPhone: r.contactPhone || '',
       filePath: r.filePath, fileUrl: r.fileUrl || '', fileName: r.fileName || '',
     });
+    // Referatele salvate inainte de tabel aveau o singura valoare; se deschid
+    // cu ea pusa pe o pozitie, ca sa nu se piarda.
+    setPozitii(r.items?.length ? r.items : [{
+      ...pozitieNoua(), name: r.subject || '', unitPrice: r.estimatedValue || 0,
+    }]);
     setDispozitive(r.deviceIds || []);
     setIdEditat(r.id);
     setEditez(true);
@@ -144,24 +185,41 @@ const ReferatManager: React.FC<Props> = ({
       const urcat = await uploadDataUrl(buildPath('referate', id, id, form.fileName || 'referat.pdf'), inline);
       if (urcat.path) { filePath = urcat.path; inline = undefined; }
     }
+    try {
+      localStorage.setItem(CHEIE_ANTET, JSON.stringify({
+        issuedBy: form.issuedBy, approvedBy: form.approvedBy,
+        contactName: form.contactName, contactRole: form.contactRole,
+        contactEmail: form.contactEmail, contactPhone: form.contactPhone,
+      }));
+    } catch { /* antetul e o comoditate, nu o obligatie */ }
+
     onUpsert({
       id,
       number: form.number.trim(),
       date: form.date,
+      issuedBy: form.issuedBy.trim(),
+      approvedBy: form.approvedBy.trim() || undefined,
       department: form.department.trim(),
       subject: form.subject.trim(),
+      items: pozitii.filter(p => p.name.trim()),
       justification: form.justification || undefined,
-      estimatedValue: form.estimatedValue,
+      budgetArticle: form.budgetArticle.trim() || undefined,
+      offerProvider: form.offerProvider.trim() || undefined,
+      offerNumbers: form.offerNumbers.trim() || undefined,
       currency: form.currency,
       status: form.status,
       deviceIds: dispozitive,
+      contactName: form.contactName.trim() || undefined,
+      contactRole: form.contactRole.trim() || undefined,
+      contactEmail: form.contactEmail.trim() || undefined,
+      contactPhone: form.contactPhone.trim() || undefined,
       filePath,
       fileUrl: inline,
       fileName: form.fileName || undefined,
     });
     setSeSalveaza(false);
     setEditez(false);
-  }, [idEditat, form, dispozitive, onUpsert]);
+  }, [idEditat, form, pozitii, dispozitive, onUpsert]);
 
   const dispozitiveFiltrate = useMemo(() => {
     const q = cautaDispozitiv.toLowerCase();
@@ -251,8 +309,14 @@ const ReferatManager: React.FC<Props> = ({
                     </div>
                     <p className="text-[15px] font-bold text-slate-800 mt-1 break-words">{r.subject}</p>
                     <p className="text-xs font-bold text-slate-500 mt-1">
-                      {r.department} · {r.date}
+                      {[r.issuedBy, r.department, r.date].filter(Boolean).join(' · ')}
+                      {r.budgetArticle ? ` · art. ${r.budgetArticle}` : ''}
                     </p>
+                    {r.items?.length > 1 && (
+                      <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                        {r.items.length} pozitii
+                      </p>
+                    )}
                     {r.deviceIds?.length > 0 && (
                       <p className="text-[11px] font-bold text-slate-500 mt-0.5 truncate">
                         {r.deviceIds.slice(0, 3).map(id => dispozitiveDupaId.get(id)?.name || id).join(', ')}
@@ -264,9 +328,10 @@ const ReferatManager: React.FC<Props> = ({
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <p className="text-lg font-black text-slate-900">
-                      {fmt(r.estimatedValue)} <span className="text-xs text-slate-500">{r.currency}</span>
+                      {fmt(r.items?.length ? referatTotal(r.items) : (r.estimatedValue || 0))}{' '}
+                      <span className="text-xs text-slate-500">{r.currency}</span>
                     </p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">estimat</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">estimat, fara TVA</p>
                   </div>
                   {(r.filePath || r.fileUrl) && (
                     <button onClick={() => descarcaPdf(r)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul" aria-label={`Descarca referatul ${r.number}`}>
@@ -319,18 +384,105 @@ const ReferatManager: React.FC<Props> = ({
                   </Camp>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Camp eticheta="Emis de (compartiment)" obligatoriu>
+                    <input required value={form.issuedBy} onChange={e => setForm(p => ({ ...p, issuedBy: e.target.value }))}
+                      placeholder="ex. Birou Tehnic" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Aprobat de (sef compartiment)">
+                    <input value={form.approvedBy} onChange={e => setForm(p => ({ ...p, approvedBy: e.target.value }))}
+                      placeholder="ex. Ing. Isopescu Liliana" className="camp" />
+                  </Camp>
+                </div>
+
                 <DepartmentPicker
                   value={form.department}
                   onChange={v => setForm(p => ({ ...p, department: v }))}
                   options={departamente}
-                  label="Sectia solicitanta"
+                  label="Sectia beneficiara"
                   required
                 />
 
-                <Camp eticheta="Obiectul referatului" obligatoriu>
+                <Camp eticheta="Obiectul achizitiei" obligatoriu>
                   <input required value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
-                    placeholder="ex. Inlocuire ventilator mecanic din sectia ATI" className="camp" />
+                    placeholder="ex. Reparatie aparatura medicala diversa" className="camp" />
                 </Camp>
+
+                {/*
+                  Tabelul de pozitii. Referatul real are un rand pe fiecare
+                  aparat, cu seria in denumire si cu pretul lui; totalul se
+                  aduna singur, ca sa nu fie calculat pe hartie si apoi tastat.
+                */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                      Pozitii{pozitii.length > 1 && <span className="text-blue-600"> · {pozitii.length}</span>}
+                    </label>
+                    <button type="button" onClick={() => setPozitii(p => [...p, pozitieNoua()])}
+                      className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-200 transition flex items-center gap-2">
+                      <Plus className="w-3.5 h-3.5" /> Adauga pozitie
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {pozitii.map((it, i) => (
+                      <div key={it.id} className="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl space-y-3">
+                        <div className="flex items-start gap-3">
+                          <span className="mt-3.5 text-[11px] font-black text-slate-500 tabular-nums shrink-0 w-5">{i + 1}.</span>
+                          <input
+                            value={it.name}
+                            onChange={e => setPozitii(p => p.map(x => x.id === it.id ? { ...x, name: e.target.value } : x))}
+                            placeholder="Denumire produs / serviciu, cu seria aparatului"
+                            aria-label={`Denumire pozitia ${i + 1}`}
+                            className="camp bg-white flex-1 min-w-0" />
+                          {pozitii.length > 1 && (
+                            <button type="button" onClick={() => setPozitii(p => p.filter(x => x.id !== it.id))}
+                              aria-label={`Sterge pozitia ${i + 1}`}
+                              className="mt-1 p-3 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition shrink-0">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pl-0 sm:pl-8">
+                          <MicCamp eticheta="U.M.">
+                            <input value={it.unit}
+                              onChange={e => setPozitii(p => p.map(x => x.id === it.id ? { ...x, unit: e.target.value } : x))}
+                              aria-label={`Unitate de masura pozitia ${i + 1}`} className="camp bg-white" />
+                          </MicCamp>
+                          <MicCamp eticheta="Cant.">
+                            <input type="number" min="0" step="1" value={it.quantity || ''}
+                              onChange={e => setPozitii(p => p.map(x => x.id === it.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))}
+                              aria-label={`Cantitate pozitia ${i + 1}`} className="camp bg-white" />
+                          </MicCamp>
+                          <MicCamp eticheta="Pret unitar">
+                            <input type="number" min="0" step="0.01" value={it.unitPrice || ''}
+                              onChange={e => setPozitii(p => p.map(x => x.id === it.id ? { ...x, unitPrice: parseFloat(e.target.value) || 0 } : x))}
+                              aria-label={`Pret unitar pozitia ${i + 1}`} className="camp bg-white" />
+                          </MicCamp>
+                          <MicCamp eticheta="Valoare">
+                            <div className="px-4 py-3 bg-slate-100 rounded-2xl text-[15px] font-black text-slate-900 tabular-nums truncate">
+                              {fmt((it.quantity || 0) * (it.unitPrice || 0))}
+                            </div>
+                          </MicCamp>
+                        </div>
+                        <div className="pl-0 sm:pl-8">
+                          <input value={it.specs || ''}
+                            onChange={e => setPozitii(p => p.map(x => x.id === it.id ? { ...x, specs: e.target.value } : x))}
+                            placeholder="Caracteristici tehnice (optional)"
+                            aria-label={`Caracteristici tehnice pozitia ${i + 1}`}
+                            className="camp bg-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-2xl">
+                    <span className="text-[11px] font-black uppercase tracking-widest">Total estimat, fara TVA</span>
+                    <span className="text-xl font-black tabular-nums">
+                      {fmt(referatTotal(pozitii))} <span className="text-xs text-white/60">{form.currency}</span>
+                    </span>
+                  </div>
+                </div>
 
                 <Camp eticheta="Justificare">
                   <textarea value={form.justification} onChange={e => setForm(p => ({ ...p, justification: e.target.value }))}
@@ -339,16 +491,9 @@ const ReferatManager: React.FC<Props> = ({
                 </Camp>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Camp eticheta="Valoare estimata" obligatoriu>
-                    <div className="flex gap-2">
-                      <input required type="number" step="0.01" min="0" value={form.estimatedValue || ''}
-                        onChange={e => setForm(p => ({ ...p, estimatedValue: parseFloat(e.target.value) || 0 }))}
-                        placeholder="0.00" className="camp" style={{ flex: '1 1 auto', minWidth: 0 }} />
-                      <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
-                        aria-label="Moneda" className="camp" style={{ flex: '0 0 auto', width: '6.5rem' }}>
-                        <option>RON</option><option>EUR</option><option>USD</option>
-                      </select>
-                    </div>
+                  <Camp eticheta="Articol bugetar">
+                    <input value={form.budgetArticle} onChange={e => setForm(p => ({ ...p, budgetArticle: e.target.value }))}
+                      placeholder="ex. 66100 UPU" className="camp" />
                   </Camp>
                   <Camp eticheta="Stare">
                     <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as ReferatStatus }))}
@@ -357,6 +502,17 @@ const ReferatManager: React.FC<Props> = ({
                         <option key={s} value={s}>{REFERAT_STATUS_RO[s]}</option>
                       ))}
                     </select>
+                  </Camp>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Camp eticheta="Oferta de la firma">
+                    <input value={form.offerProvider} onChange={e => setForm(p => ({ ...p, offerProvider: e.target.value }))}
+                      placeholder="ex. Vamos" className="camp" />
+                  </Camp>
+                  <Camp eticheta="Numerele ofertelor">
+                    <input value={form.offerNumbers} onChange={e => setForm(p => ({ ...p, offerNumbers: e.target.value }))}
+                      placeholder="ex. 16694/17.07.2026; 17872/31.07.2026" className="camp" />
                   </Camp>
                 </div>
 
@@ -405,6 +561,35 @@ const ReferatManager: React.FC<Props> = ({
                 </div>
               </div>
 
+                {/* Se completeaza o data si se retine: acelasi birou, aceeasi
+                    persoana de contact pe fiecare referat. */}
+                <div className="border-2 border-slate-100 rounded-2xl overflow-hidden">
+                  <button type="button" onClick={() => setAratAntet(v => !v)}
+                    aria-expanded={aratAntet}
+                    className="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-slate-100 transition">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                      Persoana de contact {form.contactName ? `· ${form.contactName}` : ''}
+                    </span>
+                    <span className="text-[11px] font-black text-slate-500">{aratAntet ? '−' : '+'}</span>
+                  </button>
+                  {aratAntet && (
+                    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Camp eticheta="Nume si prenume">
+                        <input value={form.contactName} onChange={e => setForm(p => ({ ...p, contactName: e.target.value }))} className="camp" />
+                      </Camp>
+                      <Camp eticheta="Functia">
+                        <input value={form.contactRole} onChange={e => setForm(p => ({ ...p, contactRole: e.target.value }))} placeholder="ex. inginer" className="camp" />
+                      </Camp>
+                      <Camp eticheta="Email">
+                        <input type="email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} className="camp" />
+                      </Camp>
+                      <Camp eticheta="Telefon">
+                        <input value={form.contactPhone} onChange={e => setForm(p => ({ ...p, contactPhone: e.target.value }))} className="camp" />
+                      </Camp>
+                    </div>
+                  )}
+                </div>
+
               <div className="px-6 sm:px-8 py-5 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-none sm:rounded-b-[2.5rem]">
                 <button type="button" onClick={() => setEditez(false)}
                   className="px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest">Anuleaza</button>
@@ -436,6 +621,13 @@ const ReferatManager: React.FC<Props> = ({
     </div>
   );
 };
+
+const MicCamp = ({ eticheta, children }: { eticheta: string; children: React.ReactNode }) => (
+  <div className="space-y-1 min-w-0">
+    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{eticheta}</label>
+    {children}
+  </div>
+);
 
 const Camp = ({ eticheta, obligatoriu, children }: { eticheta: string; obligatoriu?: boolean; children: React.ReactNode }) => (
   <div className="space-y-1.5">

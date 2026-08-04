@@ -146,60 +146,144 @@ export const REFERAT_STATUS_RO: Record<ReferatStatus, string> = {
   [ReferatStatus.CLOSED]: 'Finalizat',
 };
 
+/**
+ * O pozitie din tabelul referatului.
+ *
+ * Referatul real nu are o singura valoare, are un tabel: sapte injectomatoare
+ * si aspiratoare, fiecare cu seria lui si cu pretul lui, iar totalul e suma
+ * lor. Un singur camp "valoare estimata" ar fi cerut sa fie adunate pe hartie
+ * si apoi tastate — exact munca pe care aplicatia ar trebui sa o scuteasca.
+ */
+export interface ReferatItem {
+  id: string;
+  /** "Injectomat Sinomedical cu SN :0265171026A007799" */
+  name: string;
+  /** Buc, Set, Ora, Luna... */
+  unit: string;
+  quantity: number;
+  /** Pretul unitar estimat, in lei fara TVA. */
+  unitPrice: number;
+  /** Caracteristici tehnice, coloana 6 din formular. */
+  specs?: string;
+}
+
+export const referatTotal = (items: ReferatItem[] = []): number =>
+  items.reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice || 0), 0);
+
 export interface Referat {
   id: string;
   /** Numarul de inregistrare, asa cum apare pe hartie. */
   number: string;
   date: string;
-  /** Sectia care solicita. */
+  /** Compartimentul care emite: "Birou Tehnic", "Serviciul Tehnic". */
+  issuedBy: string;
+  /** Seful care aproba: "Ing. Isopescu Liliana". */
+  approvedBy?: string;
+  /** Sectia beneficiara, cand achizitia e pentru una anume. */
   department: string;
-  /** Ce se cere, pe scurt. */
+  /** "Obiectul achizitiei" din formular. */
   subject: string;
-  /** De ce se cere — justificarea din referat. */
+  /** Pozitiile din tabel. */
+  items: ReferatItem[];
+  /** Punctul c): pentru ce si in ce scop se solicita achizitia. */
   justification?: string;
-  estimatedValue: number;
+  /** "Articolul bugetar aferent achizitiei este 66100 UPU" */
+  budgetArticle?: string;
+  /** Firma care a ofertat, cand referatul se sprijina pe oferte. */
+  offerProvider?: string;
+  /** Numerele ofertelor atasate, asa cum sunt scrise in referat. */
+  offerNumbers?: string;
   currency: string;
   status: ReferatStatus;
   /** Aparatele vizate, cand referatul e legat de echipamente existente. */
   deviceIds: string[];
+  /** Persoana de contact pentru informatiile din referat. */
+  contactName?: string;
+  contactRole?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   filePath?: string;
   fileUrl?: string;
   fileName?: string;
   updated_at?: string;
+  /** Referate salvate inainte de tabelul de pozitii aveau o singura valoare. */
+  estimatedValue?: number;
 }
 
+/**
+ * "Elementul de fundamentare" — ce anume se angajeaza bugetar.
+ *
+ * Prima varianta clasifica dupa felul actului atasat (oferta, studiu de piata,
+ * caiet de sarcini). Documentele reale arata ca asta e gresit: ofertele sunt
+ * anexe la referat, iar documentul de fundamentare se distinge dupa temeiul
+ * angajamentului — o achizitie directa, o alocare lunara pe un contract
+ * subsecvent, un acord-cadru.
+ */
 export enum FoundationDocType {
-  NOTA_VALOARE = 'NotaValoare',
-  STUDIU_PIATA = 'StudiuPiata',
-  OFERTA = 'Oferta',
-  CAIET_SARCINI = 'CaietSarcini',
-  NOTA_OPORTUNITATE = 'NotaOportunitate',
-  SPECIFICATII = 'Specificatii',
+  ACHIZITIE_DIRECTA = 'AchizitieDirecta',
+  CONTRACT_SUBSECVENT = 'ContractSubsecvent',
+  ACORD_CADRU = 'AcordCadru',
+  CONTRACT = 'Contract',
+  COMANDA = 'Comanda',
   ALTUL = 'Altul',
 }
 
 export const FOUNDATION_DOC_RO: Record<FoundationDocType, string> = {
-  [FoundationDocType.NOTA_VALOARE]: 'Nota justificativa valoare estimata',
-  [FoundationDocType.STUDIU_PIATA]: 'Studiu de piata',
-  [FoundationDocType.OFERTA]: 'Oferta de pret',
-  [FoundationDocType.CAIET_SARCINI]: 'Caiet de sarcini',
-  [FoundationDocType.NOTA_OPORTUNITATE]: 'Nota de oportunitate',
-  [FoundationDocType.SPECIFICATII]: 'Specificatii tehnice',
-  [FoundationDocType.ALTUL]: 'Alt document',
+  [FoundationDocType.ACHIZITIE_DIRECTA]: 'Achizitie directa',
+  [FoundationDocType.CONTRACT_SUBSECVENT]: 'Contract subsecvent',
+  [FoundationDocType.ACORD_CADRU]: 'Acord-cadru',
+  [FoundationDocType.CONTRACT]: 'Contract',
+  [FoundationDocType.COMANDA]: 'Comanda',
+  [FoundationDocType.ALTUL]: 'Alt temei',
 };
 
+/** Documentele salvate cu vechea clasificare cad pe "Alt temei". */
+export const normaliseFoundationType = (raw: unknown): FoundationDocType =>
+  Object.values(FoundationDocType).includes(raw as FoundationDocType)
+    ? (raw as FoundationDocType)
+    : FoundationDocType.ALTUL;
+
+/**
+ * Documentul de fundamentare, in forma ceruta de lege.
+ *
+ * Nu e o oferta atasata, cum credeam: e actul care justifica angajamentul
+ * bugetar. Are numar unic de inregistrare, se revizuieste — revizia 7 a
+ * aceluiasi document, pentru luna august — si poarta valoarea in trei coloane:
+ * cat era la revizia precedenta, cu cat se schimba, cat devine.
+ */
 export interface FoundationDoc {
   id: string;
-  /** Referatul pe care il sustine. Gol cand documentul e inca nelegat. */
+  /** Referatul pe care il sustine. Gol la cele care nu pornesc de la unul,
+   *  cum sunt alocarile lunare pe un contract subsecvent. */
   referatId?: string;
   type: FoundationDocType;
-  /** Numarul de inregistrare, daca are unul. */
+  /** "Numar unic de inregistrare: 17835/31.07.2026" — partea de numar. */
   number?: string;
   date: string;
-  /** Cine a emis oferta sau studiul. */
-  supplier?: string;
+  /** A cata revizuire. Prima e 0. */
+  revision?: number;
+  revisionDate?: string;
+  /** "Compartiment de specialitate: Serviciul Tehnic" */
+  compartment?: string;
+  /** Punctul 2: descrierea pe scurt a obiectului. */
+  subject?: string;
+  /** Punctul 3: descrierea pe larg a starii de fapt si de drept. */
+  description?: string;
+  /** Articolul bugetar si codul SSI din tabelul de valori. */
+  budgetArticle?: string;
+  ssiCode?: string;
+  program?: string;
+  /** "1x 3.226,67" — cum s-a ajuns la suma. */
+  parameters?: string;
+  /** Valoarea de la revizia precedenta, influenta, si totalul actualizat.
+   *  La prima revizie primele doua sunt zero. */
+  previousValue?: number;
+  influence?: number;
   amount?: number;
   currency?: string;
+  /** Firma si numarul ofertei sau contractului pe care se sprijina. */
+  supplier?: string;
+  referenceNumber?: string;
   notes?: string;
   filePath?: string;
   fileUrl?: string;
