@@ -509,6 +509,14 @@ const App: React.FC = () => {
            * Scris o data — trei copii ale aceluiasi bloc de treizeci de randuri
            * ar fi insemnat trei locuri de reparat cand tiparul se schimba.
            */
+          /**
+           * Tabelele care lipsesc din baza de date. Pana acum se scriau doar in
+           * consola: sincronizarea spunea "cloud" cu bifa verde, iar referatele
+           * ramaneau pe telefonul pe care fusesera facute, fara ca nimeni sa
+           * afle. Numele lor ajung acum sub butonul de sincronizare.
+           */
+          const sarite: string[] = [];
+
           const sincronizeaza = async <T extends { id: string; updated_at?: string }>(
             tabel: string,
             locale: T[],
@@ -519,6 +527,7 @@ const App: React.FC = () => {
               const res = await fetchAllRows<T>(tabel);
               if (res.error || !res.data) {
                 console.warn(`[App] ${tabel}: sincronizare sarita (tabelul poate lipsi)`);
+                sarite.push(tabel);
                 return;
               }
               const dinCloud = res.data;
@@ -542,6 +551,7 @@ const App: React.FC = () => {
               if (maiNoiLocal.length > 0) await upsertInChunks(tabel, maiNoiLocal);
             } catch {
               console.warn(`[App] ${tabel}: sincronizare sarita`);
+              sarite.push(tabel);
             }
           };
 
@@ -552,7 +562,10 @@ const App: React.FC = () => {
             await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB);
 
           setSyncStatus('cloud');
-          setSyncMessage('');
+          setSyncMessage(sarite.length
+            ? `Lipsesc din baza de date: ${sarite.join(', ')}. Datele lor raman doar pe acest aparat `
+              + '— ruleaza scriptul SQL din Configurare.'
+            : '');
           setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         } catch (e: any) {
           console.error("[App] Cloud sync error:", e);

@@ -3,11 +3,12 @@ import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import ConfirmDialog from './ConfirmDialog';
 import { notify } from '../services/notices';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
-import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff } from 'lucide-react';
+import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { listProfiles, updateProfile } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
+import { ACHIZITII_SQL } from '../services/achizitiiSql';
 import { SCAN_QUALITIES, getScanQuality, setScanQuality, ScanQualityId } from '../services/scanQuality';
 import { buildUploadSet } from '../services/syncMerge';
 
@@ -450,6 +451,13 @@ NOTIFY pgrst, 'reload schema';
     setTimeout(() => setCopiedSec(false), 2000);
   }, []);
 
+  const [copiedAch, setCopiedAch] = useState(false);
+  const handleCopyAchizitiiSql = useCallback(() => {
+    navigator.clipboard.writeText(ACHIZITII_SQL);
+    setCopiedAch(true);
+    setTimeout(() => setCopiedAch(false), 2000);
+  }, []);
+
   const handleCopySql = useCallback(() => {
     navigator.clipboard.writeText(SQL_FIX);
     setCopied(true);
@@ -590,6 +598,43 @@ NOTIFY pgrst, 'reload schema';
             >
               {copiedSec ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copiedSec ? 'Copiat' : 'Copiaza SQL'}
+            </button>
+          </div>
+
+          {/*
+            Al treilea script. Scriptul de schema si cel de conturi au fost
+            scrise inainte sa existe tab-urile de achizitii, deci nu stiu de
+            tabelele lor. Fara acesta, referatele si documentele de fundamentare
+            raman pe aparatul pe care au fost facute.
+          */}
+          <div className="flex items-center gap-4 mb-6 pt-4 border-t border-white/10">
+            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate si documente de fundamentare</h2>
+              <p className="text-[11px] text-indigo-300 font-bold">Ruleaza al treilea, dupa cel de conturi</p>
+            </div>
+          </div>
+
+          <div className="p-4 mb-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+            <p className="text-[13px] text-amber-200 font-semibold leading-relaxed">
+              Cele doua tabele nu sunt create de scripturile de mai sus. Pana rulezi acest script,
+              referatele si documentele de fundamentare se salveaza doar pe aparatul pe care le faci:
+              nu ajung pe telefon, si nu le vede nimeni altcineva.
+            </p>
+          </div>
+
+          <div className="bg-black/50 rounded-2xl p-6 shadow-inner relative border border-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
+            <pre className="text-xs font-mono text-indigo-100 break-all whitespace-pre-wrap leading-relaxed">
+              {ACHIZITII_SQL}
+            </pre>
+            <button
+              onClick={handleCopyAchizitiiSql}
+              className="sticky top-0 float-right -mt-2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
+            >
+              {copiedAch ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedAch ? 'Copiat' : 'Copiaza SQL'}
             </button>
           </div>
         </div>
