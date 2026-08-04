@@ -1,4 +1,5 @@
-import { uploadFile, fetchFile, removeFile, resolveSource } from './fileStorage';
+import { uploadFile, fetchFile, removeFile } from './fileStorage';
+import { cacheBlob, getCachedBlob, deleteCachedBlob } from './storageService';
 
 /**
  * Sablonul Word al institutiei, tinut o data si folosit de toata lumea.
@@ -22,22 +23,28 @@ const CAI: Record<FelSablon, string> = {
 const memorie = new Map<FelSablon, Blob | null>();
 
 export const punSablon = async (fel: FelSablon, fisier: Blob): Promise<boolean> => {
-  const rezultat = await uploadFile(CAI[fel], fisier);
   memorie.set(fel, fisier);
+  // Copia locala se pune si se pastreaza indiferent de cloud. uploadFile o
+  // sterge cand urcarea esueaza — corect pentru un document atasat unui
+  // aparat, gresit pentru sablon: cineva l-ar pune fara semnal, ar genera
+  // documentele toata ziua, si l-ar gasi disparut a doua zi.
+  await cacheBlob(CAI[fel], fisier).catch(() => { /* mai incercam la citire */ });
+  const rezultat = await uploadFile(CAI[fel], fisier);
+  await cacheBlob(CAI[fel], fisier).catch(() => { /* ignoram */ });
   return !!rezultat.path;
 };
 
 export const iaSablon = async (fel: FelSablon): Promise<Blob | null> => {
   if (memorie.has(fel)) return memorie.get(fel) || null;
-  // resolveSource cauta intai in copia locala, apoi in cloud — deci merge si
-  // fara semnal, daca sablonul a fost folosit macar o data pe acest telefon.
-  const sursa = await resolveSource({ path: CAI[fel] }).catch(() => null);
-  const blob = sursa?.blob || (await fetchFile(CAI[fel]).catch(() => null));
+  // Intai copia locala — merge si fara semnal — apoi cloud-ul.
+  const local = await getCachedBlob(CAI[fel]).catch(() => null);
+  const blob = local || (await fetchFile(CAI[fel]).catch(() => null));
   memorie.set(fel, blob || null);
   return blob || null;
 };
 
 export const scoateSablon = async (fel: FelSablon): Promise<void> => {
+  await deleteCachedBlob(CAI[fel]).catch(() => {});
   await removeFile(CAI[fel]).catch(() => {});
   memorie.set(fel, null);
 };
