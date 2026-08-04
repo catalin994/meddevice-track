@@ -61,24 +61,57 @@ interface PdfItem { str: string; transform?: number[]; hasEOL?: boolean }
  * second. The caller joins the pages with newlines.
  */
 export const pdfItemsToText = (items: PdfItem[]): string => {
-  const cu = items.filter(i => i.str && i.str.trim() && i.transform);
+  const cu = items.filter(i => i.str && i.str.trim() && i.transform && i.transform.length >= 6);
   if (cu.length === 0) return items.map(i => i.str).join(' ');
 
-  // Two runs belong to the same line when their baselines are within a couple
-  // of points — subscripts and slightly shifted fragments included.
-  const TOLERANTA = 3;
-  const randuri: { y: number; parti: { x: number; s: string }[] }[] = [];
+  /*
+   * Which way does the text run?
+   *
+   * A text item's matrix is [a, b, c, d, x, y], where (a, b) is the direction
+   * each glyph advances. On an upright page that is (fontSize, 0) — along x.
+   * On a page rotated a quarter turn it is (0, ±fontSize) — along y, and then
+   * a *line* is a column of constant x, read top to bottom.
+   *
+   * This matters more than it sounds. Every RO e-Factura PDF is landscape and
+   * rotated, so grouping by y read its columns as rows: the header row came
+   * out as one line, the values as another, and "Data emitere" ended up
+   * nowhere near its date. Reading the direction off the matrix is the whole
+   * difference between a parsable invoice and a bag of words.
+   */
+  let orizontale = 0, verticale = 0, sumaA = 0, sumaB = 0;
   for (const it of cu) {
-    const x = it.transform![4];
-    const y = it.transform![5];
-    let rand = randuri.find(r => Math.abs(r.y - y) <= TOLERANTA);
-    if (!rand) { rand = { y, parti: [] }; randuri.push(rand); }
-    rand.parti.push({ x, s: it.str });
+    const [a, b] = it.transform!;
+    if (Math.abs(a) >= Math.abs(b)) { orizontale++; sumaA += a; }
+    else { verticale++; sumaB += b; }
+  }
+  const rotit = verticale > orizontale;
+  // +1 daca textul curge in sensul crescator al axei, -1 daca invers
+  const sens = rotit ? (sumaB >= 0 ? 1 : -1) : (sumaA >= 0 ? 1 : -1);
+
+  // Pe un rand: coordonata care nu se schimba. In rand: cea care se schimba.
+  const cheie = (it: PdfItem) => (rotit ? it.transform![4] : it.transform![5]);
+  const inRand = (it: PdfItem) => (rotit ? it.transform![5] : it.transform![4]);
+  const dim = (it: PdfItem) => Math.hypot(it.transform![2], it.transform![3]) || 10;
+
+  const randuri: { c: number; parti: { p: number; s: string }[] }[] = [];
+  for (const it of cu) {
+    const c = cheie(it);
+    // Toleranta creste cu marimea fontului: un titlu de 18px nu se aliniaza
+    // la fel de strans ca un rand de tabel de 7px.
+    const tol = Math.max(2, dim(it) * 0.4);
+    let rand = randuri.find(r => Math.abs(r.c - c) <= tol);
+    if (!rand) { rand = { c, parti: [] }; randuri.push(rand); }
+    rand.parti.push({ p: inRand(it), s: it.str });
   }
 
+  // Randurile se succed perpendicular pe directia textului. Pe o pagina
+  // dreapta asta inseamna y descrescator (de sus in jos); pe una rotita la
+  // dreapta, x crescator.
+  const ordineRanduri = rotit ? sens : -sens;
+
   return randuri
-    .sort((a, b) => b.y - a.y)            // pagina se citeste de sus in jos
-    .map(r => r.parti.sort((a, b) => a.x - b.x).map(p => p.s).join(' ')
+    .sort((a, b) => (a.c - b.c) * ordineRanduri)
+    .map(r => r.parti.sort((a, b) => (a.p - b.p) * sens).map(p => p.s).join(' ')
                .replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .join('\n');
@@ -207,7 +240,34 @@ const FORMA_JURIDICA = /\b(s\.?r\.?l\.?|s\.?a\.?|p\.?f\.?a\.?|s\.?c\.?|gmbh|ag|l
 /** Lines from the buyer's block, or headings — never the supplier. */
 const NU_E_FURNIZOR = /cumparator|client|beneficiar|achizitor|delegat|factura|factură|invoice|proforma|chitanta|aviz|cui\s*:|cif\s*:|adresa|banca|iban|cont\s|tel|email|@/i;
 
+/** Where the buyer's half of a two-column header begins. */
+const INCEPE_CUMPARATORUL = /\b(cumparator|client|beneficiar|achizitor|buyer|customer)\b/i;
+
 const gasesteFurnizor = (linii: string[]): string => {
+  /*
+   * e-Factura prints the two parties side by side, so a single reconstructed
+   * line reads "Nume <vanzator> Nume <cumparator>". Taking the line whole
+   * named the hospital as its own supplier. The vendor block is whatever comes
+   * after the "VANZATOR" marker and before the buyer's column starts — or
+   * before the label repeats, which is the same boundary seen from the left.
+   */
+  const marcaj = linii.findIndex(l => /\b(vanzator|furnizor|prestator|emitent|seller|supplier)\b/i.test(norm(l)));
+  if (marcaj >= 0) {
+    for (const linie of linii.slice(marcaj, marcaj + 5)) {
+      const m = norm(linie).match(/\bnume\b\s*:?\s*/);
+      if (!m || m.index === undefined) continue;
+      let rest = linie.slice(m.index + m[0].length);
+      // Taie la coloana cumparatorului, sau la a doua aparitie a etichetei
+      const dupaCumparator = rest.search(INCEPE_CUMPARATORUL);
+      if (dupaCumparator > 0) rest = rest.slice(0, dupaCumparator);
+      const dinNou = norm(rest).indexOf('nume', 1);
+      if (dinNou > 0) rest = rest.slice(0, dinNou);
+      rest = rest.split(/\s+(?:nr\.?\s*inregistrare|cui|cif|c\.u\.i|identificator|adresa|strada|oras|tara|iban)\b/i)[0];
+      rest = rest.trim();
+      if (rest.length >= 3) return rest.slice(0, 80);
+    }
+  }
+
   // "Furnizor: X" spune direct cine e; taie unde incepe urmatorul camp.
   for (const linie of linii.slice(0, 25)) {
     const m = norm(linie).match(/furnizor\s*:?\s*/);
