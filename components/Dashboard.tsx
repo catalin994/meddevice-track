@@ -47,14 +47,46 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
   }, [devices]);
 
+  const defecte = useMemo(
+    () => devices.filter(d => d.status === DeviceStatus.BROKEN).length, [devices]);
+  const sectii = useMemo(
+    () => new Set(devices.map(d => (d.department || '').trim()).filter(Boolean)).size, [devices]);
+  const intarziate = useMemo(
+    () => upcomingMaintenance.filter(d => d.daysRemaining < 0).length, [upcomingMaintenance]);
+
   return (
     <div className="space-y-8 animate-slide-up">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        <StatCard title="Total Echipamente" value={devices.length} icon={<Activity className="w-5 h-5" />} trend="+2.4%" color="text-blue-600" bgColor="bg-blue-50" />
-        <StatCard title="Defectiuni Critice" value={devices.filter(d => d.status === DeviceStatus.BROKEN).length} icon={<AlertTriangle className="w-5 h-5" />} trend="Risc ridicat" color="text-red-700" bgColor="bg-red-50" />
-        <StatCard title="Tichete Active" value={pendingTasks} icon={<CheckSquare className="w-5 h-5" />} trend="Operational" color="text-indigo-600" bgColor="bg-indigo-50" />
-        <StatCard title="Interventii Urgente" value={criticalTasks} icon={<AlertTriangle className="w-5 h-5" />} trend="Imediat" color="text-orange-700" bgColor="bg-orange-50" />
-        <StatCard title="Mentenante Programate" value={upcomingMaintenance.length} icon={<Wrench className="w-5 h-5" />} trend="Urm. 30 zile" color="text-amber-700" bgColor="bg-amber-50" />
+        <StatCard
+          title="Total Echipamente" value={devices.length}
+          icon={<Activity className="w-5 h-5" />} color="text-blue-600" bgColor="bg-blue-50"
+          note={sectii === 1 ? 'o sectie' : `${sectii} sectii`} tone="neutral"
+        />
+        <StatCard
+          title="Defectiuni Critice" value={defecte}
+          icon={<AlertTriangle className="w-5 h-5" />} color="text-red-700" bgColor="bg-red-50"
+          note={defecte === 0 ? 'Niciuna' : defecte === 1 ? 'Necesita interventie' : 'Necesita interventii'}
+          tone={defecte === 0 ? 'ok' : 'alert'}
+        />
+        <StatCard
+          title="Tichete Active" value={pendingTasks}
+          icon={<CheckSquare className="w-5 h-5" />} color="text-indigo-600" bgColor="bg-indigo-50"
+          note={pendingTasks === 0 ? 'Niciunul deschis' : 'In lucru'}
+          tone={pendingTasks === 0 ? 'ok' : 'neutral'}
+        />
+        <StatCard
+          title="Interventii Urgente" value={criticalTasks}
+          icon={<AlertTriangle className="w-5 h-5" />} color="text-orange-700" bgColor="bg-orange-50"
+          note={criticalTasks === 0 ? 'Niciuna' : 'Imediat'}
+          tone={criticalTasks === 0 ? 'ok' : 'alert'}
+        />
+        <StatCard
+          title="Mentenante Programate" value={upcomingMaintenance.length}
+          icon={<Wrench className="w-5 h-5" />} color="text-amber-700" bgColor="bg-amber-50"
+          note={upcomingMaintenance.length === 0 ? 'Nimic in 30 zile'
+                : intarziate > 0 ? `${intarziate} cu termen depasit` : 'Urm. 30 zile'}
+          tone={upcomingMaintenance.length === 0 ? 'ok' : intarziate > 0 ? 'alert' : 'warn'}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -80,7 +112,15 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Interventii Prioritare</h3>
               <p className="text-[13px] font-semibold text-slate-500 mt-1">Operatiuni cu prioritate ridicata</p>
             </div>
-            <span className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[11px] font-bold whitespace-nowrap">Prioritate maxima</span>
+            {/* A count, not a slogan: the black "Prioritate maxima" pill sat
+                here even when the list under it was empty. */}
+            <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
+              dispatchTasks.length === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white'
+            }`}>
+              {dispatchTasks.length === 0
+                ? 'Nimic urgent'
+                : `${dispatchTasks.length} ${dispatchTasks.length === 1 ? 'interventie' : 'interventii'}`}
+            </span>
           </div>
           <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {dispatchTasks.map(task => (
@@ -151,13 +191,32 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks }) => {
   );
 };
 
-const StatCard = React.memo(({ title, value, icon, trend, color, bgColor }: { title: string, value: number, icon: React.ReactNode, trend: string, color: string, bgColor: string }) => (
+/**
+ * The badge says what the number means, and changes when the number does.
+ *
+ * It used to be a fixed string per card, so "Defectiuni Critice: 0" wore a red
+ * "Risc ridicat" and "Interventii Urgente: 0" an orange "Imediat". A hospital
+ * with nothing wrong opened the app to a wall of alarm, which is the fastest
+ * way to teach people to stop reading the colours. The first card was worse
+ * still: "+2.4%" was written into the source, computed from nothing.
+ */
+const TONES: Record<'ok' | 'warn' | 'alert' | 'neutral', string> = {
+  ok:      'bg-emerald-50 text-emerald-700',
+  warn:    'bg-amber-50 text-amber-700',
+  alert:   'bg-red-50 text-red-700',
+  neutral: 'bg-slate-100 text-slate-600',
+};
+
+const StatCard = React.memo(({ title, value, icon, note, tone, color, bgColor }: {
+  title: string; value: number; icon: React.ReactNode;
+  note: string; tone: keyof typeof TONES; color: string; bgColor: string;
+}) => (
   <div className="hardware-card p-6 rounded-[2rem] group hover:border-blue-200 transition-colors">
     <div className="flex items-center justify-between mb-4">
       <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${bgColor} ${color}`}>
         {icon}
       </div>
-      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${bgColor} ${color}`}>{trend}</span>
+      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${TONES[tone]}`}>{note}</span>
     </div>
     <div>
       <p className="text-[13px] font-bold text-slate-500 leading-snug min-h-[2.1rem]">{title}</p>
