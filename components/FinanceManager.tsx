@@ -12,6 +12,7 @@ import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage
 
 import Portal from './Portal';
 import Pager, { usePagination, PageSizePicker } from './Pager';
+import ConfirmDialog from './ConfirmDialog';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 
 interface FinanceManagerProps {
@@ -132,6 +133,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
+  // The browser's own confirm() looked like a system fault next to the rest of
+  // the app, and on a phone it is a grey slab with the site's hostname on it.
+  const [pendingDelete, setPendingDelete] = useState<Invoice | null>(null);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [deviceSearch, setDeviceSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
@@ -682,7 +686,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                       <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition" title="Editeaza">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => { if (window.confirm(`Stergi factura ${inv.invoiceNumber}?`)) onDeleteInvoice(inv.id); }} className="p-2.5 bg-slate-50 text-slate-400 hover:text-red-600 rounded-xl transition" title="Sterge">
+                      <button onClick={() => setPendingDelete(inv)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-red-600 rounded-xl transition" title="Sterge" aria-label={`Sterge factura ${inv.invoiceNumber}`}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -893,6 +897,20 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         </div>
         </Portal>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Stergi factura?"
+        icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          Factura <span className="font-black text-slate-900">{pendingDelete?.invoiceNumber}</span>
+          {pendingDelete?.supplier ? <> de la <span className="font-black text-slate-900">{pendingDelete.supplier}</span></> : null}
+          {' '}se sterge definitiv din evidenta.
+        </>}
+        confirmLabel="Sterge factura"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => { if (pendingDelete) onDeleteInvoice(pendingDelete.id); setPendingDelete(null); }}
+      />
 
       {/* Local input styling */}
       <style>{`.fin-input{width:100%;padding:0.85rem 1.1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:1rem;font-size:0.85rem;font-weight:700;outline:none}.fin-input:focus{box-shadow:0 0 0 4px rgba(37,99,235,0.08)}`}</style>

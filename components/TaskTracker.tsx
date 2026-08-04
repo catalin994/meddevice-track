@@ -6,6 +6,7 @@ import IncidentReport from './IncidentReport';
 
 import Portal from './Portal';
 import Pager, { usePagination, PageSizePicker } from './Pager';
+import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
 // cache), older ones are still inline data URLs.
@@ -76,6 +77,10 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<TaskViewMode>('CARDS');
   const [isReportingIncident, setIsReportingIncident] = useState(false);
+  // Every bin in this screen goes through here rather than straight to the
+  // delete: a ticket carries the description of a fault and whatever was
+  // attached to it, and none of that comes back.
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
@@ -297,7 +302,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               devices={devices}
               onToggleStatus={toggleStatus}
               onEdit={handleEdit}
-              onDelete={onDeleteTask}
+              onDelete={setPendingDelete}
             />
           ))}
           <Pager page={page} pageCount={pageCount} pageSize={pageSize}
@@ -377,7 +382,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                         <button onClick={() => handleEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => onDeleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
+                        <button onClick={() => setPendingDelete(task.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -427,7 +432,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                       <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
                         <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-300 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
-                        <button onClick={() => onDeleteTask(task.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                     <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
@@ -463,6 +468,21 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           onClose={() => setIsReportingIncident(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Stergi tichetul?"
+        icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          <span className="font-black text-slate-900">
+            {tasks.find(t => t.id === pendingDelete)?.title || 'Acest tichet'}
+          </span>{' '}
+          se sterge definitiv, impreuna cu descrierea si fisierele atasate.
+        </>}
+        confirmLabel="Sterge tichetul"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => { if (pendingDelete) onDeleteTask(pendingDelete); setPendingDelete(null); }}
+      />
 
       {(isAdding || editingTask) && (
         <Portal>

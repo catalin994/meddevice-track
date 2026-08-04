@@ -6,6 +6,7 @@ import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw,
 import Portal from './Portal';
 import Pager, { PAGE_SIZES, PageSizePicker } from './Pager';
 import DepartmentPicker from './DepartmentPicker';
+import ConfirmDialog from './ConfirmDialog';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 /**
@@ -775,6 +776,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterTag, setFilterTag] = useState<string | 'ALL'>(listState.tag);
   const [localSearch, setLocalSearch] = useState(listState.search);
   const [showQRSheet, setShowQRSheet] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   // Paged rendering: the user picks how many devices a page holds, which also
   // keeps the DOM small instead of mounting the whole fleet at once.
@@ -949,11 +951,18 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     setEditingDevice(null);
   }, [editingDevice, quickEditForm, onUpdateDevice]);
 
+  // The bin sits a thumb's width from the card you tap to open a device, and
+  // the delete is not reversible. Ask, the same way the detail page does.
   const handleDeleteClick = useCallback((e: React.MouseEvent, deviceId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    onDelete(deviceId);
-  }, [onDelete]);
+    setPendingDelete(deviceId);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
+    if (pendingDelete) onDelete(pendingDelete);
+    setPendingDelete(null);
+  }, [pendingDelete, onDelete]);
 
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -1245,6 +1254,21 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           <QRLabelSheet devices={filteredDevices} onClose={() => setShowQRSheet(false)} />
         </React.Suspense>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Confirmare stergere"
+        icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          Se sterge definitiv{' '}
+          <span className="font-black text-slate-900">
+            {devices.find(d => d.id === pendingDelete)?.name || 'acest dispozitiv'}
+          </span>{' '}
+          si tot istoricul de service asociat.
+        </>}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 });

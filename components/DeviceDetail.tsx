@@ -7,6 +7,7 @@ import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from 
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import { LogoTile } from './Logo';
 import DepartmentPicker from './DepartmentPicker';
+import ConfirmDialog from './ConfirmDialog';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -36,6 +37,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [isEditing, setIsEditing] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [pendingFileDelete, setPendingFileDelete] = useState<DeviceFile | null>(null);
+  const [isRemovingFile, setIsRemovingFile] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -196,13 +199,22 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     }
   }, [device, editForm, onUpdate, uploadType]);
 
+  // Removing a document deletes it from cloud storage too — there is no copy
+  // left to restore from, so this one has to be asked before, not regretted
+  // after. A scanned service report is often the only record of the visit.
   const handleRemoveFile = useCallback(async (fileId: string) => {
     const target = editForm.files.find(f => f.id === fileId);
-    if (target?.path) await removeFile(target.path);
-    const updatedFiles = editForm.files.filter(f => f.id !== fileId);
-    setEditForm(prev => ({ ...prev, files: updatedFiles }));
-    // Always save changes immediately
-    await onUpdate({ ...device, ...editForm, files: updatedFiles });
+    setIsRemovingFile(true);
+    try {
+      if (target?.path) await removeFile(target.path);
+      const updatedFiles = editForm.files.filter(f => f.id !== fileId);
+      setEditForm(prev => ({ ...prev, files: updatedFiles }));
+      // Always save changes immediately
+      await onUpdate({ ...device, ...editForm, files: updatedFiles });
+    } finally {
+      setIsRemovingFile(false);
+      setPendingFileDelete(null);
+    }
   }, [device, editForm, onUpdate]);
 
   // Opens the built-in viewer instead of a new browser tab, so the user can
@@ -226,28 +238,32 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-[2.5rem] shadow-xl sm:shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-fade-in">
-      {showPurgeConfirm && (
-        <Portal>
-        <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-4">
-           <div className="hardware-card p-6 sm:p-12 max-w-lg w-full text-center rounded-3xl sm:rounded-[3rem] shadow-2xl animate-slide-up">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-8">
-                 <Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />
-              </div>
-              <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-3 sm:mb-4">Confirmare stergere</h3>
-              <p className="text-sm text-slate-500 font-medium mb-6 sm:mb-10 leading-relaxed">
-                 Sunteti pe cale sa stergeti definitiv <span className="font-black text-slate-900">{device.name}</span> si tot istoricul de service asociat.
-              </p>
-              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
-                 <button disabled={isPurging} onClick={() => setShowPurgeConfirm(false)} className="flex-1 py-4 sm:py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Anuleaza</button>
-                 <button disabled={isPurging} onClick={handleFinalPurge} className="sm:flex-[2] py-4 sm:py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-xl shadow-red-500/20 transition flex items-center justify-center gap-3">
-                    {isPurging ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                    {isPurging ? "Se sterge..." : "Confirma stergerea"}
-                 </button>
-              </div>
-           </div>
-        </div>
-        </Portal>
-      )}
+      <ConfirmDialog
+        open={showPurgeConfirm}
+        busy={isPurging}
+        title="Confirmare stergere"
+        icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          Se sterge definitiv <span className="font-black text-slate-900">{device.name}</span> si
+          tot istoricul de service asociat.
+        </>}
+        onCancel={() => setShowPurgeConfirm(false)}
+        onConfirm={handleFinalPurge}
+      />
+
+      <ConfirmDialog
+        open={!!pendingFileDelete}
+        busy={isRemovingFile}
+        title="Stergi documentul?"
+        icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          <span className="font-black text-slate-900">{pendingFileDelete?.name}</span> se sterge
+          si din cloud. Nu mai exista nicio copie de unde sa fie recuperat.
+        </>}
+        confirmLabel="Sterge documentul"
+        onCancel={() => setPendingFileDelete(null)}
+        onConfirm={() => { if (pendingFileDelete) handleRemoveFile(pendingFileDelete.id); }}
+      />
 
       <div className="p-4 sm:p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 sm:gap-6 bg-white/50 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600 opacity-20" />
@@ -526,7 +542,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'manual').length > 0 ? (
                        editForm.files.filter(f => f.type === 'manual').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -550,7 +566,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'report').length > 0 ? (
                        editForm.files.filter(f => f.type === 'report').map(file => (
-                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -573,7 +589,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'service').length > 0 ? (
                        editForm.files.filter(f => f.type === 'service').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -596,7 +612,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
                        editForm.files.filter(f => f.type === 'achizitie').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -619,7 +635,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                        {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => handleRemoveFile(file.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
                        ))}
                     </div>
                   </div>
