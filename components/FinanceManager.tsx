@@ -5,7 +5,7 @@ import {
   CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark,
   FolderOpen, FileSpreadsheet
 } from 'lucide-react';
-import { MedicalDevice, Invoice, InvoiceStatus, Contract } from '../types';
+import { MedicalDevice, Invoice, InvoiceStatus, Contract, normaliseInvoiceStatus } from '../types';
 import ContractManager from './ContractManager';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
@@ -35,31 +35,29 @@ const emptyForm = () => ({
   dueDate: '',
   amount: 0,
   currency: 'RON',
-  status: InvoiceStatus.UNPAID,
+  status: InvoiceStatus.NOT_UPLOADED,
+  uploadedAt: '',
   contractNumber: '',
   description: '',
   fileUrl: '',
   fileName: '',
 });
 
-// An unpaid invoice past its due date is effectively overdue even if not marked so
-export const effectiveStatus = (inv: Invoice): InvoiceStatus => {
-  if (inv.status === InvoiceStatus.UNPAID && inv.dueDate && inv.dueDate < new Date().toISOString().split('T')[0]) {
-    return InvoiceStatus.OVERDUE;
-  }
-  return inv.status;
-};
+/**
+ * Statusul unei facturi vechi poate fi orice sir din vremea platilor; il
+ * aducem la cele doua stari actuale de fiecare data cand il citim.
+ */
+export const effectiveStatus = (inv: Invoice): InvoiceStatus =>
+  normaliseInvoiceStatus(inv.status);
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  [InvoiceStatus.PAID]: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  [InvoiceStatus.UNPAID]: 'bg-amber-50 text-amber-700 border-amber-200',
-  [InvoiceStatus.OVERDUE]: 'bg-red-50 text-red-700 border-red-200',
+  [InvoiceStatus.UPLOADED]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [InvoiceStatus.NOT_UPLOADED]: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  [InvoiceStatus.PAID]: 'Platita',
-  [InvoiceStatus.UNPAID]: 'Neplatita',
-  [InvoiceStatus.OVERDUE]: 'Restanta',
+  [InvoiceStatus.UPLOADED]: 'Incarcata ConectX',
+  [InvoiceStatus.NOT_UPLOADED]: 'Neincarcata ConectX',
 };
 
 
@@ -134,8 +132,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
     const thisYear = new Date().getFullYear().toString();
     return {
       yearTotal: inCurrency.filter(i => i.issueDate?.startsWith(thisYear)).reduce((s, i) => s + i.amount, 0),
-      unpaid: inCurrency.filter(i => effectiveStatus(i) !== InvoiceStatus.PAID).reduce((s, i) => s + i.amount, 0),
-      overdueCount: invoices.filter(i => effectiveStatus(i) === InvoiceStatus.OVERDUE).length,
+      neincarcatValoare: inCurrency
+        .filter(i => effectiveStatus(i) === InvoiceStatus.NOT_UPLOADED)
+        .reduce((s, i) => s + i.amount, 0),
+      neincarcatNumar: invoices.filter(i => effectiveStatus(i) === InvoiceStatus.NOT_UPLOADED).length,
       contractsAnnual: globalContracts.reduce((s, c) => s + (c.annualCost || 0), 0),
     };
   }, [invoices, dominantCurrency, globalContracts]);
@@ -393,7 +393,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         dueDate: d.dueDate || undefined,
         amount: d.amount,
         currency: d.currency,
-        status: InvoiceStatus.UNPAID,
+        status: InvoiceStatus.NOT_UPLOADED,
         contractNumber: d.contractNumber || undefined,
         deviceIds: d.deviceIds,
         filePath,
@@ -419,7 +419,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         'SCADENTA': inv.dueDate || '',
         'SUMA': inv.amount,
         'MONEDA': inv.currency,
-        'STATUS': STATUS_LABELS[effectiveStatus(inv)],
+        'STATUS CONECTX': STATUS_LABELS[effectiveStatus(inv)],
+        'DATA INCARCARII': inv.uploadedAt || '',
         'CONTRACT': inv.contractNumber || '',
         'DISPOZITIVE': inv.deviceIds.map(id => devicesMap.get(id)?.name || id).join(', '),
         'SERII': inv.deviceIds.map(id => devicesMap.get(id)?.serialNumber || '').filter(Boolean).join(', '),
@@ -449,7 +450,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       dueDate: inv.dueDate || '',
       amount: inv.amount,
       currency: inv.currency,
-      status: inv.status,
+      status: normaliseInvoiceStatus(inv.status),
+      uploadedAt: inv.uploadedAt || '',
       contractNumber: inv.contractNumber || '',
       description: inv.description || '',
       fileUrl: inv.fileUrl || '',
@@ -474,6 +476,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       if (uploaded.path) { filePath = uploaded.path; inlineUrl = undefined; }
     }
 
+    // Data incarcarii se pune singura la trecerea pe "incarcata" si se sterge
+    // daca cineva o da inapoi — altfel ar ramane o data care spune ca s-a
+    // intamplat ceva ce nu s-a intamplat.
+    const uploadedAt = form.status === InvoiceStatus.UPLOADED
+      ? (form.uploadedAt || new Date().toISOString().split('T')[0])
+      : undefined;
+
     const invoice: Invoice = {
       id,
       invoiceNumber: form.invoiceNumber.trim(),
@@ -483,6 +492,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
       amount: form.amount,
       currency: form.currency,
       status: form.status,
+      uploadedAt,
       contractNumber: form.contractNumber || undefined,
       deviceIds: selectedDeviceIds,
       description: form.description || undefined,
@@ -493,6 +503,20 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
     onUpsertInvoice(invoice);
     setIsEditing(false);
   }, [editingId, form, selectedDeviceIds, onUpsertInvoice]);
+
+  /**
+   * Trecerea unei facturi pe "incarcata" e o bifa, nu o editare: se face de
+   * zeci de ori pe luna, iar deschisul formularului de fiecare data ar fi
+   * patru atingeri in loc de una.
+   */
+  const toggleUploaded = useCallback((inv: Invoice) => {
+    const acum = normaliseInvoiceStatus(inv.status) === InvoiceStatus.UPLOADED;
+    onUpsertInvoice({
+      ...inv,
+      status: acum ? InvoiceStatus.NOT_UPLOADED : InvoiceStatus.UPLOADED,
+      uploadedAt: acum ? undefined : new Date().toISOString().split('T')[0],
+    });
+  }, [onUpsertInvoice]);
 
   const toggleDevice = useCallback((id: string) => {
     setSelectedDeviceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -556,8 +580,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard icon={<Receipt className="w-5 h-5" />} label={`Facturat ${new Date().getFullYear()}`} value={`${fmt(totals.yearTotal)} ${dominantCurrency}`} tone="blue" />
-            <KpiCard icon={<Clock className="w-5 h-5" />} label="De plata" value={`${fmt(totals.unpaid)} ${dominantCurrency}`} tone="amber" />
-            <KpiCard icon={<AlertTriangle className="w-5 h-5" />} label="Facturi restante" value={`${totals.overdueCount}`} tone="red" />
+            <KpiCard icon={<Clock className="w-5 h-5" />} label="Neincarcate in ConectX" value={`${totals.neincarcatNumar}`} tone={totals.neincarcatNumar > 0 ? 'amber' : 'blue'} />
+            <KpiCard icon={<Wallet className="w-5 h-5" />} label="Valoare neincarcata" value={`${fmt(totals.neincarcatValoare)} ${dominantCurrency}`} tone="indigo" />
             <KpiCard icon={<Landmark className="w-5 h-5" />} label="Contracte / an" value={`${fmt(totals.contractsAnnual)}`} tone="indigo" />
           </div>
 
@@ -637,7 +661,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
               />
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              {(['ALL', InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE] as const).map(s => (
+              {(['ALL', InvoiceStatus.NOT_UPLOADED, InvoiceStatus.UPLOADED] as const).map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   className={`px-4 py-3 rounded-xl text-[11px] font-bold transition ${statusFilter === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>
                   {s === 'ALL' ? 'Toate' : STATUS_LABELS[s]}
@@ -667,7 +691,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 return (
                   <div key={inv.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-lg transition-all flex flex-col lg:flex-row lg:items-center gap-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`p-3 rounded-2xl shrink-0 ${st === InvoiceStatus.PAID ? 'bg-emerald-50 text-emerald-600' : st === InvoiceStatus.OVERDUE ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <div className={`p-3 rounded-2xl shrink-0 ${st === InvoiceStatus.UPLOADED ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         <Receipt className="w-6 h-6" />
                       </div>
                       <div className="min-w-0">
@@ -680,7 +704,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-bold text-slate-500 mt-1 truncate">{inv.supplier} · {inv.issueDate}{inv.dueDate ? ` · scadenta ${inv.dueDate}` : ''}</p>
+                        <p className="text-xs font-bold text-slate-500 mt-1 truncate">
+                          {inv.supplier} · {inv.issueDate}{inv.dueDate ? ` · scadenta ${inv.dueDate}` : ''}
+                          {st === InvoiceStatus.UPLOADED && inv.uploadedAt ? ` · incarcata ${inv.uploadedAt}` : ''}
+                        </p>
                         {inv.deviceIds.length > 0 && (
                           <p className="text-[11px] font-bold text-slate-500 mt-0.5 truncate">
                             {inv.deviceIds.slice(0, 3).map(id => devicesMap.get(id)?.name || id).join(', ')}
@@ -696,6 +723,20 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                           <Download className="w-4 h-4" />
                         </button>
                       )}
+                      <button
+                        onClick={() => toggleUploaded(inv)}
+                        className={`p-2.5 rounded-xl transition ${st === InvoiceStatus.UPLOADED
+                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          : 'bg-slate-50 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50'}`}
+                        title={st === InvoiceStatus.UPLOADED
+                          ? 'Marcheaza ca neincarcata in ConectX'
+                          : 'Marcheaza ca incarcata in ConectX'}
+                        aria-label={st === InvoiceStatus.UPLOADED
+                          ? `Marcheaza factura ${inv.invoiceNumber} ca neincarcata in ConectX`
+                          : `Marcheaza factura ${inv.invoiceNumber} ca incarcata in ConectX`}
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                      </button>
                       <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Editeaza" aria-label="Editeaza">
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -775,7 +816,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Facturile se salveaza cu status "Neplatita" — le poti actualiza ulterior
+                Facturile se salveaza ca neincarcate in ConectX — le bifezi dupa ce le urci
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
@@ -880,9 +921,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                 </Field>
                 <Field label="Status">
                   <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as InvoiceStatus }))} className="fin-input">
-                    <option value={InvoiceStatus.UNPAID}>Neplatita</option>
-                    <option value={InvoiceStatus.PAID}>Platita</option>
-                    <option value={InvoiceStatus.OVERDUE}>Restanta</option>
+                    <option value={InvoiceStatus.NOT_UPLOADED}>Neincarcata ConectX</option>
+                    <option value={InvoiceStatus.UPLOADED}>Incarcata ConectX</option>
                   </select>
                 </Field>
                 <Field label="Contract asociat">

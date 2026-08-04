@@ -192,11 +192,26 @@ export const calculateNextMaintenanceDate = (baseDate: string, category: string)
 
 export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS' | 'FINANCE';
 
+/**
+ * Where an invoice stands with ConectX.
+ *
+ * This used to track payment — paid, unpaid, overdue — which is accounting's
+ * business, not the biomedical department's. What the department actually
+ * needs to know is whether the invoice has been pushed into ConectX yet.
+ */
 export enum InvoiceStatus {
-  PAID = 'Paid',
-  UNPAID = 'Unpaid',
-  OVERDUE = 'Overdue',
+  UPLOADED = 'Uploaded',
+  NOT_UPLOADED = 'NotUploaded',
 }
+
+/**
+ * Invoices saved before the change carry 'Paid' / 'Unpaid' / 'Overdue'.
+ * None of them says anything about ConectX, so they all start as not
+ * uploaded — inventing an upload that never happened would be worse than
+ * asking someone to tick a box.
+ */
+export const normaliseInvoiceStatus = (raw: unknown): InvoiceStatus =>
+  raw === InvoiceStatus.UPLOADED ? InvoiceStatus.UPLOADED : InvoiceStatus.NOT_UPLOADED;
 
 // Romanian display labels — stored values stay in English so existing data keeps working
 export const DEVICE_STATUS_RO: Record<DeviceStatus, string> = {
@@ -276,6 +291,8 @@ export interface Invoice {
   amount: number;
   currency: string;
   status: InvoiceStatus;
+  /** When it was marked as uploaded to ConectX (ISO date). */
+  uploadedAt?: string;
   contractNumber?: string;   // optional link to a service contract
   deviceIds: string[];       // devices this cost is associated with
   description?: string;
