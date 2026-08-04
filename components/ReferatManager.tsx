@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   FileSignature, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Building2, CheckCircle,
+  Paperclip, Building2, CheckCircle, FileDown,
 } from 'lucide-react';
 import {
   MedicalDevice, Referat, ReferatItem, ReferatStatus, REFERAT_STATUS_RO,
@@ -14,6 +14,8 @@ import DepartmentPicker from './DepartmentPicker';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
+import { referatDocx, numeFisier } from '../services/documenteAchizitie';
+import { notify } from '../services/notices';
 
 /**
  * Referatul de necesitate — inceputul dosarului unei achizitii.
@@ -50,6 +52,8 @@ const gol = () => {
   return {
     number: '',
     date: new Date().toISOString().split('T')[0],
+    autoritate: a.autoritate || '',
+    manager: a.manager || '',
     issuedBy: a.issuedBy || '',
     approvedBy: a.approvedBy || '',
     department: '',
@@ -71,6 +75,23 @@ const gol = () => {
 };
 
 const fmt = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Referatul, ca document Word gata de tiparit si semnat.
+ *
+ * Pana acum aplicatia tinea datele si omul rescria hartia in Word. Acum e
+ * invers: se completeaza o data, si actul iese cu tabelul, totalul si
+ * semnaturile la locul lor.
+ */
+const descarcaWord = async (r: Referat) => {
+  try {
+    const antet = antetSalvat();
+    const blob = await referatDocx(r, { autoritate: antet.autoritate, manager: antet.manager });
+    await saveFileAs(numeFisier(['Referat', r.number, r.subject]), blob);
+  } catch (err: any) {
+    notify(`Generarea documentului a esuat${err?.message ? `: ${err.message}` : ''}`, 'error');
+  }
+};
 
 const descarcaPdf = async (r: Referat) => {
   const source = await resolveSource({ path: r.filePath, url: r.fileUrl });
@@ -140,6 +161,8 @@ const ReferatManager: React.FC<Props> = ({
 
   const deschideEditare = useCallback((r: Referat) => {
     setForm({
+      autoritate: antetSalvat().autoritate || '',
+      manager: antetSalvat().manager || '',
       number: r.number, date: r.date,
       issuedBy: r.issuedBy || '', approvedBy: r.approvedBy || '',
       department: r.department, subject: r.subject,
@@ -187,6 +210,7 @@ const ReferatManager: React.FC<Props> = ({
     }
     try {
       localStorage.setItem(CHEIE_ANTET, JSON.stringify({
+        autoritate: form.autoritate, manager: form.manager,
         issuedBy: form.issuedBy, approvedBy: form.approvedBy,
         contactName: form.contactName, contactRole: form.contactRole,
         contactEmail: form.contactEmail, contactPhone: form.contactPhone,
@@ -333,8 +357,14 @@ const ReferatManager: React.FC<Props> = ({
                     </p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">estimat, fara TVA</p>
                   </div>
+                  <button onClick={() => descarcaWord(r)}
+                    className="p-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition"
+                    title="Genereaza referatul in Word"
+                    aria-label={`Genereaza referatul ${r.number} in Word`}>
+                    <FileDown className="w-4 h-4" />
+                  </button>
                   {(r.filePath || r.fileUrl) && (
-                    <button onClick={() => descarcaPdf(r)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul" aria-label={`Descarca referatul ${r.number}`}>
+                    <button onClick={() => descarcaPdf(r)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul scanat" aria-label={`Descarca scanul referatului ${r.number}`}>
                       <Download className="w-4 h-4" />
                     </button>
                   )}
@@ -575,12 +605,20 @@ const ReferatManager: React.FC<Props> = ({
                     aria-expanded={aratAntet}
                     className="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-slate-100 transition">
                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-                      Persoana de contact {form.contactName ? `· ${form.contactName}` : ''}
+                      Antet si persoana de contact {form.contactName ? `· ${form.contactName}` : ''}
                     </span>
                     <span className="text-[11px] font-black text-slate-500">{aratAntet ? '−' : '+'}</span>
                   </button>
                   {aratAntet && (
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Camp eticheta="Autoritatea contractanta">
+                        <input value={form.autoritate} onChange={e => setForm(p => ({ ...p, autoritate: e.target.value }))}
+                          placeholder="ex. Spitalul Clinic Judetean de Urgenta Brasov" className="camp" />
+                      </Camp>
+                      <Camp eticheta="Manager">
+                        <input value={form.manager} onChange={e => setForm(p => ({ ...p, manager: e.target.value }))}
+                          placeholder="ex. Prof. Univ. Dr. ..." className="camp" />
+                      </Camp>
                       <Camp eticheta="Nume si prenume">
                         <input value={form.contactName} onChange={e => setForm(p => ({ ...p, contactName: e.target.value }))} className="camp" />
                       </Camp>

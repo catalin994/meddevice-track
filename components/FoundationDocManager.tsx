@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FolderOpen, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Link2, Unlink,
+  Paperclip, Link2, Unlink, FileDown,
 } from 'lucide-react';
 import {
   FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat,
@@ -13,6 +13,8 @@ import ConfirmDialog from './ConfirmDialog';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
+import { fundamentareDocx, numeFisier } from '../services/documenteAchizitie';
+import { notify } from '../services/notices';
 
 /**
  * Documentul de fundamentare, in forma pe care o cere legea.
@@ -66,6 +68,16 @@ const gol = () => ({
 });
 
 const fmt = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Documentul de fundamentare, in Word, cu tabelul de valori si semnaturile. */
+const descarcaWord = async (d: FoundationDoc, referat?: Referat) => {
+  try {
+    const blob = await fundamentareDocx(d, referat);
+    await saveFileAs(numeFisier(['DF', d.number, d.subject]), blob);
+  } catch (err: any) {
+    notify(`Generarea documentului a esuat${err?.message ? `: ${err.message}` : ''}`, 'error');
+  }
+};
 
 const descarcaPdf = async (d: FoundationDoc) => {
   const source = await resolveSource({ path: d.filePath, url: d.fileUrl });
@@ -328,8 +340,14 @@ const FoundationDocManager: React.FC<Props> = ({
                       )}
                     </div>
                   )}
+                  <button onClick={() => descarcaWord(d, ref)}
+                    className="p-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition"
+                    title="Genereaza documentul in Word"
+                    aria-label="Genereaza documentul de fundamentare in Word">
+                    <FileDown className="w-4 h-4" />
+                  </button>
                   {(d.filePath || d.fileUrl) && (
-                    <button onClick={() => descarcaPdf(d)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul" aria-label="Descarca documentul">
+                    <button onClick={() => descarcaPdf(d)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul scanat" aria-label="Descarca scanul documentului">
                       <Download className="w-4 h-4" />
                     </button>
                   )}
