@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import useEscape from './useEscape';
 import { X, ScanLine, AlertCircle, CheckCircle, Search, Loader2, Mail, Download, FileText, RotateCcw, Upload, Scissors, Copy, RectangleVertical, RectangleHorizontal } from 'lucide-react';
 import { cropVideoToFrame, FRAME_ASPECT, Orientation } from './scanUtils';
 import { MedicalDevice, DeviceFile } from '../types';
@@ -60,6 +61,9 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   }, []);
+
+  // Escape inchide scanerul, si opreste camera odata cu el
+  useEscape(() => { stopCamera(); onClose(); });
 
   const startCamera = useCallback(async () => {
     try {
@@ -527,7 +531,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                 )}
 
                 <div className="absolute bottom-24 left-0 right-0 flex justify-center items-center gap-5">
-                  <button onClick={capturePage} className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center" title="Captureaza pagina">
+                  <button onClick={capturePage} className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center" title="Captureaza pagina" aria-label="Captureaza pagina">
                     <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center relative">
                       <ScanLine className="w-7 h-7 text-white" />
                       {pages.length > 0 && (

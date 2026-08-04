@@ -1,9 +1,11 @@
 
 import React, { useRef, useState, Suspense } from 'react';
+import { notify } from '../services/notices';
 import { X, Printer, QrCode, Loader2 } from 'lucide-react';
 import { MedicalDevice } from '../types';
 
 import Portal from './Portal';
+import useEscape from './useEscape';
 const QRCodeCanvas = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 
 interface QRLabelSheetProps {
@@ -20,6 +22,7 @@ const deviceUrl = (id: string) => getDeviceUrl(id);
 const MAX_LABELS = 150;
 
 const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClose }) => {
+  useEscape(onClose);
   const devices = allDevices.slice(0, MAX_LABELS);
   const truncated = allDevices.length - devices.length;
   const gridRef = useRef<HTMLDivElement>(null);
@@ -44,7 +47,7 @@ const QRLabelSheet: React.FC<QRLabelSheetProps> = ({ devices: allDevices, onClos
     }).join('');
 
     const win = window.open('', '_blank');
-    if (!win) { setIsPrinting(false); alert('Browserul a blocat fereastra de printare. Permite pop-up-urile si incearca din nou.'); return; }
+    if (!win) { setIsPrinting(false); notify('Browserul a blocat fereastra de printare. Permite ferestrele pop-up si incearca din nou.', 'error'); return; }
     win.document.write(`<!DOCTYPE html><html><head><title>Etichete QR Biomedic</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }

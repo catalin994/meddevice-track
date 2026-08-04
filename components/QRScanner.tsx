@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import useEscape from './useEscape';
 import { X, QrCode, Camera, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface QRScannerProps {
@@ -20,6 +21,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
     cancelAnimationFrame(animFrameRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
   }, []);
+
+  // Escape inchide scanerul, si opreste camera odata cu el
+  useEscape(() => { stopCamera(); onClose(); });
 
   useEffect(() => {
     let active = true;

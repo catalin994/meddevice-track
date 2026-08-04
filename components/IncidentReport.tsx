@@ -5,6 +5,7 @@ import { MedicalDevice, MedicalTask, TaskAttachment, TaskPriority, TaskStatus, T
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
+import useEscape from './useEscape';
 interface IncidentReportProps {
   devices: MedicalDevice[];
   onSubmit: (task: MedicalTask) => Promise<void> | void;
@@ -75,6 +76,7 @@ const AttachmentPreview: React.FC<{ attachment: TaskAttachment }> = ({ attachmen
 };
 
 const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onClose }) => {
+  useEscape(onClose);
   const [deviceSearch, setDeviceSearch] = useState('');
   const [selectedDevice, setSelectedDevice] = useState<MedicalDevice | null>(null);
   const [department, setDepartment] = useState<string>(HOSPITAL_DEPARTMENTS[0]);

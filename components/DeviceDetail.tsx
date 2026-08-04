@@ -968,9 +968,9 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
        </div>
        {/* Actions drop to their own full-width row on phones so the file name keeps its space */}
        <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-1.5 sm:shrink-0">
-          <button onClick={onView} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-blue-600 hover:border-blue-600 rounded-xl transition active:scale-90" title="Vizualizeaza"><Eye className="w-5 h-5" /></button>
-          <button onClick={onDownload} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-emerald-600 hover:border-emerald-600 rounded-xl transition active:scale-90" title="Descarca"><Download className="w-5 h-5" /></button>
-          <button onClick={onDelete} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-red-600 hover:border-red-600 rounded-xl transition active:scale-90" title="Sterge"><Trash2 className="w-5 h-5" /></button>
+          <button onClick={onView} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-blue-600 hover:border-blue-600 rounded-xl transition active:scale-90" title="Vizualizeaza" aria-label="Vizualizeaza"><Eye className="w-5 h-5" /></button>
+          <button onClick={onDownload} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-emerald-600 hover:border-emerald-600 rounded-xl transition active:scale-90" title="Descarca" aria-label="Descarca"><Download className="w-5 h-5" /></button>
+          <button onClick={onDelete} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-red-600 hover:border-red-600 rounded-xl transition active:scale-90" title="Sterge" aria-label="Sterge"><Trash2 className="w-5 h-5" /></button>
        </div>
     </div>
   </div>

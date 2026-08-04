@@ -129,7 +129,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
               onClick={onClose}
               className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition active:scale-95"
               title="Inchide"
-            >
+             aria-label="Inchide">
               <X className="w-5 h-5" />
             </button>
           </div>

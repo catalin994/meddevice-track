@@ -11,6 +11,7 @@ import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
+import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
@@ -136,6 +137,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
   // The browser's own confirm() looked like a system fault next to the rest of
   // the app, and on a phone it is a grey slab with the site's hostname on it.
   const [pendingDelete, setPendingDelete] = useState<Invoice | null>(null);
+  useEscape(() => setIsEditing(false), isEditing);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [deviceSearch, setDeviceSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
@@ -679,11 +681,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({ devices, invoices, onUp
                     <div className="flex items-center gap-4 shrink-0">
                       <p className="text-lg font-black text-slate-900">{fmt(inv.amount)} <span className="text-xs text-slate-500">{inv.currency}</span></p>
                       {(inv.filePath || inv.fileUrl) && (
-                        <button onClick={() => downloadInvoicePdf(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca PDF">
+                        <button onClick={() => downloadInvoicePdf(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca PDF" aria-label="Descarca PDF">
                           <Download className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Editeaza">
+                      <button onClick={() => openEdit(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Editeaza" aria-label="Editeaza">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => setPendingDelete(inv)} className="p-2.5 bg-slate-50 text-slate-500 hover:text-red-600 rounded-xl transition" title="Sterge" aria-label={`Sterge factura ${inv.invoiceNumber}`}>

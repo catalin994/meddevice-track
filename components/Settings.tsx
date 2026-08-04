@@ -1,7 +1,9 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import ConfirmDialog from './ConfirmDialog';
+import { notify } from '../services/notices';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
-import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera } from 'lucide-react';
+import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import { listProfiles, updateProfile } from '../services/authService';
@@ -372,13 +374,13 @@ NOTIFY pgrst, 'reload schema';
         const legacy = JSON.parse(legacyRaw);
         if (Array.isArray(legacy) && legacy.length > 0) {
           await onImport(legacy);
-          alert(`S-au recuperat cu succes ${legacy.length} dispozitive vechi.`);
+          notify(`S-au recuperat ${legacy.length} dispozitive din datele vechi.`, 'success');
         }
       } else {
-        alert("Nu s-au gasit date vechi in LocalStorage de recuperat.");
+        notify('Nu s-au gasit date vechi de recuperat.', 'info');
       }
     } catch (err) {
-      alert("Recuperarea a esuat: " + (err as Error).message);
+      notify('Recuperarea a esuat: ' + (err as Error).message, 'error');
     } finally {
       setIsRepairing(false);
     }
@@ -410,11 +412,9 @@ NOTIFY pgrst, 'reload schema';
     }
   }, []);
 
-  const handleDisconnectCloud = useCallback(() => {
-    if (window.confirm("Confirmi deconectarea? Aplicatia va trece in modul doar local.")) {
-      clearSupabaseConfig();
-    }
-  }, []);
+  // Ultimul window.confirm din aplicatie. Deconectarea nu pierde date, dar
+  // opreste sincronizarea pentru toata lumea de pe acest dispozitiv.
+  const [showDisconnect, setShowDisconnect] = useState(false);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
@@ -471,7 +471,7 @@ NOTIFY pgrst, 'reload schema';
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
-              {isSupabaseConfigured && <button onClick={handleDisconnectCloud} className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
+              {isSupabaseConfigured && <button onClick={() => setShowDisconnect(true)} className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud" aria-label="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
             </div>
         </div>
       </div>
@@ -810,7 +810,7 @@ NOTIFY pgrst, 'reload schema';
                    <span className={`text-sm font-black ${cloudCount !== null && cloudCount < devices.length ? 'text-amber-600' : 'text-emerald-600'}`}>
                      {isCountingCloud ? '...' : cloudError ? '—' : cloudCount ?? '?'}
                    </span>
-                   <button onClick={refreshCloudCount} disabled={isCountingCloud} className="p-1.5 text-slate-500 hover:text-blue-600 transition" title="Verifica din nou">
+                   <button onClick={refreshCloudCount} disabled={isCountingCloud} className="p-1.5 text-slate-500 hover:text-blue-600 transition" title="Verifica din nou" aria-label="Verifica din nou">
                      <RefreshCw className={`w-3.5 h-3.5 ${isCountingCloud ? 'animate-spin' : ''}`} />
                    </button>
                  </span>
@@ -902,6 +902,21 @@ NOTIFY pgrst, 'reload schema';
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDisconnect}
+        tone="neutral"
+        title="Deconectezi cloud-ul?"
+        icon={<CloudOff className="w-8 h-8 sm:w-10 sm:h-10" />}
+        body={<>
+          Aplicatia trece in modul doar local pe acest dispozitiv. Datele salvate
+          raman, dar nu se mai sincronizeaza pana la o reconectare.
+        </>}
+        confirmLabel="Deconecteaza"
+        cancelLabel="Ramai conectat"
+        onCancel={() => setShowDisconnect(false)}
+        onConfirm={() => { clearSupabaseConfig(); setShowDisconnect(false); }}
+      />
     </div>
   );
 };

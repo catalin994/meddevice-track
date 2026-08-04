@@ -125,14 +125,14 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ data, onFail }) => {
       {/* Page + zoom controls */}
       <div className="shrink-0 flex items-center justify-center gap-2 sm:gap-3 py-1">
         <button onClick={() => setPageNum(p => Math.max(1, p - 1))} disabled={pageNum <= 1}
-          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Pagina anterioara">
+          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Pagina anterioara" aria-label="Pagina anterioara">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className="text-white/70 text-[11px] font-black uppercase tracking-widest min-w-[80px] text-center">
           {numPages ? `${pageNum} / ${numPages}` : '—'}
         </span>
         <button onClick={() => setPageNum(p => Math.min(numPages, p + 1))} disabled={pageNum >= numPages}
-          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Pagina urmatoare">
+          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Pagina urmatoare" aria-label="Pagina urmatoare">
           <ChevronRight className="w-5 h-5" />
         </button>
         <div className="w-px h-6 bg-white/15 mx-1" />
@@ -145,11 +145,11 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ data, onFail }) => {
           {fitMode === 'page' ? <MoveHorizontal className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
         </button>
         <button onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5}
-          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Micsoreaza">
+          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Micsoreaza" aria-label="Micsoreaza">
           <ZoomOut className="w-5 h-5" />
         </button>
         <button onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4}
-          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Mareste">
+          className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Mareste" aria-label="Mareste">
           <ZoomIn className="w-5 h-5" />
         </button>
       </div>

@@ -5,6 +5,7 @@ import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, Mo
 import IncidentReport from './IncidentReport';
 
 import Portal from './Portal';
+import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
@@ -81,6 +82,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
   // delete: a ticket carries the description of a fault and whatever was
   // attached to it, and none of that comes back.
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // Escape inchide formularul deschis, si raportul de incident
+  useEscape(() => { setIsAdding(false); setEditingTask(null); }, isAdding || !!editingTask);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
@@ -244,6 +247,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             />
           </div>
           <select 
+            aria-label="Filtreaza tichetele dupa status"
             className="bg-slate-50 border-none px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
@@ -366,7 +370,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     <td className="px-5 py-3.5">
                       <button onClick={() => toggleStatus(task)}
                         className={`px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-widest border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
-                        title="Click pentru a schimba statusul">
+                        title="Click pentru a schimba statusul" aria-label="Click pentru a schimba statusul">
                         {getStatusIcon(task.status)}
                         {TASK_STATUS_RO[task.status]}
                       </button>
@@ -379,10 +383,10 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => handleEdit(task)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza">
+                        <button onClick={() => handleEdit(task)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza" aria-label="Editeaza">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => setPendingDelete(task.id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge">
+                        <button onClick={() => setPendingDelete(task.id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Sterge" aria-label="Sterge">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -661,14 +665,14 @@ const TaskCard = React.memo(({
                 onClick={() => onEdit(task)} 
                 className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                 title="Editeaza Tichet"
-              >
+               aria-label="Editeaza Tichet">
                 <Edit className="w-4 h-4" />
               </button>
               <button 
                 onClick={() => onDelete(task.id)} 
                 className="p-2.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                 title="Sterge Tichet"
-              >
+               aria-label="Sterge Tichet">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

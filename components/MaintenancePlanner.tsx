@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { notify } from '../services/notices';
 import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus, DEVICE_STATUS_RO } from '../types';
 import { 
   Calendar, Check, Clock, Save, CalendarDays, 
@@ -125,7 +126,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
   , [drafts]);
 
   const handleExportSchedule = useCallback(async () => {
-    if (devices.length === 0) return alert("Nu exista dispozitive de exportat.");
+    if (devices.length === 0) return notify('Nu exista dispozitive de exportat.', 'warning');
     const XLSX = await import('xlsx');
 
     const now = new Date();
@@ -233,13 +234,13 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       XLSX.writeFile(workbook, `Biomedic_Raport_Echipamente_${fileDate}.xlsx`);
     } catch (err) {
       console.error("Export error:", err);
-      alert("Generarea raportului a esuat. Verificati daca pop-up-urile sunt permise in browser.");
+      notify('Generarea raportului a esuat. Verifica daca ferestrele pop-up sunt permise.', 'error');
     }
   }, [devices, drafts]);
 
   const commitAllSchedules = useCallback(() => {
     if (modifiedCount === 0) {
-      alert("Nu exista modificari de aplicat.");
+      notify('Nu exista modificari de aplicat.', 'info');
       return;
     }
 
@@ -265,7 +266,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
     });
 
     onApplyPlan(updatedDevices);
-    alert(`Programarile au fost aplicate cu succes pentru ${modifiedCount} dispozitive.`);
+    notify(`Programarile au fost aplicate pentru ${modifiedCount} dispozitive.`, 'success');
   }, [devices, drafts, modifiedCount, onApplyPlan]);
 
   return (
@@ -464,6 +465,7 @@ const MaintenanceCard = React.memo(({
               <select 
                 value={selectedMonth}
                 onChange={(e) => handleDatePartChange('month', parseInt(e.target.value))}
+                aria-label="Luna programarii"
                 className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
               >
                 {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
@@ -474,6 +476,7 @@ const MaintenanceCard = React.memo(({
               <select 
                 value={selectedYear}
                 onChange={(e) => handleDatePartChange('year', parseInt(e.target.value))}
+                aria-label="Anul programarii"
                 className="w-full bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
               >
                 {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -489,6 +492,7 @@ const MaintenanceCard = React.memo(({
             <select 
               value={draft.frequency}
               onChange={(e) => onUpdateDraft(device.id, { frequency: e.target.value })}
+              aria-label="Frecventa mentenantei"
               className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all"
             >
               {FREQUENCY_OPTIONS.map(opt => <option key={opt} value={opt}>{FREQUENCY_RO[opt] || opt}</option>)}

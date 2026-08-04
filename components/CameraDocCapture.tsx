@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check } from 'lucide-react';
 
 import Portal from './Portal';
+import useEscape from './useEscape';
 import { cropVideoToFrame, cropVideoToRect, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
 
 interface CameraDocCaptureProps {
@@ -49,6 +50,9 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   }, []);
+
+  // Escape inchide scanerul, si opreste camera odata cu el
+  useEscape(() => { stopCamera(); onClose(); });
 
   // The overlay renders through a Portal, so the <video> can mount *after*
   // getUserMedia resolves (instant when the camera is already authorised).
@@ -429,7 +433,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
             <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center gap-4 px-4">
               <button onClick={capturePage} disabled={isFinishing}
                 className="w-20 h-20 bg-white rounded-full border-4 border-blue-500 shadow-2xl active:scale-95 transition-transform flex items-center justify-center disabled:opacity-50"
-                title="Captureaza pagina">
+                title="Captureaza pagina" aria-label="Captureaza pagina">
                 <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center relative">
                   <ScanLine className="w-7 h-7 text-white" />
                   {pages.length > 0 && (

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { notify } from '../services/notices';
 import { Contract, MedicalDevice } from '../types';
 import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2 } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
@@ -58,7 +59,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
       }));
       setAiText('');
     } catch (err) {
-      alert("Extragerea AI a esuat.");
+      notify('Extragerea automata din PDF a esuat. Completeaza campurile manual.', 'error');
     } finally {
       setIsAnalyzing(false);
     }
@@ -67,7 +68,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedDevices.length === 0) {
-      alert("Asociati cel putin un dispozitiv cu acest contract.");
+      notify('Alege cel putin un dispozitiv pentru acest contract.', 'warning');
       return;
     }
     const newContract: Contract = {
