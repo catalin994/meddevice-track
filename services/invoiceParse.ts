@@ -20,6 +20,8 @@ export interface InvoiceFields {
   dueDate: string;
   supplier: string;
   contractNumber: string;
+  /** Ce s-a facturat: denumirea produsului sau a serviciului. */
+  description: string;
   deviceIds: string[];
   /** The lines the parser actually saw, so a wrong reading can be diagnosed. */
   lines: string[];
@@ -405,6 +407,124 @@ const gasesteDate = (linii: string[]): { issueDate: string; dueDate: string } =>
 };
 
 /**
+ * Denumirea a ce s-a facturat.
+ *
+ * Numarul si furnizorul spun de la cine vine hartia, nu pentru ce e. Dintr-un
+ * folder cu treizeci de facturi de la aceeasi firma, alegerea celor care
+ * trebuie se face dupa asta.
+ *
+ * Sunt doua asezari in pagina, si trebuie citite amandoua:
+ *
+ *   e-Factura — randul liniei poarta doar un cod scurt ("1 AB 5130.00 RON..."),
+ *   iar denumirea adevarata vine pe randurile de dupa, pana la "Cod CPV" sau
+ *   pana la instructiunile de plata.
+ *
+ *   Factura clasica — un antet de tabel cu "Denumire produse / servicii", si
+ *   sub el randurile de marfa, pana la totaluri.
+ *
+ * Se opreste la trei pozitii: o factura cu douazeci de repere n-are ce cauta
+ * intreaga intr-o casuta de lista.
+ */
+const RE_ANTET_EFACTURA = /^linia\b.*\bnume\s*articol/i;
+const RE_ANTET_LINII = /^linia\b.*\bnume\s*articol|^nr\.?\s*(crt\.?)?\s*denumire|denumire[ae]?\s*(produs|servici|marfa|articol|lucrar)/i;
+const RE_STOP_LINII = /^(cod\s*cpv|instructiuni\s*de\s*plata|total|subtotal|tva|valoare\s*total|detalierea|nota\s*privind|nr\.?\s*cont|semnatura|delegat|intocmit|date\s*privind|mentiuni|scadent|termen\s*de\s*plata|id\s*recipisa|pagina\s*\d)/i;
+/** Un rand care e numai cifre, unitati si coduri nu e o denumire. */
+const RE_DOAR_CIFRE = /^[\d\s.,%\-\/x*+()]+$/;
+const UM = /^(buc|bucata|bucati|set|ore|ora|luna|luni|kg|l|ml|m|mp|xpp|h87|c62|ea|pcs|serv|leg|cutie|cutii)$/i;
+
+/** Cuvintele din capul de tabel. Un rand facut numai din ele e tot antet. */
+const CUVINTE_ANTET = new Set(['linia', 'nr', 'crt', 'nume', 'denumire', 'denumirea', 'articol', 'articolul',
+  'articolului', 'produse', 'produs', 'servicii', 'serviciu', 'marfa', 'tara', 'provenienta', 'provenient',
+  'pretul', 'pret', 'unitar', 'net', 'neta', 'moneda', 'cantitate', 'cant', 'baza', 'facturata', 'um', 'u',
+  'm', 'cota', 'tva', 'valoare', 'valoarea', 'totala', 'total', 'de', 'al', 'a', 'cu', 'fara', 'si', 'pu',
+  'discount', 'lei', 'ron']);
+const doarAntet = (l: string): boolean => {
+  const cuv = l.toLowerCase().match(/[a-z\u0103\u00e2\u00ee\u0219\u015f\u021b\u0163]+/g) || [];
+  return cuv.length > 0 && cuv.every(c => CUVINTE_ANTET.has(c));
+};
+
+/** O suma cu doi bani: "4.500,00", "1115.20". Semnul ca randul are coloane. */
+const RE_BANI_LA_CAPAT = /\d[\d.,]*[.,]\d{2}$/;
+
+/**
+ * Taie coloanele de la capatul unui rand de marfa.
+ *
+ * "1 Contract service anual monitor SN-1000 1 4.500,00 4.500,00" trebuie sa
+ * ramana "Contract service anual monitor SN-1000". Dar "Verificare metrologica
+ * tensiometre, 8 bucati" e denumirea intreaga, si acolo "8 bucati" nu e o
+ * coloana. Diferenta: un rand de tabel se termina cu o suma.
+ */
+const taieColoanele = (c: string): string => {
+  if (!RE_BANI_LA_CAPAT.test(c)) return c;
+  const t = c.split(/\s+/);
+  // Coloanele sunt "U.M. | cantitate | pret | valoare": o singura unitate de
+  // masura. A doua inseamna ca facem deja parte din denumire — "verificare
+  // metrologica tensiometre, 8 bucati" nu trebuie sa ramana fara bucati.
+  let unitati = 0;
+  while (t.length > 2) {
+    const ultim = t[t.length - 1];
+    const eUM = UM.test(ultim);
+    // Moneda nu se numara: pe e-Factura coloanele sunt "pret RON cant UM cota
+    // valoare", deci apar amandoua, si oprirea la ea ar lasa "AB 5130.00 RON"
+    // in loc de nimic.
+    const eMoneda = /^(RON|EUR|USD|LEI)$/i.test(ultim);
+    if (eUM && unitati > 0) break;
+    if (!eUM && !eMoneda && !/^[\d.,%]+$/.test(ultim)) break;
+    if (eUM) unitati++;
+    t.pop();
+  }
+  return t.join(' ');
+};
+
+const gasesteDenumire = (linii: string[]): string => {
+  const curata = (l: string) => taieColoanele(l
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\d+[.)]?\s+/, '')          // numarul curent al pozitiei
+    .trim()).replace(/[,;:\-]+$/, '').trim();
+
+  const bun = (l: string) => {
+    const c = curata(l);
+    if (c.length < 3 || c.length > 200) return false;
+    if (RE_DOAR_CIFRE.test(c)) return false;
+    if (UM.test(c)) return false;
+    if (RE_STOP_LINII.test(c)) return false;
+    // Trebuie sa aiba litere, si nu doar doua-trei — "AB" e un cod, nu o denumire.
+    return (c.match(/[a-zA-Z\u0103\u00e2\u00ee\u0219\u015f\u021b\u0163\u0102\u00c2\u00ce\u0218\u015e\u021a\u0162]/g) || []).length >= 4;
+  };
+
+  const start = linii.findIndex(l => RE_ANTET_LINII.test(l.trim()));
+  if (start < 0) return '';
+
+  // Pe e-Factura, tot ce urmeaza randului numerotat, pana la "Cod CPV", e
+  // descrierea aceleiasi pozitii, taiata pe trei-patru randuri de latimea
+  // paginii. Lipita la loc, e o singura fraza.
+  const eFactura = RE_ANTET_EFACTURA.test(linii[start].trim());
+
+  const pozitii: string[] = [];
+  for (let i = start + 1; i < linii.length && (eFactura || pozitii.length < 3); i++) {
+    const l = linii[i].trim();
+    if (RE_STOP_LINII.test(l)) break;
+    if (doarAntet(l)) continue;
+    if (!bun(l)) continue;
+    const c = curata(l);
+
+    if (eFactura) {
+      pozitii.push(c);
+      continue;
+    }
+    // Randurile de continuare ale aceleiasi pozitii se lipesc, nu se numara
+    // separat.
+    const ultim = pozitii[pozitii.length - 1];
+    if (ultim && (/[,;-]$/.test(ultim) || /^[a-z\u0103\u00e2\u00ee\u0219\u015f\u021b\u0163]/.test(c)) && ultim.length + c.length < 220) {
+      pozitii[pozitii.length - 1] = `${ultim} ${c}`;
+    } else {
+      pozitii.push(c);
+    }
+  }
+  return pozitii.join(eFactura ? ' ' : ' \u00b7 ').replace(/\s{2,}/g, ' ').trim();
+};
+
+/**
  * Everything the form can pre-fill from the PDF. Nothing here is authoritative
  * — the user sees each value in an editable field before saving.
  */
@@ -439,6 +559,7 @@ export const extractInvoiceFields = (
     dueDate,
     supplier,
     contractNumber: contract?.contractNumber || '',
+    description: gasesteDenumire(linii),
     deviceIds,
     lines: linii,
   };

@@ -85,6 +85,8 @@ interface BulkDraft {
   amount: number;
   currency: string;
   contractNumber: string;
+  /** Ce s-a facturat, citit din tabelul de pozitii al facturii. */
+  description: string;
   deviceIds: string[];
   /**
    * Fisierul de pe disc, nu continutul lui.
@@ -159,6 +161,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     return (bulkDrafts || []).filter(d =>
       d.invoiceNumber.toLowerCase().includes(q)
       || d.supplier.toLowerCase().includes(q)
+      || d.description.toLowerCase().includes(q)
       || d.fileName.toLowerCase().includes(q)
       || (d.cale || '').toLowerCase().includes(q));
   }, [bulkDrafts, bulkFiltru]);
@@ -313,6 +316,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         dueDate: fields.dueDate || prev.dueDate,
         contractNumber: fields.contractNumber || prev.contractNumber,
         supplier: fields.supplier || prev.supplier,
+        description: fields.description || prev.description,
         fileUrl: base64,
         fileName: file.name,
       }));
@@ -403,6 +407,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           amount: fields.amount,
           currency: fields.currency,
           contractNumber: fields.contractNumber,
+          description: fields.description,
           deviceIds: fields.deviceIds,
           file,
           fileName: file.name,
@@ -414,7 +419,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           include: false, isDuplicate: false,
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
           issueDate: new Date().toISOString().split('T')[0], dueDate: '',
-          contractNumber: '', deviceIds: [], file, fileName: file.name, cale,
+          contractNumber: '', description: '', deviceIds: [], file, fileName: file.name, cale,
           eroare: err?.message ? `Nu s-a putut citi: ${err.message}` : 'Nu s-a putut citi PDF-ul',
         });
       }
@@ -488,6 +493,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         currency: d.currency,
         status: InvoiceStatus.NOT_UPLOADED,
         contractNumber: d.contractNumber || undefined,
+        description: d.description.trim() || undefined,
         deviceIds: d.deviceIds,
         filePath,
         fileUrl: inlineUrl,
@@ -930,7 +936,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div className="relative flex-1 min-w-[180px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input value={bulkFiltru} onChange={e => setBulkFiltru(e.target.value)}
-                  placeholder="Cauta dupa numar, furnizor sau nume de fisier..."
+                  placeholder="Cauta dupa numar, furnizor, denumire sau nume de fisier..."
                   aria-label="Cauta in facturile din folder"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
               </div>
@@ -954,8 +960,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
               {/* Column headers */}
-              <div className="hidden lg:grid grid-cols-[24px_1.1fr_1.3fr_140px_120px_88px_112px_76px] gap-3 px-4 pb-1">
-                {['', 'Nr. factura', 'Furnizor', 'Data', 'Suma', 'Moneda', 'Asocieri', ''].map((h, i) => (
+              <div className="hidden lg:grid grid-cols-[24px_1fr_1.1fr_1.5fr_128px_112px_80px_104px_76px] gap-3 px-4 pb-1">
+                {['', 'Nr. factura', 'Furnizor', 'Denumire produs / serviciu', 'Data', 'Suma', 'Moneda', 'Asocieri', ''].map((h, i) => (
                   <p key={i} className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{h}</p>
                 ))}
               </div>
@@ -968,7 +974,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                 </div>
               )}
               {bulkVizibile.map(d => (
-                <div key={d.key} className={`grid grid-cols-1 lg:grid-cols-[24px_1.1fr_1.3fr_140px_120px_88px_112px_76px] gap-3 items-center p-4 rounded-2xl border transition ${d.eroare ? 'bg-red-50/60 border-red-200' : d.isDuplicate ? 'bg-amber-50/60 border-amber-200' : d.include ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                <div key={d.key} className={`grid grid-cols-1 lg:grid-cols-[24px_1fr_1.1fr_1.5fr_128px_112px_80px_104px_76px] gap-3 items-center p-4 rounded-2xl border transition ${d.eroare ? 'bg-red-50/60 border-red-200' : d.isDuplicate ? 'bg-amber-50/60 border-amber-200' : d.include ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
                   <button onClick={() => updateBulkDraft(d.key, { include: !d.include })}
                     aria-label={`${d.include ? 'Nu pastra' : 'Pastreaza'} factura ${d.invoiceNumber}`}
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${d.include ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
@@ -987,6 +993,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   <input value={d.supplier} onChange={e => updateBulkDraft(d.key, { supplier: e.target.value })} placeholder="Furnizor"
                     aria-label="Furnizorul"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
+                  {/*
+                    Numarul si furnizorul spun de la cine vine hartia, nu pentru
+                    ce e. Dintr-un folder cu treizeci de facturi de la aceeasi
+                    firma, alegerea se face dupa denumirea de aici.
+                  */}
+                  <input value={d.description} onChange={e => updateBulkDraft(d.key, { description: e.target.value })}
+                    placeholder="Denumirea din factura"
+                    title={d.description}
+                    aria-label="Denumirea produsului sau serviciului"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20" />
                   <input type="date" value={d.issueDate} onChange={e => updateBulkDraft(d.key, { issueDate: e.target.value })}
                     aria-label="Data emiterii"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none" />
