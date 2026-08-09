@@ -66,7 +66,10 @@ export const marime = (octeti: number): string => {
   const u = ['kB', 'MB', 'GB', 'TB'];
   let n = octeti / 1024, i = 0;
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-  return `${n.toLocaleString('ro-RO', { maximumFractionDigits: n < 10 ? 1 : 0 })} ${u[i]}`;
+  // Fara separator de mii: "1.020 MB" se citeste in Romania ca o mie douazeci,
+  // dar arata ca 1,02 pentru cine e obisnuit cu punctul zecimal. "1020 MB" nu
+  // se poate citi gresit.
+  return `${n.toLocaleString('ro-RO', { maximumFractionDigits: n < 10 ? 1 : 0, useGrouping: false })} ${u[i]}`;
 };
 
 /**
