@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { MedicalDevice, Invoice, InvoiceStatus, Contract, Referat, FoundationDoc, normaliseInvoiceStatus } from '../types';
 import ContractManager from './ContractManager';
-import { saveFileAs } from '../services/fileService';
+import { saveFileAs, dataUrlToBlob } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 
 import Portal from './Portal';
@@ -490,6 +490,52 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     // Nu imediat: Chrome nu apuca sa citeasca blob-ul daca se elibereaza acum.
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }, []);
+
+  /**
+   * Pachetul pentru ConectX: factura si raportul ei de service, impreuna.
+   *
+   * Incarcarea propriu-zisa nu se poate face de aici — ConectX e alt sistem, si
+   * n-am cum sa intru in el in numele nimanui. Dar tot ce se face inainte de ea
+   * da: un dosar pe factura, cu ambele documente inauntru, gata de urcat.
+   */
+  const [seFacePachet, setSeFacePachet] = useState(false);
+  const descarcaPachetele = useCallback(async () => {
+    if (!bulkDrafts) return;
+    const alese = bulkDrafts.filter(d => d.include && d.file);
+    if (alese.length === 0) return;
+    setSeFacePachet(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      let faraRaport = 0;
+      for (const d of alese) {
+        const nume = `${(d.invoiceNumber || 'factura').replace(/[\\/:*?"<>|]/g, '-')}`
+          + `${d.supplier ? ` - ${d.supplier.replace(/[\\/:*?"<>|]/g, '-').slice(0, 40)}` : ''}`;
+        const dosar = zip.folder(nume);
+        if (!dosar) continue;
+        dosar.file(d.fileName || 'factura.pdf', d.file!);
+        if (d.raport) {
+          const sursa = await resolveSource({ path: d.raport.fisier.path, url: d.raport.fisier.url })
+            .catch(() => ({ blob: null, dataUrl: null } as any));
+          const continut = sursa.blob || (sursa.dataUrl ? dataUrlToBlob(sursa.dataUrl) : null);
+          if (continut) dosar.file(`raport - ${d.raport.fisier.name}`, continut);
+          else faraRaport++;
+        } else {
+          faraRaport++;
+        }
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      await saveFileAs(`Pentru_ConectX_${new Date().toISOString().split('T')[0]}.zip`, blob);
+      notify(faraRaport === 0
+        ? `${alese.length} facturi, fiecare cu raportul ei`
+        : `${alese.length} facturi — ${faraRaport} fara raport de service`,
+        faraRaport === 0 ? 'success' : 'warning');
+    } catch (err: any) {
+      notify(`Pachetul nu a putut fi facut${err?.message ? `: ${err.message}` : ''}`, 'error');
+    } finally {
+      setSeFacePachet(false);
+    }
+  }, [bulkDrafts]);
 
   const handleBulkSave = useCallback(async () => {
     if (!bulkDrafts) return;
@@ -1124,6 +1170,12 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
+                <button onClick={descarcaPachetele} disabled={seFacePachet || bifate === 0}
+                  title="Un dosar pe factura, cu factura si raportul ei de service, gata de urcat in ConectX"
+                  className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
+                  {seFacePachet ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Pachet pentru ConectX
+                </button>
                 <button onClick={handleBulkSave} disabled={isBulkSaving || bifate === 0}
                   className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
                   {isBulkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
