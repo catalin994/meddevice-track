@@ -510,33 +510,78 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     if (alese.length === 0) return;
     setSeFacePachet(true);
     try {
+      const curat = (t: string) => t.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+      // Numele incepe cu numarul facturii, ca perechea sa stea una langa alta
+      // in orice lista de fisiere, si ca la ConectX sa se scrie "1001" in
+      // casuta de cautare si sa apara amandoua.
+      const numeleLor = (d: BulkDraft) => {
+        const baza = `${curat(d.invoiceNumber || 'factura')}`
+          + `${d.supplier ? ` - ${curat(d.supplier).slice(0, 40)}` : ''}`;
+        return { factura: `${baza} - factura.pdf`, raport: `${baza} - raport service.pdf` };
+      };
+      const continutulRaportului = async (d: BulkDraft): Promise<Blob | null> => {
+        if (!d.raport) return null;
+        const sursa = await resolveSource({ path: d.raport.fisier.path, url: d.raport.fisier.url })
+          .catch(() => ({ blob: null, dataUrl: null } as any));
+        return sursa.blob || (sursa.dataUrl ? dataUrlToBlob(sursa.dataUrl) : null);
+      };
+
+      let faraRaport = 0;
+      let fisiere = 0;
+
+      /*
+       * Fisierele se urca in ConectX unul cate unul, deci trebuie sa ajunga
+       * rasfirate pe disc, nu impachetate. Cand browserul stie sa scrie
+       * intr-un folder ales — Chrome si Edge pe calculator — se scriu direct
+       * acolo, si nu mai e nimic de dezarhivat. In rest, un zip fara dosare,
+       * din care ies toate fisierele odata.
+       */
+      const alegeFolder = (window as any).showDirectoryPicker;
+      if (typeof alegeFolder === 'function') {
+        let dir: any;
+        try {
+          dir = await alegeFolder({ mode: 'readwrite', id: 'conectx' });
+        } catch (err: any) {
+          if (err?.name === 'AbortError') { setSeFacePachet(false); return; }
+          dir = null;
+        }
+        if (dir) {
+          const scrie = async (nume: string, continut: Blob) => {
+            const h = await dir.getFileHandle(nume, { create: true });
+            const w = await h.createWritable();
+            await w.write(continut);
+            await w.close();
+            fisiere++;
+          };
+          for (const d of alese) {
+            const n = numeleLor(d);
+            await scrie(n.factura, d.file!);
+            const raport = await continutulRaportului(d);
+            if (raport) await scrie(n.raport, raport); else faraRaport++;
+          }
+          notify(`${fisiere} fisiere puse in folder`
+            + (faraRaport ? ` — ${faraRaport} fara raport de service` : ''),
+            faraRaport ? 'warning' : 'success');
+          setSeFacePachet(false);
+          return;
+        }
+      }
+
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
-      let faraRaport = 0;
       for (const d of alese) {
-        const nume = `${(d.invoiceNumber || 'factura').replace(/[\\/:*?"<>|]/g, '-')}`
-          + `${d.supplier ? ` - ${d.supplier.replace(/[\\/:*?"<>|]/g, '-').slice(0, 40)}` : ''}`;
-        const dosar = zip.folder(nume);
-        if (!dosar) continue;
-        dosar.file(d.fileName || 'factura.pdf', d.file!);
-        if (d.raport) {
-          const sursa = await resolveSource({ path: d.raport.fisier.path, url: d.raport.fisier.url })
-            .catch(() => ({ blob: null, dataUrl: null } as any));
-          const continut = sursa.blob || (sursa.dataUrl ? dataUrlToBlob(sursa.dataUrl) : null);
-          if (continut) dosar.file(`raport - ${d.raport.fisier.name}`, continut);
-          else faraRaport++;
-        } else {
-          faraRaport++;
-        }
+        const n = numeleLor(d);
+        zip.file(n.factura, d.file!); fisiere++;
+        const raport = await continutulRaportului(d);
+        if (raport) { zip.file(n.raport, raport); fisiere++; } else faraRaport++;
       }
       const blob = await zip.generateAsync({ type: 'blob' });
       await saveFileAs(`Pentru_ConectX_${new Date().toISOString().split('T')[0]}.zip`, blob);
-      notify(faraRaport === 0
-        ? `${alese.length} facturi, fiecare cu raportul ei`
-        : `${alese.length} facturi — ${faraRaport} fara raport de service`,
-        faraRaport === 0 ? 'success' : 'warning');
+      notify(`${fisiere} fisiere, fara dosare — se dezarhiveaza odata`
+        + (faraRaport ? ` · ${faraRaport} fara raport de service` : ''),
+        faraRaport ? 'warning' : 'success');
     } catch (err: any) {
-      notify(`Pachetul nu a putut fi facut${err?.message ? `: ${err.message}` : ''}`, 'error');
+      notify(`Fisierele nu au putut fi scoase${err?.message ? `: ${err.message}` : ''}`, 'error');
     } finally {
       setSeFacePachet(false);
     }
@@ -1182,10 +1227,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div className="flex gap-3">
                 <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
                 <button onClick={descarcaPachetele} disabled={seFacePachet || bifate === 0}
-                  title="Un dosar pe factura, cu factura si raportul ei de service, gata de urcat in ConectX"
+                  title="Scoate fisierele rasfirate — factura si raportul ei, fiecare separat, gata de urcat unul cate unul"
                   className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
                   {seFacePachet ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Pachet pentru ConectX
+                  Scoate fisierele
                 </button>
                 <button onClick={handleBulkSave} disabled={isBulkSaving || bifate === 0}
                   className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
