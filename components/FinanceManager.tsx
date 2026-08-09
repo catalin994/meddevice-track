@@ -168,6 +168,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   const bifate = useMemo(() => (bulkDrafts || []).filter(d => d.include).length, [bulkDrafts]);
   /** "ale mele" / "fara raport" / tot ce e in folder. */
   const [bulkVedere, setBulkVedere] = useState<'ALE_MELE' | 'FARA_RAPORT' | 'TOT'>('ALE_MELE');
+  // Lista de cuvinte e a lor, nu a mea: fiecare spital scrie altfel pe facturi,
+  // iar o regula pe care n-o poti corecta devine repede una in care nu ai
+  // incredere. Se schimba din aceeasi fereastra, si se aplica pe loc.
+  const [cuvinteDeschis, setCuvinteDeschis] = useState(false);
+  const [cuvinteText, setCuvinteText] = useState('');
   const numarate = useMemo(() => {
     const d = bulkDrafts || [];
     return {
@@ -1048,6 +1053,12 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                 Debifeaza toate
               </button>
               <button
+                onClick={() => { setCuvinteText(iaCuvintele().join('\n')); setCuvinteDeschis(true); }}
+                title="Cuvintele dupa care se recunosc facturile serviciului tehnic"
+                className="px-4 py-2.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-100 transition">
+                Cuvintele mele
+              </button>
+              <button
                 onClick={() => stergeDinLista(bulkDrafts.filter(d => !d.include).map(d => d.key))}
                 disabled={bifate === bulkDrafts.length}
                 title="Scoate din lista facturile nebifate. Fisierele raman pe disc."
@@ -1184,6 +1195,50 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               </div>
             </div>
           </div>
+
+          {cuvinteDeschis && (
+            <div className="fixed inset-0 z-[560] scrim flex items-center justify-center p-4">
+              <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+                <div className="px-6 py-5 border-b border-slate-100">
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Cuvintele mele</h3>
+                  <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
+                    O factura e a serviciului tehnic daca denumirea produsului sau serviciului contine
+                    unul dintre cuvintele de mai jos. Cate unul pe rand, fara diacritice si fara
+                    terminatii: <span className="font-mono">reparat</span> prinde si reparatie, si
+                    reparatii, si reparata.
+                  </p>
+                </div>
+                <textarea value={cuvinteText} onChange={e => setCuvinteText(e.target.value)}
+                  aria-label="Cuvintele dupa care se recunosc facturile"
+                  className="m-6 p-4 h-64 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-2xl text-[13px] font-mono outline-none resize-none" />
+                <div className="px-6 pb-6 flex flex-wrap gap-3 justify-between">
+                  <button onClick={() => setCuvinteText(CUVINTE_IMPLICITE.join('\n'))}
+                    className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">
+                    Inapoi la lista initiala
+                  </button>
+                  <div className="flex gap-3">
+                    <button onClick={() => setCuvinteDeschis(false)}
+                      className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">Renunta</button>
+                    <button
+                      onClick={() => {
+                        const noi = cuvinteText.split('\n').map(x => x.trim()).filter(Boolean);
+                        punCuvintele(noi);
+                        // Trierea se reface pe loc: altfel ar trebui ales folderul din nou.
+                        setBulkDrafts(prev => prev && prev.map(d => {
+                          const t = triaza(d.description, d.deviceIds, devices, noi);
+                          return { ...d, ...t, include: d.isDuplicate ? d.include : (d.include || t.aMea) };
+                        }));
+                        setCuvinteDeschis(false);
+                        notify(`${noi.length} cuvinte — lista s-a triat din nou`, 'success');
+                      }}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition">
+                      Salveaza si triaza
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         </Portal>
       )}
