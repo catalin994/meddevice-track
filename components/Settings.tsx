@@ -6,6 +6,10 @@ import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermissio
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
+import {
+  spatiulDinCloud, spatiulDeAici, iaLimitaGB, punLimitaGB, marime, NUME_FEL,
+  LIMITA_IMPLICITA_GB, SpatiuCloud, SpatiuLocal,
+} from '../services/spatiu';
 import { listProfiles, updateProfile } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
 import { ACHIZITII_SQL } from '../services/achizitiiSql';
@@ -35,6 +39,18 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   const [copied, setCopied] = useState(false);
   
   const [dbCount, setDbCount] = useState<number | null>(null);
+  // Cat loc ocupa documentele — in cloud si pe aparatul acesta.
+  const [spatiu, setSpatiu] = useState<SpatiuCloud | null>(null);
+  const [spatiuLocal, setSpatiuLocal] = useState<SpatiuLocal | null>(null);
+  const [seMasoara, setSeMasoara] = useState(false);
+  const [limitaGB, setLimitaGB] = useState(() => iaLimitaGB());
+
+  const masoaraSpatiul = useCallback(async () => {
+    setSeMasoara(true);
+    const [c, l] = await Promise.all([spatiulDinCloud(), spatiulDeAici()]);
+    setSpatiu(c); setSpatiuLocal(l); setSeMasoara(false);
+  }, []);
+  useEffect(() => { masoaraSpatiul(); }, [masoaraSpatiul]);
   const [lsCount, setLsCount] = useState<number | null>(null);
   const [isRepairing, setIsRepairing] = useState(false);
 
@@ -655,6 +671,96 @@ NOTIFY pgrst, 'reload schema';
             </button>
           </div>
         </div>
+      </div>
+
+
+      {/* CAT LOC MAI E PENTRU FISIERE */}
+      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-5 min-w-0">
+            <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl"><HardDrive className="w-10 h-10" /></div>
+            <div className="min-w-0">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Spatiu pentru fisiere</h2>
+              <p className="text-sm text-slate-500 font-semibold mt-1">Cat ocupa documentele si cat a mai ramas</p>
+            </div>
+          </div>
+          <button onClick={masoaraSpatiul} disabled={seMasoara}
+            className="px-5 py-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition disabled:opacity-50 flex items-center gap-2">
+            {seMasoara ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Masoara din nou
+          </button>
+        </div>
+
+        {spatiu?.eroare ? (
+          <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-sm font-semibold text-amber-900 leading-relaxed">{spatiu.eroare}</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* ── in cloud ── */}
+            <div>
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">In cloud · vazut de toti</p>
+                  <p className="text-2xl font-black text-slate-900 tabular-nums mt-0.5">
+                    {spatiu ? marime(spatiu.octeti) : '...'}
+                    <span className="text-sm font-bold text-slate-500"> din {limitaGB} GB</span>
+                  </p>
+                </div>
+                <p className={`text-sm font-black tabular-nums ${
+                  spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.9 ? 'text-red-600' : 'text-emerald-700'
+                }`}>
+                  {spatiu ? `mai ai ${marime(Math.max(0, limitaGB * 1024 ** 3 - spatiu.octeti))}` : ''}
+                </p>
+              </div>
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${
+                  spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.9 ? 'bg-red-600'
+                  : spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.7 ? 'bg-amber-500' : 'bg-blue-600'
+                }`} style={{ width: `${Math.min(100, spatiu ? (spatiu.octeti / (limitaGB * 1024 ** 3)) * 100 : 0)}%` }} />
+              </div>
+              <p className="text-[11px] font-bold text-slate-500 mt-2">
+                {spatiu ? `${spatiu.fisiere} fisiere` : ''}
+                {spatiu?.peFeluri.length ? ` · ${spatiu.peFeluri.map(f => `${NUME_FEL[f.fel] || f.fel} ${marime(f.octeti)}`).join(' · ')}` : ''}
+              </p>
+            </div>
+
+            {/* Limita nu se poate afla din API: o stie doar abonamentul vostru. */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center gap-3">
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Limita abonamentului</label>
+              <input type="number" min="0.1" step="0.1" value={limitaGB}
+                onChange={e => { const v = parseFloat(e.target.value) || LIMITA_IMPLICITA_GB; setLimitaGB(v); punLimitaGB(v); }}
+                aria-label="Limita de stocare, in gigaocteti"
+                className="w-28 px-3 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold outline-none" />
+              <span className="text-[11px] font-bold text-slate-500">
+                GB — Supabase nu spune cat da planul vostru, asa ca se scrie aici. Gratuit e 1 GB.
+              </span>
+            </div>
+
+            {/* ── pe aparatul acesta ── */}
+            {spatiuLocal && spatiuLocal.limita > 0 && (
+              <div>
+                <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Pe aparatul acesta · copiile pentru offline</p>
+                    <p className="text-lg font-black text-slate-900 tabular-nums mt-0.5">
+                      {marime(spatiuLocal.octeti)}
+                      <span className="text-sm font-bold text-slate-500"> din {marime(spatiuLocal.limita)}</span>
+                    </p>
+                  </div>
+                  <p className="text-sm font-black text-emerald-700 tabular-nums">
+                    mai ai {marime(Math.max(0, spatiuLocal.limita - spatiuLocal.octeti))}
+                  </p>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-400 rounded-full"
+                    style={{ width: `${Math.min(100, (spatiuLocal.octeti / spatiuLocal.limita) * 100)}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* FILE STORAGE MIGRATION */}

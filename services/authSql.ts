@@ -180,6 +180,29 @@ CREATE POLICY "mt_files_delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'device-files' AND public.app_can_write());
 
+-- ── 6b. CAT LOC OCUPA FISIERELE ─────────────────────────────────────────────
+-- Lista din API se cere folder cu folder si nu intra in subfoldere, deci pe un
+-- spital cu cateva mii de documente ar insemna sute de cereri. Aici se aduna
+-- direct, dintr-o singura intrebare. SECURITY DEFINER fiindca storage.objects
+-- nu e citibil altfel; accesul ramane legat de contul aprobat.
+CREATE OR REPLACE FUNCTION public.spatiu_fisiere()
+RETURNS TABLE (fel TEXT, fisiere BIGINT, octeti BIGINT)
+LANGUAGE sql STABLE
+SECURITY DEFINER SET search_path = public, storage
+AS $$
+  SELECT
+    COALESCE(NULLIF(split_part(o.name, '/', 1), ''), 'altele') AS fel,
+    COUNT(*)::BIGINT AS fisiere,
+    COALESCE(SUM((o.metadata->>'size')::BIGINT), 0)::BIGINT AS octeti
+  FROM storage.objects o
+  WHERE o.bucket_id = 'device-files'
+    AND public.app_can_read()
+  GROUP BY 1
+$$;
+
+REVOKE ALL ON FUNCTION public.spatiu_fisiere() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.spatiu_fisiere() TO authenticated;
+
 -- ── 7. Reincarca schema pentru API ──────────────────────────────────────────
 NOTIFY pgrst, 'reload schema';
 `;
