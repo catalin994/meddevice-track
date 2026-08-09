@@ -194,7 +194,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       || d.description.toLowerCase().includes(q)
       || d.fileName.toLowerCase().includes(q)
       || (d.cale || '').toLowerCase().includes(q));
-  }, [bulkDrafts, bulkFiltru]);
+  }, [bulkDrafts, bulkFiltru, bulkVedere]);
 
   const devicesMap = useMemo(() => new Map(devices.map(d => [d.id, d])), [devices]);
 
