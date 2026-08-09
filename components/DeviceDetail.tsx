@@ -5,6 +5,7 @@ import { valabilitatePropusa } from '../services/termene';
 import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
+import { undeMaiEste, maiEFolosit, leagaFisierul } from '../services/fisierePartajate';
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import { LogoTile } from './Logo';
 import DepartmentPicker from './DepartmentPicker';
@@ -22,7 +23,7 @@ interface DeviceDetailProps {
   device: MedicalDevice;
   tasks: MedicalTask[];
   allDevices?: MedicalDevice[]; // To get fleet-wide depts
-  onUpdate: (updatedDevice: MedicalDevice) => void;
+  onUpdate: (updatedDevice: MedicalDevice | MedicalDevice[]) => void;
   onDelete: (id: string) => void;
   onBack: () => void;
   onAddTask: (task: MedicalTask) => void;
@@ -48,6 +49,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
   const [showDocCapture, setShowDocCapture] = useState(false);
   const [viewingFile, setViewingFile] = useState<DeviceFile | null>(null);
+  /** Fisierul pentru care se aleg celelalte aparate, si alegerea de acum. */
+  const [deLegat, setDeLegat] = useState<DeviceFile | null>(null);
+  const [aleseIds, setAleseIds] = useState<string[]>([]);
+  const [cautaAparat, setCautaAparat] = useState('');
+  const [seLeaga, setSeLeaga] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({
@@ -137,6 +143,46 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     setIsEditing(false);
   }, [device, editForm, onUpdate]);
 
+  /**
+   * Deschide alegerea aparatelor pentru un document.
+   *
+   * Un fisier care sta doar in randul aparatului (fara cale in stocare) se urca
+   * intai o data — altfel legarea l-ar copia in fiecare rand, adica exact
+   * risipa pe care o evitam.
+   */
+  const deschideLegarea = useCallback(async (fisier: DeviceFile) => {
+    let f = fisier;
+    if (!f.path && f.url?.startsWith('data:')) {
+      setSeLeaga(true);
+      const urcat = await uploadDataUrl(buildPath('devices', device.id, f.id, f.name), f.url);
+      setSeLeaga(false);
+      if (!urcat.path) {
+        setUploadError('Documentul trebuie urcat in cloud inainte de a fi pus si pe alte aparate. Incearca din nou cand ai semnal.');
+        return;
+      }
+      f = { ...f, path: urcat.path, url: undefined };
+      const files = (editForm.files || []).map(x => x.id === f.id ? f : x);
+      setEditForm(prev => ({ ...prev, files }));
+      await onUpdate({ ...device, ...editForm, files });
+    }
+    setDeLegat(f);
+    setAleseIds(undeMaiEste(f, allDevices, device.id).map(d => d.id));
+    setCautaAparat('');
+  }, [device, editForm, onUpdate, allDevices]);
+
+  const salveazaLegarea = useCallback(async () => {
+    if (!deLegat) return;
+    setSeLeaga(true);
+    const schimbate = leagaFisierul(deLegat, allDevices, device.id, aleseIds);
+    if (schimbate.length) await onUpdate(schimbate);
+    setSeLeaga(false);
+    setDeLegat(null);
+    setSaveNotice(schimbate.length
+      ? `Documentul se vede acum pe ${aleseIds.length + 1} aparate`
+      : 'Nimic de schimbat');
+    setTimeout(() => setSaveNotice(null), 4000);
+  }, [deLegat, allDevices, device.id, aleseIds, onUpdate]);
+
   const handleEditChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as any;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
@@ -221,7 +267,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     const target = editForm.files.find(f => f.id === fileId);
     setIsRemovingFile(true);
     try {
-      if (target?.path) await removeFile(target.path);
+      // Acelasi raport poate fi legat de mai multe aparate. Sters din stocare
+      // cat timp altcineva il mai arata, celelalte ar ramane cu o trimitere
+      // spre un fisier care nu mai exista — si s-ar afla abia la deschidere.
+      if (target?.path && !maiEFolosit(target, allDevices, device.id, fileId)) {
+        await removeFile(target.path);
+      }
       const updatedFiles = editForm.files.filter(f => f.id !== fileId);
       setEditForm(prev => ({ ...prev, files: updatedFiles }));
       // Always save changes immediately
@@ -272,13 +323,84 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         title="Stergi documentul?"
         icon={<Trash2 className="w-8 h-8 sm:w-10 sm:h-10" />}
         body={<>
-          <span className="font-black text-slate-900">{pendingFileDelete?.name}</span> se sterge
-          si din cloud. Nu mai exista nicio copie de unde sa fie recuperat.
+          <span className="font-black text-slate-900">{pendingFileDelete?.name}</span>
+          {pendingFileDelete && undeMaiEste(pendingFileDelete, allDevices, device.id).length > 0
+            ? <> se scoate doar de pe acest aparat. Ramane pe celelalte{' '}
+                {undeMaiEste(pendingFileDelete, allDevices, device.id).length}, si nu se sterge din cloud.</>
+            : <> se sterge si din cloud. Nu mai exista nicio copie de unde sa fie recuperat.</>}
         </>}
         confirmLabel="Sterge documentul"
         onCancel={() => setPendingFileDelete(null)}
         onConfirm={() => { if (pendingFileDelete) handleRemoveFile(pendingFileDelete.id); }}
       />
+
+      {/*
+        Un raport de service acopera de multe ori mai multe aparate deodata.
+        Aici se aleg, si documentul se leaga de fiecare — tinut o singura data
+        in stocare, nu copiat de cinci ori.
+      */}
+      {deLegat && (
+        <div className="fixed inset-0 z-[640] scrim flex items-center justify-center p-0 sm:p-6">
+          <div className="bg-white w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[88dvh] flex flex-col rounded-none sm:rounded-[2rem] shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 shrink-0">
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Si pe alte aparate</h3>
+              <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
+                <span className="font-black text-slate-700">{deLegat.name}</span> se va vedea pe fiecare
+                aparat bifat. Documentul se tine o singura data — bifarea nu ocupa loc in plus.
+              </p>
+            </div>
+            <div className="px-6 py-3 shrink-0">
+              <input value={cautaAparat} onChange={e => setCautaAparat(e.target.value)}
+                placeholder="Cauta dupa denumire, serie sau sectie..."
+                aria-label="Cauta aparatul"
+                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-sm font-semibold outline-none" />
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 pb-4 space-y-2">
+              {allDevices
+                .filter(d => d.id !== device.id)
+                .filter(d => {
+                  const q = cautaAparat.toLowerCase().trim();
+                  return !q || `${d.name} ${d.serialNumber} ${d.department} ${d.model}`.toLowerCase().includes(q);
+                })
+                .slice(0, 200)
+                .map(d => {
+                  const bifat = aleseIds.includes(d.id);
+                  return (
+                    <button key={d.id} type="button"
+                      onClick={() => setAleseIds(prev => bifat ? prev.filter(x => x !== d.id) : [...prev, d.id])}
+                      className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition flex items-center gap-3 ${
+                        bifat ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+                      }`}>
+                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                        bifat ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                      }`}>{bifat && <Check className="w-3.5 h-3.5" />}</span>
+                      <span className="min-w-0">
+                        <span className="block text-[14px] font-bold text-slate-900 truncate">{d.name}</span>
+                        <span className="block text-[11px] font-bold text-slate-500 truncate">
+                          {[d.serialNumber, d.department].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                {aleseIds.length} bifate
+              </span>
+              <div className="flex gap-2">
+                <button onClick={() => setDeLegat(null)}
+                  className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">Renunta</button>
+                <button onClick={salveazaLegarea} disabled={seLeaga}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition disabled:opacity-50 flex items-center gap-2">
+                  {seLeaga && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Salveaza
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="p-4 sm:p-8 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 sm:gap-6 bg-white/50 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600 opacity-20" />
@@ -645,7 +767,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'manual').length > 0 ? (
                        editForm.files.filter(f => f.type === 'manual').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -669,7 +791,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'report').length > 0 ? (
                        editForm.files.filter(f => f.type === 'report').map(file => (
-                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
+                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -692,7 +814,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'service').length > 0 ? (
                        editForm.files.filter(f => f.type === 'service').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -715,7 +837,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
                        editForm.files.filter(f => f.type === 'achizitie').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -738,7 +860,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                        {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))}
                     </div>
                   </div>
@@ -1086,7 +1208,7 @@ const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
   other: 'Altele',
 };
 
-const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete }: any) => (
+const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete, onLink, alteAparate = [] }: any) => (
   <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
     <div className={`absolute top-0 left-0 w-1 h-full bg-${color}-600`} />
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -1102,10 +1224,23 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
                <span className="text-[10px] font-mono font-bold text-slate-500 truncate">{file.dateAdded}</span>
             </div>
             <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
+            {alteAparate.length > 0 && (
+              <p className="text-[10px] font-bold text-indigo-600 truncate mt-0.5"
+                 title={alteAparate.map((d: any) => `${d.name}${d.serialNumber ? ` (${d.serialNumber})` : ''}`).join('\n')}>
+                <Layers className="w-3 h-3 inline -mt-0.5 mr-1" />
+                si pe {alteAparate.length} {alteAparate.length === 1 ? 'alt aparat' : 'alte aparate'}
+              </p>
+            )}
          </div>
        </div>
        {/* Actions drop to their own full-width row on phones so the file name keeps its space */}
-       <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-1.5 sm:shrink-0">
+       <div className={`grid ${onLink ? 'grid-cols-4' : 'grid-cols-3'} sm:flex sm:items-center gap-2 sm:gap-1.5 sm:shrink-0`}>
+          {onLink && (
+            <button onClick={onLink}
+              className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-indigo-600 hover:border-indigo-600 rounded-xl transition active:scale-90"
+              title="Pune acelasi document si pe alte aparate — se tine o singura data"
+              aria-label="Pune documentul si pe alte aparate"><Layers className="w-5 h-5" /></button>
+          )}
           <button onClick={onView} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-blue-600 hover:border-blue-600 rounded-xl transition active:scale-90" title="Vizualizeaza" aria-label="Vizualizeaza"><Eye className="w-5 h-5" /></button>
           <button onClick={onDownload} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-emerald-600 hover:border-emerald-600 rounded-xl transition active:scale-90" title="Descarca" aria-label="Descarca"><Download className="w-5 h-5" /></button>
           <button onClick={onDelete} className="flex items-center justify-center py-3 sm:p-3 bg-slate-50 border border-slate-200 text-slate-500 hover:text-white hover:bg-red-600 hover:border-red-600 rounded-xl transition active:scale-90" title="Sterge" aria-label="Sterge"><Trash2 className="w-5 h-5" /></button>
