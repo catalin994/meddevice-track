@@ -85,7 +85,7 @@ export const spatiulDinCloud = async (): Promise<SpatiuCloud> => {
       return {
         ...gol,
         eroare: lipseste
-          ? 'Ruleaza din nou scriptul de schema din Configurare — masurarea are nevoie de o functie noua.'
+          ? 'Ruleaza din nou scriptul "Conturi si acces" din Configurare — masurarea are nevoie de o functie noua.'
           : (error.message || 'Nu s-a putut citi marimea'),
       };
     }
