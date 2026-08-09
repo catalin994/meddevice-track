@@ -1170,7 +1170,7 @@ const App: React.FC = () => {
                     <p className="text-xs text-slate-500 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
                   </div>
                 )}
-                {view === 'SETTINGS' && <Settings devices={devices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} onMigrateFiles={migrateFilesToStorage} />}
+                {view === 'SETTINGS' && <Settings devices={devices} invoices={invoices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} onMigrateFiles={migrateFilesToStorage} />}
               </Suspense>
             </div>
           )}

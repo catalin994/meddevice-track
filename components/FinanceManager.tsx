@@ -56,6 +56,7 @@ const emptyForm = () => ({
   description: '',
   fileUrl: '',
   fileName: '',
+  fileSize: 0,
 });
 
 /**
@@ -349,6 +350,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         description: fields.description || prev.description,
         fileUrl: base64,
         fileName: file.name,
+        fileSize: file.size,
       }));
       if (fields.deviceIds.length > 0) {
         setSelectedDeviceIds(prev => Array.from(new Set([...prev, ...fields.deviceIds])));
@@ -627,6 +629,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         filePath,
         fileUrl: inlineUrl,
         fileName: d.fileName || undefined,
+        fileSize: d.file?.size,
       });
     }
     setIsBulkSaving(false);
@@ -686,6 +689,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       description: inv.description || '',
       fileUrl: inv.fileUrl || '',
       fileName: inv.fileName || '',
+      fileSize: inv.fileSize || 0,
     });
     setSelectedDeviceIds(inv.deviceIds || []);
     setEditingId(inv.id);
@@ -730,6 +734,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       filePath,
       fileUrl: inlineUrl,
       fileName: form.fileName || undefined,
+      fileSize: form.fileSize || undefined,
     };
     onUpsertInvoice(invoice);
     setIsEditing(false);

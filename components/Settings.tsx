@@ -2,12 +2,12 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { notify } from '../services/notices';
-import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission } from '../types';
+import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import {
-  spatiulDinCloud, spatiulDeAici, iaLimitaGB, punLimitaGB, marime, NUME_FEL,
+  spatiulDinCloud, spatiulDeAici, spatiulDinEvidenta, iaLimitaGB, punLimitaGB, marime, NUME_FEL,
   LIMITA_IMPLICITA_GB, SpatiuCloud, SpatiuLocal,
 } from '../services/spatiu';
 import { listProfiles, updateProfile } from '../services/authService';
@@ -21,13 +21,15 @@ const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
 
 interface SettingsProps {
   devices: MedicalDevice[];
+  /** Pentru socoteala spatiului: facturile isi tin PDF-ul in aceeasi stocare. */
+  invoices?: Invoice[];
   onImport: (devices: MedicalDevice[]) => void;
   auditLog?: AuditEntry[];
   currentUser?: AppUser | null;
   onMigrateFiles?: (onProgress?: (done: number, total: number, label: string) => void) => Promise<{ moved: number; total: number; error: string | null }>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], currentUser = null, onMigrateFiles }) => {
+const Settings: React.FC<SettingsProps> = ({ devices, invoices = [], onImport, auditLog = [], currentUser = null, onMigrateFiles }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
   const [inputUrl, setInputUrl] = useState(config.url || '');
@@ -45,6 +47,12 @@ const Settings: React.FC<SettingsProps> = ({ devices, onImport, auditLog = [], c
   const [seMasoara, setSeMasoara] = useState(false);
   const [limitaGB, setLimitaGB] = useState(() => iaLimitaGB());
 
+  /**
+   * Intai socoteala din evidenta, care merge oricum, apoi cea exacta din baza
+   * de date, daca functia e instalata. Ecranul arata mereu o cifra reala; ce
+   * lipseste e precizia, nu raspunsul.
+   */
+  const dinEvidenta = useMemo(() => spatiulDinEvidenta(devices, invoices), [devices, invoices]);
   const masoaraSpatiul = useCallback(async () => {
     setSeMasoara(true);
     const [c, l] = await Promise.all([spatiulDinCloud(), spatiulDeAici()]);
@@ -280,6 +288,7 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     status TEXT DEFAULT 'NotUploaded',
     "contractNumber" TEXT,
     "budgetArticle" TEXT,
+    "fileSize" NUMERIC,
     "deviceIds" JSONB DEFAULT '[]'::jsonb,
     description TEXT,
     "fileUrl" TEXT,
@@ -416,6 +425,7 @@ ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "metrologyLab" TEXT;
 -- articolul bugetar al facturii, pentru pagina de buget
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "budgetArticle" TEXT;
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "uploadedAt" TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "fileSize" NUMERIC;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "maintenanceHistory" JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "locationHistory" JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS contracts JSONB DEFAULT '[]'::jsonb;
@@ -691,38 +701,52 @@ NOTIFY pgrst, 'reload schema';
           </button>
         </div>
 
-        {spatiu?.eroare ? (
-          <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm font-semibold text-amber-900 leading-relaxed">{spatiu.eroare}</p>
-          </div>
-        ) : (
+        {(() => {
+          // Cifra exacta cand se poate, socoteala din evidenta cand nu — dar
+          // niciodata un ecran gol cu un indemn de rulat un script.
+          const exact = !!spatiu && !spatiu.eroare;
+          const c = exact ? spatiu! : dinEvidenta;
+          const folosit = c.octeti;
+          return (
           <div className="space-y-6">
+            {!exact && (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-3">
+                <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                <p className="text-[13px] font-semibold text-slate-600 leading-relaxed">
+                  Socotit din evidenta aplicatiei
+                  {dinEvidenta.faraMarime > 0 && <> — {dinEvidenta.faraMarime} document{dinEvidenta.faraMarime === 1 ? '' : 'e'} urcate inainte
+                    ca marimea sa fie retinuta nu intra in total</>}.
+                  Pentru cifra exacta din stocare, ruleaza din nou scriptul "Conturi si acces" de mai sus.
+                </p>
+              </div>
+            )}
             {/* ── in cloud ── */}
             <div>
               <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
                 <div>
-                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">In cloud · vazut de toti</p>
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                    In cloud · vazut de toti{exact ? ' · masurat exact' : ''}
+                  </p>
                   <p className="text-2xl font-black text-slate-900 tabular-nums mt-0.5">
-                    {spatiu ? marime(spatiu.octeti) : '...'}
+                    {marime(folosit)}
                     <span className="text-sm font-bold text-slate-500"> din {limitaGB} GB</span>
                   </p>
                 </div>
                 <p className={`text-sm font-black tabular-nums ${
-                  spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.9 ? 'text-red-600' : 'text-emerald-700'
+                  folosit > limitaGB * 1024 ** 3 * 0.9 ? 'text-red-600' : 'text-emerald-700'
                 }`}>
-                  {spatiu ? `mai ai ${marime(Math.max(0, limitaGB * 1024 ** 3 - spatiu.octeti))}` : ''}
+                  mai ai {marime(Math.max(0, limitaGB * 1024 ** 3 - folosit))}
                 </p>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${
-                  spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.9 ? 'bg-red-600'
-                  : spatiu && spatiu.octeti > limitaGB * 1024 ** 3 * 0.7 ? 'bg-amber-500' : 'bg-blue-600'
-                }`} style={{ width: `${Math.min(100, spatiu ? (spatiu.octeti / (limitaGB * 1024 ** 3)) * 100 : 0)}%` }} />
+                  folosit > limitaGB * 1024 ** 3 * 0.9 ? 'bg-red-600'
+                  : folosit > limitaGB * 1024 ** 3 * 0.7 ? 'bg-amber-500' : 'bg-blue-600'
+                }`} style={{ width: `${Math.min(100, (folosit / (limitaGB * 1024 ** 3)) * 100)}%` }} />
               </div>
               <p className="text-[11px] font-bold text-slate-500 mt-2">
-                {spatiu ? `${spatiu.fisiere} fisiere` : ''}
-                {spatiu?.peFeluri.length ? ` · ${spatiu.peFeluri.map(f => `${NUME_FEL[f.fel] || f.fel} ${marime(f.octeti)}`).join(' · ')}` : ''}
+                {`${c.fisiere} fisiere`}
+                {c.peFeluri.length ? ` · ${c.peFeluri.map(f => `${NUME_FEL[f.fel] || f.fel} ${marime(f.octeti)}`).join(' · ')}` : ''}
               </p>
             </div>
 
@@ -760,7 +784,8 @@ NOTIFY pgrst, 'reload schema';
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* FILE STORAGE MIGRATION */}

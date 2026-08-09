@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { MedicalDevice, Invoice } from '../types';
 
 /**
  * Cat loc ocupa fisierele, si cat a mai ramas.
@@ -112,6 +113,52 @@ export const spatiulDeAici = async (): Promise<SpatiuLocal> => {
   } catch {
     return { octeti: 0, limita: 0 };
   }
+};
+
+/**
+ * Cat ocupa documentele, socotit din evidenta aplicatiei.
+ *
+ * Nu are nevoie de nimic in baza de date: fiecare document urcat isi tine
+ * marimea in randul aparatului. Cifra e la fel de buna ca evidenta — nu vede
+ * fisiere ramase orfane in stocare, si nu poate socoti documentele urcate
+ * inainte ca marimea sa fie retinuta. Cate sunt astea, se si spune.
+ *
+ * Masurarea exacta, din baza de date, ramane cea preferata cand e disponibila.
+ */
+export const spatiulDinEvidenta = (
+  devices: MedicalDevice[] = [],
+  invoices: Invoice[] = [],
+): SpatiuCloud & { faraMarime: number } => {
+  const peFeluri = new Map<string, FelSpatiu>();
+  let faraMarime = 0;
+
+  const pun = (fel: string, octeti?: number) => {
+    const r = peFeluri.get(fel) || { fel, fisiere: 0, octeti: 0 };
+    r.fisiere += 1;
+    if (octeti && octeti > 0) r.octeti += octeti; else faraMarime += 1;
+    peFeluri.set(fel, r);
+  };
+
+  for (const d of devices) {
+    for (const f of d.files || []) {
+      // Cele ramase in randul aparatului, ca text, nu ocupa loc in stocare —
+      // ocupa in randul insusi, si se numara la migrare, nu aici.
+      if (!f.path) continue;
+      pun('devices', f.size);
+    }
+  }
+  for (const inv of invoices) {
+    if (!inv.filePath) continue;
+    pun('invoices', inv.fileSize);
+  }
+
+  const randuri = [...peFeluri.values()].sort((a, b) => b.octeti - a.octeti);
+  return {
+    fisiere: randuri.reduce((s, r) => s + r.fisiere, 0),
+    octeti: randuri.reduce((s, r) => s + r.octeti, 0),
+    peFeluri: randuri,
+    faraMarime,
+  };
 };
 
 /** Numele in romaneste ale primului nivel din cale. */

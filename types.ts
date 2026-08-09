@@ -591,6 +591,8 @@ export interface Invoice {
   description?: string;
   /** Key in Supabase Storage for the attached invoice PDF. */
   filePath?: string;
+  /** Cati octeti are PDF-ul, ca sa se poata socoti spatiul fara sa fie cerut. */
+  fileSize?: number;
   /** Legacy inline data URL, kept so old invoices still open. */
   fileUrl?: string;
   fileName?: string;

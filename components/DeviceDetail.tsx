@@ -207,6 +207,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       name,
       type: uploadType,
       ...(path ? { path } : { url: pdfDataUrl }),
+      // Marimea se retinea doar la incarcarea din fisier, nu si la scanare —
+      // adica tocmai la documentele mari. Fara ea, socoteala spatiului le sare.
+      size: Math.round((pdfDataUrl.length - (pdfDataUrl.indexOf(',') + 1)) * 0.75),
       dateAdded: new Date().toISOString().split('T')[0]
     };
     const updatedFiles = [...(editForm.files || []), newFile];
