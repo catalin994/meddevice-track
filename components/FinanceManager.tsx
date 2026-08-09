@@ -15,6 +15,9 @@ import useEscape from './useEscape';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
+import {
+  triaza, gasesteRaport, iaCuvintele, punCuvintele, CUVINTE_IMPLICITE, RaportGasit,
+} from '../services/trierFacturi';
 import { notify } from '../services/notices';
 import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
@@ -87,6 +90,14 @@ interface BulkDraft {
   contractNumber: string;
   /** Ce s-a facturat, citit din tabelul de pozitii al facturii. */
   description: string;
+  /** Recunoscuta ca a serviciului tehnic, dupa denumire. */
+  aMea: boolean;
+  /** Pomeneste un aparat de-al nostru, dar niciun cuvant nu s-a potrivit. */
+  poate: boolean;
+  /** De ce a fost socotita a noastra — scris, ca sa se vada cand regula greseste. */
+  motive: string[];
+  /** Raportul de service gasit pe aparat, cand exista. */
+  raport: RaportGasit | null;
   deviceIds: string[];
   /**
    * Fisierul de pe disc, nu continutul lui.
@@ -155,10 +166,24 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [bulkFiltru, setBulkFiltru] = useState('');
 
   const bifate = useMemo(() => (bulkDrafts || []).filter(d => d.include).length, [bulkDrafts]);
+  /** "ale mele" / "fara raport" / tot ce e in folder. */
+  const [bulkVedere, setBulkVedere] = useState<'ALE_MELE' | 'FARA_RAPORT' | 'TOT'>('ALE_MELE');
+  const numarate = useMemo(() => {
+    const d = bulkDrafts || [];
+    return {
+      aleMele: d.filter(x => x.aMea).length,
+      poate: d.filter(x => x.poate).length,
+      faraRaport: d.filter(x => (x.aMea || x.poate) && !x.raport).length,
+    };
+  }, [bulkDrafts]);
   const bulkVizibile = useMemo(() => {
     const q = bulkFiltru.toLowerCase().trim();
-    if (!q) return bulkDrafts || [];
-    return (bulkDrafts || []).filter(d =>
+    const dupaVedere = (bulkDrafts || []).filter(d =>
+      bulkVedere === 'TOT' ? true
+      : bulkVedere === 'FARA_RAPORT' ? ((d.aMea || d.poate) && !d.raport)
+      : (d.aMea || d.poate));
+    if (!q) return dupaVedere;
+    return dupaVedere.filter(d =>
       d.invoiceNumber.toLowerCase().includes(q)
       || d.supplier.toLowerCase().includes(q)
       || d.description.toLowerCase().includes(q)
@@ -369,6 +394,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     setIsBulkProcessing(true);
     setBulkProgress({ done: 0, total: files.length });
     setBulkDrafts(null);
+    const cuvinte = iaCuvintele();
 
     const pdfjsLib = await import('pdfjs-dist');
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
@@ -392,13 +418,17 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         const text = pagini.join('\n');
 
         const fields = extractInvoiceFields(text, file.name, devices, globalContracts);
+        const dataFact = fields.issueDate || new Date().toISOString().split('T')[0];
+        const triere = triaza(fields.description, fields.deviceIds, devices, cuvinte);
         const numKey = fields.invoiceNumber.toLowerCase().trim();
         const isDuplicate = !!numKey && (existingNumbers.has(numKey) || seenInBatch.has(numKey));
         if (numKey) seenInBatch.add(numKey);
 
         drafts.push({
           key: `${fi}-${file.name}`,
-          include: !isDuplicate,
+          // Bifate din start doar cele recunoscute ca ale noastre: dintr-un
+          // folder de treizeci, restul nu are ce cauta in aplicatie.
+          include: !isDuplicate && triere.aMea,
           isDuplicate,
           invoiceNumber: fields.invoiceNumber || file.name.replace(/\.pdf$/i, ''),
           supplier: fields.supplier,
@@ -408,6 +438,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           currency: fields.currency,
           contractNumber: fields.contractNumber,
           description: fields.description,
+          aMea: triere.aMea, poate: triere.poate, motive: triere.motive,
+          raport: gasesteRaport(fields.deviceIds, devices, dataFact),
           deviceIds: fields.deviceIds,
           file,
           fileName: file.name,
@@ -419,7 +451,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           include: false, isDuplicate: false,
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
           issueDate: new Date().toISOString().split('T')[0], dueDate: '',
-          contractNumber: '', description: '', deviceIds: [], file, fileName: file.name, cale,
+          contractNumber: '', description: '', aMea: false, poate: false, motive: [], raport: null,
+          deviceIds: [], file, fileName: file.name, cale,
           eroare: err?.message ? `Nu s-a putut citi: ${err.message}` : 'Nu s-a putut citi PDF-ul',
         });
       }
@@ -923,12 +956,32 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div className="min-w-0">
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Facturile din folder</h3>
                 <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">
-                  {bulkDrafts.length} in lista · {bifate} de pastrat
+                  {bulkDrafts.length} in folder · {numarate.aleMele} ale serviciului tehnic · {bifate} de pastrat
                   {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} exista deja</span>}
                   {bulkDrafts.some(d => d.eroare) && <span className="text-red-500"> · {bulkDrafts.filter(d => d.eroare).length} necitite</span>}
                 </p>
               </div>
               <button onClick={() => setBulkDrafts(null)} aria-label="Inchide" className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
+            </div>
+
+            {/*
+              Trei vederi, fiindca asta e ordinea muncii: intai care sunt ale
+              mele, apoi carora le lipseste raportul de service — fara el nu se
+              poate urca in ConectX — si abia la nevoie folderul intreg.
+            */}
+            <div className="px-4 sm:px-6 pt-3 flex flex-wrap items-center gap-2 shrink-0">
+              {([
+                ['ALE_MELE', `Ale mele (${numarate.aleMele + numarate.poate})`],
+                ['FARA_RAPORT', `Fara raport de service (${numarate.faraRaport})`],
+                ['TOT', `Tot folderul (${bulkDrafts.length})`],
+              ] as ['ALE_MELE' | 'FARA_RAPORT' | 'TOT', string][]).map(([id, text]) => (
+                <button key={id} onClick={() => setBulkVedere(id)}
+                  className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
+                    bulkVedere === id ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'
+                  }`}>
+                  {text}
+                </button>
+              ))}
             </div>
 
             {/* Ce se poate face cu lista intreaga, ca sa nu se bifeze o suta de randuri unul cate unul */}
@@ -989,6 +1042,32 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                     <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5" title={d.cale ? `${d.cale}/${d.fileName}` : d.fileName}>
                       {d.cale ? `${d.cale}/` : ''}{d.fileName}
                     </p>
+                    {/* De ce e a noastra, si daca are raportul langa ea. */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      {d.aMea && (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-black uppercase tracking-wide"
+                              title={`Recunoscuta dupa: ${d.motive.join(', ')}`}>
+                          a mea · {d.motive[0]}
+                        </span>
+                      )}
+                      {d.poate && (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-md text-[10px] font-black uppercase tracking-wide"
+                              title={`Pomeneste: ${d.motive.join(', ')}`}>
+                          poate a mea · aparat cunoscut
+                        </span>
+                      )}
+                      {(d.aMea || d.poate) && (d.raport ? (
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-black uppercase tracking-wide"
+                              title={`${d.raport.fisier.name} — ${d.raport.device.name}, la ${d.raport.distanta} zile de factura`}>
+                          raport de service
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-md text-[10px] font-black uppercase tracking-wide"
+                              title="Fara raport nu se poate urca in ConectX. Scaneaza-l la fisa aparatului.">
+                          fara raport
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <input value={d.supplier} onChange={e => updateBulkDraft(d.key, { supplier: e.target.value })} placeholder="Furnizor"
                     aria-label="Furnizorul"
