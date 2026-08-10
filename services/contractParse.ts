@@ -26,15 +26,18 @@ export interface CampuriContract {
   lines: string[];
 }
 
-const DIAC: Record<string, string> = {
+const DIACRITICE: Record<string, string> = {
   'ă':'a','â':'a','î':'i','ș':'s','ş':'s','ț':'t','ţ':'t',
   'Ă':'A','Â':'A','Î':'I','Ș':'S','Ş':'S','Ț':'T','Ţ':'T',
 };
-const norm = (s: string) => s.replace(/[ăâîșşțţĂÂÎȘŞȚŢ]/g, c => DIAC[c] || c).toLowerCase();
+const faraDiacritice = (s: string) => s.replace(/[ăâîșşțţĂÂÎȘŞȚŢ]/g, c => DIACRITICE[c] || c).toLowerCase();
 
 /** Data romaneasca in forma ISO. "09.02.2024" → "2024-02-09". */
-export const laISO = (brut: string): string => {
-  const m = brut.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})\b/);
+export const dataISO = (brut: string): string => {
+  // Intai cu an de patru cifre. Altfel "Nr. 17/12.01.2025" s-ar citi ca
+  // 17 decembrie 2001, si contractul ar primi o perioada inventata.
+  const m = brut.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/)
+    || brut.match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2})\b(?![.\/-]?\d)/);
   if (!m) return '';
   const [, z, l, a] = m;
   const an = a.length === 2 ? `20${a}` : a;
@@ -50,11 +53,11 @@ const LUNI: Record<string, string> = {
 
 /** "09 februarie 2024" — cum se scrie in contractele redactate de juristi. */
 const dataInLitere = (t: string): string => {
-  const m = norm(t).match(/\b(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s+(\d{4})\b/);
+  const m = faraDiacritice(t).match(/\b(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s+(\d{4})\b/);
   return m ? `${m[3]}-${LUNI[m[2]]}-${m[1].padStart(2, '0')}` : '';
 };
 
-const oData = (t: string): string => laISO(t) || dataInLitere(t);
+const oData = (t: string): string => dataISO(t) || dataInLitere(t);
 
 /** Textul de dupa o eticheta, pana la capatul frazei sau al randului. */
 const dupaEticheta = (linii: string[], re: RegExp, maxRanduri = 4): string => {
@@ -76,7 +79,7 @@ const RE_NUMAR = /\bnr\.?\s*(?:contract(?:ului)?\s*)?[:.]?\s*([A-Za-z0-9][A-Za-z
 /** Titlul contractului: primul rand care incepe cu "CONTRACT". */
 const gasesteTitlul = (linii: string[]): string => {
   for (const l of linii.slice(0, 25)) {
-    const n = norm(l).trim();
+    const n = faraDiacritice(l).trim();
     if (!/^(contract|acord[- ]cadru|act aditional)\b/.test(n)) continue;
     // Fara numarul si data din coada: alea au campurile lor.
     return l.replace(/\s*nr\.?\s*[:.]?\s*[A-Za-z0-9][A-Za-z0-9\-\/._]*.*$/i, '')
@@ -95,12 +98,16 @@ const gasesteTitlul = (linii: string[]): string => {
 const gasestePrestatorul = (linii: string[]): string => {
   const RE_CALITATE = /(?:in\s+calitate\s+de\s+)?(prestator|furnizor|executant|vanzator|antreprenor)\b/i;
   for (const l of linii) {
-    const n = norm(l);
+    const n = faraDiacritice(l);
     if (!RE_CALITATE.test(n)) continue;
     if (/achizitor|beneficiar|cumparator|spital/.test(n.split(RE_CALITATE)[0] || '')) continue;
     // Numele firmei: pana la prima virgula, fara forma juridica din fata.
     const inainte = l.split(/,|\s+cu sediul|\s+in calitate/i)[0].trim();
-    const curat = inainte.replace(/^(s\.?c\.?|sc)\s+/i, '').trim();
+    const curat = inainte
+      .replace(/^(?:si|și|intre|între|de\s+o\s+parte|pe\s+de\s+alta\s+parte)\s+/i, '')
+      .replace(/^(s\.?c\.?|sc)\s+/i, '')
+      .replace(/^[\s\-–—,]+/, '')
+      .trim();
     if (curat.length >= 3 && /[a-zA-Z]{3}/.test(curat)) return curat;
   }
   return '';
@@ -108,7 +115,11 @@ const gasestePrestatorul = (linii: string[]): string => {
 
 /** Perioada: doua date in aceeasi fraza, sau o durata in luni de la o data. */
 const gasestePerioada = (linii: string[], text: string): { startDate: string; endDate: string } => {
-  const zonaDurata = dupaEticheta(linii, /durata\s+contractului|perioada\s+contractului|termenul\s+contractului/i, 6)
+  const zonaDurata =
+    dupaEticheta(linii, /durata\s+contractului|perioada\s+contractului|termenul\s+contractului/i, 6)
+    // "DURATA" scris singur pe rand, ca titlu de articol.
+    || dupaEticheta(linii, /^\s*(?:art\.?\s*\d+\.?\s*)?(?:durata|perioada|valabilitate[a]?)\b\s*[:.]?\s*$/i, 4)
+    || dupaEticheta(linii, /\bvalabil\b/i, 2)
     || text;
 
   // "de la 09.02.2024 pana la 08.02.2025"
@@ -119,7 +130,7 @@ const gasestePerioada = (linii: string[], text: string): { startDate: string; en
 
   // Doua date una dupa alta, fara cuvinte intre ele.
   if (!startDate || !endDate) {
-    const toate = (zonaDurata.match(/\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g) || []).map(laISO).filter(Boolean);
+    const toate = (zonaDurata.match(/\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g) || []).map(dataISO).filter(Boolean);
     if (!startDate && toate[0]) startDate = toate[0];
     if (!endDate && toate[1]) endDate = toate[1];
   }
@@ -131,7 +142,7 @@ const gasestePerioada = (linii: string[], text: string): { startDate: string; en
     if (luni) {
       const d = new Date(`${startDate}T00:00:00`);
       const n = parseInt(luni[1], 10);
-      const unitate = norm(luni[2]);
+      const unitate = faraDiacritice(luni[2]);
       if (unitate === 'luni') d.setMonth(d.getMonth() + n);
       else if (unitate === 'ani') d.setFullYear(d.getFullYear() + n);
       else d.setDate(d.getDate() + n);
@@ -147,10 +158,16 @@ const gasestePerioada = (linii: string[], text: string): { startDate: string; en
 const gasesteValoarea = (linii: string[]): number => {
   const candidati: { valoare: number; rang: number }[] = [];
   for (const l of linii) {
-    const n = norm(l);
+    const n = faraDiacritice(l);
     if (!/valoare|pret\s+total|cuantum/.test(n)) continue;
-    const numere = (l.match(/\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?/g) || [])
-      .map(parseAmount).filter(v => v > 0);
+    // "9.600,00 lei fara TVA, respectiv 11.424,00 lei cu TVA": conteaza suma
+    // lipita de "fara TVA", nu cea mai mare de pe rand — aia e cu TVA, si e
+    // mai mare tocmai fiindca e cealalta.
+    const langaFara = l.match(/([\d][\d.,\s]*)\s*(?:lei|ron)?\s*,?\s*fara\s*t\.?v\.?a\.?/i);
+    const numere = langaFara
+      ? [parseAmount(langaFara[1])].filter(v => v > 0)
+      : (l.match(/\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?/g) || [])
+          .map(parseAmount).filter(v => v > 0);
     if (numere.length === 0) continue;
     // "fara TVA" bate "cu TVA"; "estimata" e mai slaba decat "totala".
     const rang = (/fara\s*tva/.test(n) ? 3 : 0) + (/total/.test(n) ? 2 : 0) + (/estimat/.test(n) ? -1 : 0);
