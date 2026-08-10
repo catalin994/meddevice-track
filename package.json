@@ -13,6 +13,7 @@
     "@google/genai": "^1.33.0",
     "@supabase/supabase-js": "2",
     "@tailwindcss/vite": "^4.2.2",
+    "@tesseract.js-data/ron": "^1.0.0",
     "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
     "jsqr": "^1.4.0",

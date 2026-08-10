@@ -57,6 +57,7 @@ export default defineConfig(({ mode }) => {
             // aplicatiei in loc de hartia spitalului — adica altfel decat cel
             // facut in birou, si nimeni n-ar intelege de ce.
             globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js,docx}'],
+            maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
             globIgnores: [
               '**/vendor-exceljs-*.js',   // 920K — export Excel
               '**/vendor-xlsx-*.js',      // 420K — import Excel
@@ -64,6 +65,11 @@ export default defineConfig(({ mode }) => {
               '**/vendor-ai-*.js',        // 284K — extragere date din PDF
               '**/pdf-*.js',              // 464K — randare PDF
               '**/jsQR-*.js',             // 128K — scanare cod QR
+              // OCR: firul de lucru, motoarele si datele de limba, vreo 11MB.
+              // Se aduc doar cand cineva citeste un document scanat, si raman
+              // apoi in cache-ul browserului. Precacheate, ar fi transformat
+              // instalarea aplicatiei intr-o descarcare de treisprezece MB.
+              'ocr/**',
             ],
             navigateFallback: '/meddevice-track/index.html',
             navigateFallbackDenylist: [/^\/meddevice-track\/404\.html$/],

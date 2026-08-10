@@ -1,4 +1,5 @@
 import { hasUsableText } from './invoiceParse';
+import { optiuniOcr } from './ocrLocal';
 
 /**
  * Reading an invoice that arrived as a picture.
@@ -60,16 +61,22 @@ export const ocrPdf = async (
   for (let i = 1; i <= total; i++) {
     const imagine = await pdfPageToImage(pdf, i);
     if (!imagine) continue;
-    const citeste = (limba: string) => Tesseract.recognize(imagine, limba, {
+    const citeste = (limba: string, local: boolean) => Tesseract.recognize(imagine, limba, {
+      ...(local ? optiuniOcr() : {}),
       logger: (m: any) => {
         if (m.status === 'recognizing text' && onProgress) {
           onProgress(i, total, Math.round((m.progress || 0) * 100));
         }
       },
-    });
+    } as any);
+    // Intai cu fisierele din aplicatie — merg si in spatele unui proxy strict.
+    // Daca ceva lipseste din build, se incearca drumul obisnuit, prin CDN.
     let rezultat;
-    try { rezultat = await citeste('ron'); }
-    catch { rezultat = await citeste('eng'); }
+    try { rezultat = await citeste('ron', true); }
+    catch {
+      try { rezultat = await citeste('ron', false); }
+      catch { rezultat = await citeste('eng', false); }
+    }
     bucati.push(rezultat.data.text || '');
   }
 

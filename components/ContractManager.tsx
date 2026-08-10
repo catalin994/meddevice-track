@@ -38,6 +38,10 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
   const [citeste, setCiteste] = useState(false);
   /** Ce a gasit si ce n-a gasit in PDF — un camp gol nu se vede intr-un formular. */
   const [notaPdf, setNotaPdf] = useState('');
+  /** Textul citit efectiv. Cand un camp iese gresit, asta e diferenta dintre
+   *  "textul e bun, tiparul a gresit" si "pagina n-are text". */
+  const [randuriCitite, setRanduriCitite] = useState<string[]>([]);
+  const [aratRanduri, setAratRanduri] = useState(false);
 
   /**
    * Contractul PDF: se ataseaza, si din el se completeaza campurile.
@@ -52,7 +56,9 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
     setCiteste(true);
     setNotaPdf('');
     try {
-      const c = await citesteContractPdf(f);
+      const c = await citesteContractPdf(f, (pag, din, proc) =>
+        setNotaPdf(`Contract scanat — se citeste cu OCR: pagina ${pag} din ${din}, ${proc}%`));
+      setRanduriCitite(c.lines);
       const dataUrl = await new Promise<string>((res, rej) => {
         const r = new FileReader();
         r.onload = () => res(r.result as string);
@@ -93,6 +99,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
       setNotaPdf(
         (gasit.length ? `Citit din contract: ${gasit.join(' · ')}` : 'PDF atasat, dar nu am recunoscut niciun camp')
         + (lipsa.length ? ` — completeaza ${lipsa.join(', ')}` : '')
+        + (c.prinOcr ? ' · citit cu OCR (contract scanat)' : '')
         + (urcat.path ? '' : ' · fisierul a ramas doar pe acest aparat')
       );
     } catch (err: any) {
@@ -298,6 +305,19 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                            </div>
                            {notaPdf && (
                              <p className="mt-4 text-[12px] font-bold text-blue-200 leading-relaxed">{notaPdf}</p>
+                           )}
+                           {randuriCitite.length > 0 && (
+                             <div className="mt-3">
+                               <button type="button" onClick={() => setAratRanduri(v => !v)}
+                                 className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition">
+                                 {aratRanduri ? 'Ascunde' : 'Vezi'} textul citit din contract ({randuriCitite.length} randuri)
+                               </button>
+                               {aratRanduri && (
+                                 <pre data-text-contract className="mt-2 max-h-64 overflow-y-auto bg-black/40 rounded-xl p-4 text-[11px] font-mono text-slate-300 whitespace-pre-wrap">
+                                   {randuriCitite.join('\n')}
+                                 </pre>
+                               )}
+                             </div>
                            )}
                         </div>
 
