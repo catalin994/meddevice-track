@@ -1054,7 +1054,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
       {/* ============ CONTRACTS ============ */}
       {tab === 'CONTRACTS' && (
-        <ContractManager devices={devices} onSaveContract={onSaveContract} />
+        <ContractManager devices={devices} invoices={invoices} onSaveContract={onSaveContract} />
       )}
 
       {/* ============ BULK IMPORT REVIEW MODAL ============ */}

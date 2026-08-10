@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { notify } from '../services/notices';
-import { Contract, MedicalDevice } from '../types';
+import { Contract, MedicalDevice, Invoice, InvoiceStatus, normaliseInvoiceStatus } from '../types';
 import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2, Pencil } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
 import { citesteContractPdf } from '../services/contractParse';
@@ -10,15 +10,21 @@ import { buildPath, uploadDataUrl } from '../services/fileStorage';
 import Portal from './Portal';
 interface ContractManagerProps {
   devices: MedicalDevice[];
+  /** Facturile: pe fisa unui contract se vede ce a venit pe el si ce a ramas. */
+  invoices?: Invoice[];
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
 }
 
-const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContract }) => {
+const lei = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [], onSaveContract }) => {
   const [isAdding, setIsAdding] = useState(false);
   /** Numarul contractului aflat in editare. Gol cand se adauga unul nou. */
   const [editez, setEditez] = useState<string | null>(null);
   /** Ce fise de contract au lista de aparate desfasurata. */
   const [aratAparate, setAratAparate] = useState<Record<string, boolean>>({});
+  /** Contractul deschis pe pagina lui. */
+  const [deschis, setDeschis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiText, setAiText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,6 +236,199 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
     d.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  /**
+   * Pagina unui contract: ce acopera, ce s-a facturat pe el, si cat a ramas.
+   *
+   * Intrebarea nu e cati bani are contractul, ci cati mai are. Pana acum
+   * raspunsul se aduna de mana din tab-ul de facturi, cautand dupa numarul
+   * contractului — deci de obicei nu se aduna deloc.
+   */
+  const contractDeschis = globalContracts.find(c => c.contractNumber === deschis);
+  if (contractDeschis) {
+    const c = contractDeschis;
+    const acoperite = devices.filter(d =>
+      (d.contracts || []).some(x => x.contractNumber === c.contractNumber));
+    const aleLui = invoices
+      .filter(i => (i.contractNumber || '').trim() === c.contractNumber.trim())
+      .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+    const facturat = aleLui.reduce((s2, i) => s2 + (i.amount || 0), 0);
+    // Facturile poarta suma cu TVA, deci se compara cu valoarea cu TVA a
+    // contractului. Cand contractul n-o are scrisa, se spune fata de ce se
+    // masoara, in loc sa se compare doua lucruri diferite pe tacute.
+    const plafon = c.annualCostWithVat || c.annualCost || 0;
+    const cuTva = !!c.annualCostWithVat;
+    const ramas = Math.max(0, plafon - facturat);
+    const procent = plafon > 0 ? Math.min(100, (facturat / plafon) * 100) : 0;
+    const depasit = plafon > 0 && facturat > plafon;
+
+    // Cate o bara pe luna, din facturile lui — cat s-a facturat si cand.
+    const peLuni = new Map<string, number>();
+    for (const i of aleLui) {
+      const luna = (i.issueDate || '').slice(0, 7);
+      if (luna) peLuni.set(luna, (peLuni.get(luna) || 0) + (i.amount || 0));
+    }
+    const luni = [...peLuni.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const maxLuna = Math.max(1, ...luni.map(l => l[1]));
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <button onClick={() => setDeschis(null)}
+                className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
+                ← Inapoi la contracte
+              </button>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
+                {c.name || c.provider}
+              </h2>
+              <p className="text-sm text-slate-500 font-bold mt-1">
+                {c.provider} · nr. {c.contractNumber} · {c.startDate} — {c.endDate}
+              </p>
+            </div>
+            <button onClick={() => deschideEditarea(c)}
+              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition flex items-center gap-2">
+              <Pencil className="w-4 h-4" /> Modifica
+            </button>
+          </div>
+          {c.coverageDetails && (
+            <p className="mt-5 text-[14px] font-semibold text-slate-600 leading-relaxed">{c.coverageDetails}</p>
+          )}
+        </div>
+
+        {/* ── cat s-a facturat, cat a ramas ── */}
+        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 bg-slate-50 rounded-2xl">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Valoarea contractului{cuTva ? ' (cu TVA)' : ' (fara TVA)'}
+              </p>
+              <p className="text-xl font-black text-slate-900 tabular-nums mt-1">{lei(plafon)} lei</p>
+              {cuTva && (
+                <p className="text-[11px] font-bold text-slate-500 mt-0.5 tabular-nums">
+                  {lei(c.annualCost)} fara TVA
+                </p>
+              )}
+            </div>
+            <div className="p-4 bg-blue-50 rounded-2xl">
+              <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Facturat</p>
+              <p className="text-xl font-black text-blue-700 tabular-nums mt-1">{lei(facturat)} lei</p>
+              <p className="text-[11px] font-bold text-blue-600/70 mt-0.5">
+                {aleLui.length} factur{aleLui.length === 1 ? 'a' : 'i'}
+              </p>
+            </div>
+            <div className={`p-4 rounded-2xl ${depasit ? 'bg-red-50' : 'bg-emerald-50'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${depasit ? 'text-red-700' : 'text-emerald-700'}`}>
+                {depasit ? 'Facturat peste contract' : 'Ramas de facturat'}
+              </p>
+              <p className={`text-xl font-black tabular-nums mt-1 ${depasit ? 'text-red-700' : 'text-emerald-700'}`}>
+                {lei(depasit ? facturat - plafon : ramas)} lei
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${depasit ? 'bg-red-600' : 'bg-blue-600'}`}
+                style={{ width: `${Math.max(procent, facturat > 0 ? 2 : 0)}%` }} />
+            </div>
+            <p className="text-[11px] font-bold text-slate-500 mt-2">
+              {plafon > 0
+                ? `${Math.round(procent)}% din valoarea contractului`
+                : 'Contractul n-are valoare trecuta — completeaz-o ca sa se vada cat a ramas.'}
+            </p>
+          </div>
+
+          {/* ── cate o bara pe luna ── */}
+          {luni.length > 0 && (
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Facturat pe luni</p>
+              <div className="space-y-2">
+                {luni.map(([luna, suma]) => (
+                  <div key={luna} className="flex items-center gap-3">
+                    <span className="w-20 shrink-0 text-[11px] font-black text-slate-500 tabular-nums">{luna}</span>
+                    <div className="flex-1 h-6 bg-slate-50 rounded-lg overflow-hidden">
+                      <div className="h-full bg-blue-600/80 rounded-lg" style={{ width: `${(suma / maxLuna) * 100}%` }} />
+                    </div>
+                    <span className="w-28 shrink-0 text-right text-[12px] font-black text-slate-900 tabular-nums">{lei(suma)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ── aparatele ── */}
+          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+              Aparate care fac obiectul contractului ({acoperite.length})
+            </h3>
+            {acoperite.length === 0 ? (
+              <p className="text-[13px] font-bold text-slate-500">Niciun aparat legat de acest contract.</p>
+            ) : (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                {acoperite.map(d => (
+                  <div key={d.id} className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <div className="h-9 w-9 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                      {d.image
+                        ? <img src={d.image} alt="" className="h-full w-full object-cover" />
+                        : <span className="text-[11px] font-black text-slate-500">{d.name.charAt(0)}</span>}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold text-slate-900 truncate">{d.name}</p>
+                      <p className="text-[11px] font-bold text-slate-500 truncate">
+                        {[d.serialNumber, d.department, d.model].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── facturile ── */}
+          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+              Facturi pe acest contract ({aleLui.length})
+            </h3>
+            {aleLui.length === 0 ? (
+              <p className="text-[13px] font-bold text-slate-500 leading-relaxed">
+                Nicio factura legata de contract. Facturile se leaga prin numarul contractului,
+                din fisa fiecareia.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                {aleLui.map(i => {
+                  const urcata = normaliseInvoiceStatus(i.status) === InvoiceStatus.UPLOADED;
+                  return (
+                    <div key={i.id} className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-bold text-slate-900 truncate">
+                          {i.invoiceNumber}
+                          <span className="text-[11px] font-bold text-slate-500"> · {i.issueDate}</span>
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-500 truncate">
+                          {i.description || i.supplier}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[14px] font-black text-slate-900 tabular-nums">{lei(i.amount || 0)}</p>
+                        <p className={`text-[10px] font-black uppercase tracking-wide ${urcata ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {urcata ? 'in ConectX' : 'neincarcata'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
@@ -252,7 +451,12 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {globalContracts.map(contract => (
-          <div key={contract.contractNumber} className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+          <div key={contract.contractNumber}
+            onClick={() => setDeschis(contract.contractNumber)}
+            role="button" tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDeschis(contract.contractNumber); } }}
+            aria-label={`Deschide contractul ${contract.contractNumber}`}
+            className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer text-left">
             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
@@ -260,7 +464,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
-                <button onClick={() => deschideEditarea(contract)}
+                <button onClick={e => { e.stopPropagation(); deschideEditarea(contract); }}
                   title="Modifica datele contractului"
                   aria-label={`Modifica contractul ${contract.contractNumber}`}
                   className="relative z-10 p-2 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-200 transition">
@@ -314,7 +518,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                     </span>
                     {acoperite.length > 3 && (
                       <button
-                        onClick={() => setAratAparate(p => ({ ...p, [contract.contractNumber]: !desfasurat }))}
+                        onClick={e => { e.stopPropagation(); setAratAparate(p => ({ ...p, [contract.contractNumber]: !desfasurat })); }}
                         className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition">
                         {desfasurat ? 'Arata mai putine' : `Vezi toate ${acoperite.length}`}
                       </button>
