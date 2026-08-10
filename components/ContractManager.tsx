@@ -29,6 +29,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
     coverageDetails: '',
     contactPhone: '',
     annualCost: 0,
+    annualCostWithVat: 0,
     filePath: undefined as string | undefined,
     fileUrl: '',
     fileName: '',
@@ -77,6 +78,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
         endDate: c.endDate || prev.endDate,
         coverageDetails: c.coverageDetails || prev.coverageDetails,
         annualCost: c.annualCost || prev.annualCost,
+        annualCostWithVat: c.annualCostWithVat || prev.annualCostWithVat,
         filePath: urcat.path || undefined,
         fileUrl: urcat.path ? '' : dataUrl,
         fileName: f.name,
@@ -87,7 +89,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
         c.contractNumber && `nr. ${c.contractNumber}`,
         c.provider && c.provider,
         c.startDate && c.endDate && `${c.startDate} — ${c.endDate}`,
-        c.annualCost && `${c.annualCost.toLocaleString('ro-RO')} lei`,
+        c.annualCost && `${c.annualCost.toLocaleString('ro-RO')} lei fara TVA`,
+        c.annualCostWithVat && `${c.annualCostWithVat.toLocaleString('ro-RO')} lei cu TVA`,
         c.coverageDetails && 'obiectul',
       ].filter(Boolean);
       const lipsa = [
@@ -119,7 +122,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'annualCost' ? parseFloat(value) || 0 : value }));
+    const eSuma = name === 'annualCost' || name === 'annualCostWithVat';
+    setFormData(prev => ({ ...prev, [name]: eSuma ? parseFloat(value) || 0 : value }));
   };
 
   const toggleDevice = (id: string) => {
@@ -172,6 +176,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
       coverageDetails: '',
       contactPhone: '',
       annualCost: 0,
+      annualCostWithVat: 0,
       filePath: undefined,
       fileUrl: '',
       fileName: '',
@@ -216,8 +221,17 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             <div className="flex justify-between items-start mb-6">
               <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">Valoare Anuala</p>
-                <p className="text-lg font-black text-indigo-600">${contract.annualCost.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">Valoare fara TVA</p>
+                <p className="text-lg font-black text-indigo-600 tabular-nums">
+                  {contract.annualCost.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} lei
+                </p>
+                {!!contract.annualCostWithVat && contract.annualCostWithVat > contract.annualCost && (
+                  <p className="text-[11px] font-bold text-slate-500 mt-0.5 tabular-nums">
+                    TVA {(contract.annualCostWithVat - contract.annualCost).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {' · '}
+                    {contract.annualCostWithVat.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} cu TVA
+                  </p>
+                )}
               </div>
             </div>
 
@@ -349,7 +363,17 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                            <FormInput label="Numar Contract" name="contractNumber" value={formData.contractNumber} onChange={handleInputChange} placeholder="MSLA-992-00" required />
                            <FormInput label="Data Inceput" name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} required />
                            <FormInput label="Data Expirare" name="endDate" type="date" value={formData.endDate} onChange={handleInputChange} required />
-                           <FormInput label="Cost Anual ($)" name="annualCost" type="number" value={formData.annualCost.toString()} onChange={handleInputChange} placeholder="0.00" required />
+                           <FormInput label="Valoare fara TVA (lei)" name="annualCost" type="number" value={formData.annualCost.toString()} onChange={handleInputChange} placeholder="0.00" required />
+                           <FormInput label="Valoare cu TVA (lei)" name="annualCostWithVat" type="number" value={formData.annualCostWithVat.toString()} onChange={handleInputChange} placeholder="0.00" />
+                           {/* TVA-ul nu se tasteaza: e diferenta celor doua, si asa nu poate iesi altceva. */}
+                           <div className="sm:col-span-2 px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-baseline justify-between gap-2">
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TVA</span>
+                             <span className="text-[15px] font-black text-slate-900 tabular-nums">
+                               {formData.annualCostWithVat > formData.annualCost
+                                 ? `${(formData.annualCostWithVat - formData.annualCost).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} lei`
+                                 : '—'}
+                             </span>
+                           </div>
                            <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="555-000-0000" required />
                            <div className="sm:col-span-2">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Obiectul contractului</label>

@@ -119,7 +119,10 @@ export interface Contract {
   endDate: string;
   coverageDetails: string;
   contactPhone: string;
+  /** Valoarea fara TVA — cifra cu care se lucreaza peste tot in aplicatie. */
   annualCost: number;
+  /** Valoarea cu TVA, asa cum e scrisa in contract. TVA-ul e diferenta lor. */
+  annualCostWithVat?: number;
   /** Contractul scanat, tinut in stocare ca orice alt document. */
   filePath?: string;
   /** Copia din rand, pentru contractele atasate fara semnal. */

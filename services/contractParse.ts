@@ -23,6 +23,8 @@ export interface CampuriContract {
   startDate: string;
   endDate: string;
   annualCost: number;
+  /** Valoarea cu TVA, cand contractul o scrie si pe ea. */
+  annualCostWithVat: number;
   /** Randurile citite, ca sa se poata vedea de ce a iesit gresit ceva. */
   lines: string[];
 }
@@ -270,9 +272,16 @@ const gasestePerioada = (
   return { startDate, endDate };
 };
 
-/** Valoarea contractului. Se prefera cea fara TVA, ca peste tot in aplicatie. */
-const gasesteValoarea = (linii: string[]): number => {
+/**
+ * Valoarea contractului: cea fara TVA si cea cu TVA.
+ *
+ * Contractele le scriu pe amandoua, de obicei in aceeasi fraza — "este de
+ * 15.390,00 Ron, respectiv 18.621,90 Ron cu TVA". Aplicatia lucreaza cu cea
+ * fara TVA, dar pe hartie se cer amandoua, deci se citesc amandoua.
+ */
+const gasesteValoarea = (linii: string[]): { fara: number; cu: number } => {
   const candidati: { valoare: number; rang: number }[] = [];
+  let cuTva = 0;
   for (let i = 0; i < linii.length; i++) {
     // Suma sta des pe randul urmator: "Pretul total fara T.V.A. convenit
     // pentru indeplinirea contractului, ... este de 15.390,00 Ron".
@@ -298,9 +307,16 @@ const gasesteValoarea = (linii: string[]): number => {
     const rang = (/fara\s*t\.?\s*v\.?\s*a/.test(n) ? 3 : 0) + (/total/.test(n) ? 2 : 0)
       + (/estimat/.test(n) ? -1 : 0) + (esteDe ? 2 : 0);
     candidati.push({ valoare: Math.max(...numere), rang });
+    // "..., respectiv 18.621,90 Ron cu TVA" — suma dinaintea mentiunii.
+    const mCu = n.match(/([\d][\d.,\s]*\d)\s*(?:lei|ron)?\s*,?\s*cu\s*t\.?\s*v\.?\s*a\.?/i);
+    if (mCu) {
+      const v = parseAmount(mCu[1]);
+      if (v > cuTva) cuTva = v;
+    }
   }
   candidati.sort((a, b) => b.rang - a.rang || b.valoare - a.valoare);
-  return candidati[0]?.valoare || 0;
+  const fara = candidati[0]?.valoare || 0;
+  return { fara, cu: cuTva || 0 };
 };
 
 /** Citeste campurile dintr-un contract deja transformat in text. */
@@ -341,6 +357,7 @@ export const extrageContract = (text: string): CampuriContract => {
     .replace(/^[\s,;:.\-–—]+/, '')
     .trim();
 
+  const valori = gasesteValoarea(linii);
   const { numar, data: dataContractului } = gasesteNumarul(linii);
   const { startDate, endDate } = gasestePerioada(linii, linii.join(' '), dataContractului);
 
@@ -351,7 +368,8 @@ export const extrageContract = (text: string): CampuriContract => {
     coverageDetails: obiect.slice(0, 400),
     startDate,
     endDate,
-    annualCost: gasesteValoarea(linii),
+    annualCost: valori.fara,
+    annualCostWithVat: valori.cu,
     lines: linii,
   };
 };
