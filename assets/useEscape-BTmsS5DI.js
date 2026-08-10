@@ -1,0 +1,1 @@
+import{a as u}from"./vendor-icons-Dk2s1zJf.js";const s=(t,n=!0)=>{u.useEffect(()=>{if(!n)return;const r=o=>{if(o.key!=="Escape")return;const e=document.activeElement;e&&(e.tagName==="INPUT"||e.tagName==="TEXTAREA")&&e.value||(o.preventDefault(),t())};return document.addEventListener("keydown",r),()=>document.removeEventListener("keydown",r)},[t,n])};export{s as u};
