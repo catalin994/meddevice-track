@@ -18,6 +18,7 @@ import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
 import {
   triaza, gasesteRaport, iaCuvintele, punCuvintele, CUVINTE_IMPLICITE, RaportGasit,
 } from '../services/trierFacturi';
+import { potrivesteAparate, deLegatSingur, Potrivire } from '../services/asociereAparate';
 import { notify } from '../services/notices';
 import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
@@ -100,6 +101,8 @@ interface BulkDraft {
   /** Raportul de service gasit pe aparat, cand exista. */
   raport: RaportGasit | null;
   deviceIds: string[];
+  /** De ce a fost legat fiecare aparat — se vede si se poate schimba. */
+  potriviri: Potrivire[];
   /**
    * Fisierul de pe disc, nu continutul lui.
    *
@@ -165,6 +168,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [isBulkSaving, setIsBulkSaving] = useState(false);
   /** Cautare in lista: un folder de o luna are peste o suta de facturi. */
   const [bulkFiltru, setBulkFiltru] = useState('');
+  /** Factura pentru care se aleg aparatele, si cautarea din fereastra. */
+  const [aparateLa, setAparateLa] = useState<string | null>(null);
+  const [cautaAparat, setCautaAparat] = useState('');
 
   const bifate = useMemo(() => (bulkDrafts || []).filter(d => d.include).length, [bulkDrafts]);
   /** "ale mele" / "fara raport" / tot ce e in folder. */
@@ -446,8 +452,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           contractNumber: fields.contractNumber,
           description: fields.description,
           aMea: triere.aMea, poate: triere.poate, motive: triere.motive,
-          raport: gasesteRaport(fields.deviceIds, devices, dataFact),
-          deviceIds: fields.deviceIds,
+          raport: gasesteRaport(deLegatSingur(fields.potriviri), devices, dataFact),
+          // Se leaga singure doar potrivirile sigure — seria si modelul. Ce
+          // vine din denumire sau din contract se propune in fereastra.
+          deviceIds: deLegatSingur(fields.potriviri),
+          potriviri: fields.potriviri,
           file,
           fileName: file.name,
           cale,
@@ -459,7 +468,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
           issueDate: new Date().toISOString().split('T')[0], dueDate: '',
           contractNumber: '', description: '', aMea: false, poate: false, motive: [], raport: null,
-          deviceIds: [], file, fileName: file.name, cale,
+          deviceIds: [], potriviri: [], file, fileName: file.name, cale,
           eroare: err?.message ? `Nu s-a putut citi: ${err.message}` : 'Nu s-a putut citi PDF-ul',
         });
       }
@@ -1200,10 +1209,30 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold outline-none">
                     <option>RON</option><option>EUR</option><option>USD</option>
                   </select>
+                  {/*
+                    Asocierea nu se mai vede doar ca o cifra: se deschide, se
+                    citeste motivul fiecarei potriviri, si se corecteaza. Cand
+                    regula greseste, altfel n-ar avea nimeni ce sa faca.
+                  */}
                   <div className="flex flex-col gap-1">
-                    {d.deviceIds.length > 0
-                      ? <span className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[11px] font-bold text-center">{d.deviceIds.length} dispozitiv{d.deviceIds.length > 1 ? 'e' : ''}</span>
-                      : <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[11px] font-bold text-center">fara disp.</span>}
+                    <button onClick={() => { setAparateLa(d.key); setCautaAparat(''); }}
+                      title={d.potriviri.length
+                        ? d.potriviri.map(x => `${devicesMap.get(x.deviceId)?.name || x.deviceId} — ${x.motiv}`).join('\n')
+                        : 'Alege aparatele de pe factura'}
+                      aria-label={`Aparatele facturii ${d.invoiceNumber}`}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold text-center border transition hover:brightness-95 ${
+                        d.deviceIds.length > 0
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : d.potriviri.length > 0
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                      {d.deviceIds.length > 0
+                        ? `${d.deviceIds.length} aparat${d.deviceIds.length > 1 ? 'e' : ''}`
+                        : d.potriviri.length > 0
+                          ? `${d.potriviri.length} de ales`
+                          : 'fara aparat'}
+                    </button>
                     {d.contractNumber && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg text-[11px] font-bold text-center truncate" title={d.contractNumber}>{d.contractNumber}</span>}
                   </div>
                   {/* Deschide factura si scoate-o din lista: alegerea se face uitandu-te la ea */}
@@ -1245,6 +1274,81 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Aparatele unei facturi: ce s-a gasit, de ce, si ce se poate schimba. */}
+          {aparateLa && (() => {
+            const d = bulkDrafts.find(x => x.key === aparateLa);
+            if (!d) return null;
+            const q = cautaAparat.toLowerCase().trim();
+            const propuse = d.potriviri.map(x => x.deviceId);
+            // Intai cele gasite de aplicatie, apoi restul inventarului.
+            const lista = [
+              ...devices.filter(x => propuse.includes(x.id)),
+              ...devices.filter(x => !propuse.includes(x.id) && (!q ? d.deviceIds.includes(x.id) : true)),
+            ].filter(x => !q || `${x.name} ${x.serialNumber} ${x.department} ${x.model} ${x.manufacturer}`.toLowerCase().includes(q));
+            const comuta = (id: string) => updateBulkDraft(d.key, {
+              deviceIds: d.deviceIds.includes(id) ? d.deviceIds.filter(x => x !== id) : [...d.deviceIds, id],
+            });
+            return (
+              <div className="fixed inset-0 z-[560] scrim flex items-center justify-center p-0 sm:p-6">
+                <div className="bg-white w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[88dvh] flex flex-col rounded-none sm:rounded-[2rem] shadow-2xl overflow-hidden">
+                  <div className="px-6 py-5 border-b border-slate-100 shrink-0">
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Aparatele de pe factura</h3>
+                    <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
+                      Factura <span className="font-black text-slate-700">{d.invoiceNumber}</span>
+                      {d.description ? <> · {d.description}</> : null}
+                    </p>
+                  </div>
+                  <div className="px-6 py-3 shrink-0">
+                    <input value={cautaAparat} onChange={e => setCautaAparat(e.target.value)}
+                      placeholder="Cauta orice aparat din inventar..."
+                      aria-label="Cauta aparatul"
+                      className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-sm font-semibold outline-none" />
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 pb-4 space-y-2">
+                    {lista.length === 0 && (
+                      <p className="py-12 text-center text-[13px] font-bold text-slate-500">
+                        {q ? 'Niciun aparat gasit' : 'Aplicatia n-a recunoscut niciun aparat pe factura. Cauta-l dupa nume sau serie.'}
+                      </p>
+                    )}
+                    {lista.slice(0, 200).map(x => {
+                      const bifat = d.deviceIds.includes(x.id);
+                      const motiv = d.potriviri.find(pp => pp.deviceId === x.id)?.motiv;
+                      return (
+                        <button key={x.id} type="button" onClick={() => comuta(x.id)}
+                          className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition flex items-center gap-3 ${
+                            bifat ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+                          }`}>
+                          <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                            bifat ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                          }`}>{bifat && <CheckCircle className="w-3.5 h-3.5" />}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[14px] font-bold text-slate-900 truncate">{x.name}</span>
+                            <span className="block text-[11px] font-bold text-slate-500 truncate">
+                              {[x.serialNumber, x.department, x.model].filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
+                          {motiv && (
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-black uppercase tracking-wide shrink-0 max-w-[45%] truncate"
+                                  title={`Gasit dupa ${motiv}`}>{motiv}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                      {d.deviceIds.length} legate
+                    </span>
+                    <button onClick={() => setAparateLa(null)}
+                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-800 transition">
+                      Gata
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {cuvinteDeschis && (
             <div className="fixed inset-0 z-[560] scrim flex items-center justify-center p-4">

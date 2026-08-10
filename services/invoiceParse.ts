@@ -12,6 +12,8 @@
  * actually uses.
  */
 
+import { potrivesteAparate, Potrivire } from './asociereAparate';
+
 export interface InvoiceFields {
   invoiceNumber: string;
   amount: number;
@@ -23,6 +25,8 @@ export interface InvoiceFields {
   /** Ce s-a facturat: denumirea produsului sau a serviciului. */
   description: string;
   deviceIds: string[];
+  /** Aparatele gasite, fiecare cu motivul — ca sa se vada ce a decis. */
+  potriviri: Potrivire[];
   /** The lines the parser actually saw, so a wrong reading can be diagnosed. */
   lines: string[];
 }
@@ -537,12 +541,10 @@ export const extractInvoiceFields = (
   const linii = text.split('\n').map(l => l.trim()).filter(Boolean);
   const intreg = norm(text);
 
-  const deviceIds = devices
-    .filter(d => d.serialNumber && d.serialNumber !== 'N/A' && d.serialNumber.length >= 3)
-    .filter(d => intreg.includes(norm(d.serialNumber!.trim())))
-    .map(d => d.id);
-
   const contract = contracts.find(c => c.contractNumber && intreg.includes(norm(c.contractNumber)));
+
+  const descriere = gasesteDenumire(linii);
+  const potriviri = potrivesteAparate(text, descriere, contract?.contractNumber || '', devices as any);
 
   const { amount, currency } = gasesteSuma(linii);
   const { issueDate, dueDate } = gasesteDate(linii);
@@ -559,8 +561,11 @@ export const extractInvoiceFields = (
     dueDate,
     supplier,
     contractNumber: contract?.contractNumber || '',
-    description: gasesteDenumire(linii),
-    deviceIds,
+    description: descriere,
+    // Potrivirea aparatelor sta separat: are nevoie de denumirea deja citita,
+    // si e regula pe care se umbla cel mai des cand ceva nu se leaga bine.
+    deviceIds: potriviri.map(p => p.deviceId),
+    potriviri,
     lines: linii,
   };
 };
