@@ -59,15 +59,30 @@ const dataInLitere = (t: string): string => {
 
 const oData = (t: string): string => dataISO(t) || dataInLitere(t);
 
-/** Textul de dupa o eticheta, pana la capatul frazei sau al randului. */
+/** Inceputul altui articol: acolo se opreste continutul celui de dinainte. */
+const RE_ALT_ARTICOL = /^\s*(?:art(?:icol)?\.?\s*\d+|cap(?:itolul)?\.?\s*[IVX\d]|sectiunea\b|clauza\b)/i;
+
+/**
+ * Textul de dupa o eticheta.
+ *
+ * Cand eticheta e titlu singur pe rand — "Art. 2. DURATA CONTRACTULUI" —
+ * continutul incepe abia pe randul urmator, si poate tine cateva randuri. Se
+ * aduna pana la urmatorul articol, nu pana la primul rand cu litere: pe PDF-uri
+ * fraza se rupe unde se termina latimea paginii, iar "incepand cu data de" si
+ * data insasi ajung pe randuri diferite.
+ */
 const dupaEticheta = (linii: string[], re: RegExp, maxRanduri = 4): string => {
   for (let i = 0; i < linii.length; i++) {
     const m = linii[i].match(re);
     if (!m) continue;
     let rest = linii[i].slice((m.index || 0) + m[0].length).trim();
-    // Titlul e singur pe rand ("OBIECTUL CONTRACTULUI"), continutul urmeaza.
-    for (let j = 1; j <= maxRanduri && rest.replace(/[^a-zA-Z]/g, '').length < 12; j++) {
-      rest = `${rest} ${(linii[i + j] || '').trim()}`.trim();
+    const eTitluSingur = rest.replace(/[^a-zA-Z]/g, '').length < 12;
+    if (eTitluSingur) {
+      for (let j = 1; j <= maxRanduri; j++) {
+        const urm = (linii[i + j] || '').trim();
+        if (!urm || RE_ALT_ARTICOL.test(urm)) break;
+        rest = `${rest} ${urm}`.trim();
+      }
     }
     return rest.replace(/^[\s:.\-–—]+/, '').replace(/\s{2,}/g, ' ').trim();
   }
