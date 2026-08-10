@@ -120,6 +120,12 @@ export interface Contract {
   coverageDetails: string;
   contactPhone: string;
   annualCost: number;
+  /** Contractul scanat, tinut in stocare ca orice alt document. */
+  filePath?: string;
+  /** Copia din rand, pentru contractele atasate fara semnal. */
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
 }
 
 /**

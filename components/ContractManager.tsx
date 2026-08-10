@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { notify } from '../services/notices';
 import { Contract, MedicalDevice } from '../types';
 import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2 } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
+import { citesteContractPdf } from '../services/contractParse';
+import { buildPath, uploadDataUrl } from '../services/fileStorage';
 
 import Portal from './Portal';
 interface ContractManagerProps {
@@ -19,14 +21,86 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
+    name: '',
     provider: '',
     contractNumber: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     coverageDetails: '',
     contactPhone: '',
-    annualCost: 0
+    annualCost: 0,
+    filePath: undefined as string | undefined,
+    fileUrl: '',
+    fileName: '',
+    fileSize: 0,
   });
+  const pdfRef = useRef<HTMLInputElement>(null);
+  const [citeste, setCiteste] = useState(false);
+  /** Ce a gasit si ce n-a gasit in PDF — un camp gol nu se vede intr-un formular. */
+  const [notaPdf, setNotaPdf] = useState('');
+
+  /**
+   * Contractul PDF: se ataseaza, si din el se completeaza campurile.
+   *
+   * Ce nu s-a putut citi ramane gol si se scrie de mana — asa se vede exact
+   * unde a dat gres, in loc sa para ca aplicatia a inteles tot.
+   */
+  const incarcaPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setCiteste(true);
+    setNotaPdf('');
+    try {
+      const c = await citesteContractPdf(f);
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(f);
+      });
+      const id = `CON-${crypto.randomUUID()}`;
+      const urcat = await uploadDataUrl(buildPath('contracts', id, id, f.name), dataUrl);
+
+      setFormData(prev => ({
+        ...prev,
+        name: c.name || prev.name,
+        provider: c.provider || prev.provider,
+        contractNumber: c.contractNumber || prev.contractNumber,
+        startDate: c.startDate || prev.startDate,
+        endDate: c.endDate || prev.endDate,
+        coverageDetails: c.coverageDetails || prev.coverageDetails,
+        annualCost: c.annualCost || prev.annualCost,
+        filePath: urcat.path || undefined,
+        fileUrl: urcat.path ? '' : dataUrl,
+        fileName: f.name,
+        fileSize: f.size,
+      }));
+
+      const gasit = [
+        c.contractNumber && `nr. ${c.contractNumber}`,
+        c.provider && c.provider,
+        c.startDate && c.endDate && `${c.startDate} — ${c.endDate}`,
+        c.annualCost && `${c.annualCost.toLocaleString('ro-RO')} lei`,
+        c.coverageDetails && 'obiectul',
+      ].filter(Boolean);
+      const lipsa = [
+        !c.contractNumber && 'numarul',
+        !c.provider && 'firma',
+        !(c.startDate && c.endDate) && 'perioada',
+        !c.coverageDetails && 'obiectul',
+      ].filter(Boolean);
+      setNotaPdf(
+        (gasit.length ? `Citit din contract: ${gasit.join(' · ')}` : 'PDF atasat, dar nu am recunoscut niciun camp')
+        + (lipsa.length ? ` — completeaza ${lipsa.join(', ')}` : '')
+        + (urcat.path ? '' : ' · fisierul a ramas doar pe acest aparat')
+      );
+    } catch (err: any) {
+      setNotaPdf(`PDF-ul nu a putut fi citit${err?.message ? `: ${err.message}` : ''}`);
+    } finally {
+      setCiteste(false);
+    }
+  };
 
   // Extract all unique contracts from all devices to show a global list.
   // Fix: Explicitly type the Map to ensure globalContracts is inferred as Contract[].
@@ -81,14 +155,20 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
   };
 
   const resetForm = () => {
+    setNotaPdf('');
     setFormData({
+      name: '',
       provider: '',
       contractNumber: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       coverageDetails: '',
       contactPhone: '',
-      annualCost: 0
+      annualCost: 0,
+      filePath: undefined,
+      fileUrl: '',
+      fileName: '',
+      fileSize: 0,
     });
     setSelectedDevices([]);
   };
@@ -189,6 +269,38 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                   <div className="lg:col-span-7 space-y-10">
                      <div className="space-y-6">
+                        {/*
+                          Contractul e deja scris. Se ataseaza PDF-ul, si din el
+                          se completeaza numarul, firma, obiectul, perioada si
+                          valoarea — de verificat, nu de crezut pe cuvant.
+                        */}
+                        <div className="bg-slate-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
+                           <div className="flex items-center gap-3 mb-3">
+                              <FileText className="w-6 h-6 text-blue-400" />
+                              <h4 className="text-sm font-black uppercase tracking-widest">Contractul in PDF</h4>
+                           </div>
+                           <p className="text-[13px] font-semibold text-slate-300 leading-relaxed mb-5">
+                              Se ataseaza la contract si se citesc din el denumirea, numarul, firma,
+                              obiectul, perioada si valoarea. Ce nu se poate citi ramane de completat.
+                           </p>
+                           <input ref={pdfRef} type="file" accept="application/pdf" onChange={incarcaPdf} className="hidden" />
+                           <div className="flex flex-wrap items-center gap-3">
+                             <button type="button" onClick={() => pdfRef.current?.click()} disabled={citeste}
+                               className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
+                               {citeste ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                               {citeste ? 'Se citeste...' : formData.fileName ? 'Alege alt PDF' : 'Incarca PDF-ul contractului'}
+                             </button>
+                             {formData.fileName && (
+                               <span className="text-[12px] font-bold text-emerald-300 truncate max-w-[240px]" title={formData.fileName}>
+                                 {formData.fileName}
+                               </span>
+                             )}
+                           </div>
+                           {notaPdf && (
+                             <p className="mt-4 text-[12px] font-bold text-blue-200 leading-relaxed">{notaPdf}</p>
+                           )}
+                        </div>
+
                         <div className="bg-violet-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
                            <div className="flex items-center gap-3 mb-6">
                               <Wand2 className="w-6 h-6 text-violet-400" />
@@ -210,6 +322,9 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                         </div>
 
                         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                           <div className="sm:col-span-2">
+                             <FormInput label="Denumirea contractului" name="name" value={formData.name} onChange={handleInputChange} placeholder="ex: Contract de prestari servicii mentenanta" />
+                           </div>
                            <FormInput label="Furnizor Service" name="provider" value={formData.provider} onChange={handleInputChange} placeholder="ex: GE HealthCare" required />
                            <FormInput label="Numar Contract" name="contractNumber" value={formData.contractNumber} onChange={handleInputChange} placeholder="MSLA-992-00" required />
                            <FormInput label="Data Inceput" name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} required />
@@ -217,7 +332,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                            <FormInput label="Cost Anual ($)" name="annualCost" type="number" value={formData.annualCost.toString()} onChange={handleInputChange} placeholder="0.00" required />
                            <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="555-000-0000" required />
                            <div className="sm:col-span-2">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Detalii Acoperire</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Obiectul contractului</label>
                               <textarea 
                                  name="coverageDetails"
                                  value={formData.coverageDetails}
