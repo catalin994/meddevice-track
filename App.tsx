@@ -823,12 +823,23 @@ const App: React.FC = () => {
   }, [isSupabaseConfigured, invoices, logAudit, canDelete]);
 
   const handleSaveContract = useCallback(async (contract: Contract, deviceIds: string[]) => {
-    const targets = devices.filter(d => deviceIds.includes(d.id));
-    const updated = targets.map(d => ({
-      ...d,
-      contracts: [...(d.contracts || []).filter(c => c.contractNumber !== contract.contractNumber), contract]
-    }));
-    await handleUpsertDevices(updated);
+    const alese = new Set(deviceIds);
+    const acelasi = (c: { contractNumber?: string }) => c.contractNumber === contract.contractNumber;
+    /*
+     * Contractul se pune pe aparatele bifate si se scoate de pe celelalte.
+     * Fara a doua parte, la o modificare in care un aparat e debifat el ar fi
+     * ramas cu vechea copie a contractului — si doua aparate ar fi aratat
+     * acelasi numar de contract cu date diferite.
+     */
+    const updated = devices
+      .filter(d => alese.has(d.id) || (d.contracts || []).some(acelasi))
+      .map(d => ({
+        ...d,
+        contracts: alese.has(d.id)
+          ? [...(d.contracts || []).filter(c => !acelasi(c)), contract]
+          : (d.contracts || []).filter(c => !acelasi(c)),
+      }));
+    if (updated.length > 0) await handleUpsertDevices(updated);
   }, [devices, handleUpsertDevices]);
 
   const handleQRScan = useCallback((scanned: string) => {

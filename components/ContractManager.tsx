@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { notify } from '../services/notices';
 import { Contract, MedicalDevice } from '../types';
-import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2 } from 'lucide-react';
+import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2, Pencil } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
 import { citesteContractPdf } from '../services/contractParse';
 import { buildPath, uploadDataUrl } from '../services/fileStorage';
@@ -15,6 +15,8 @@ interface ContractManagerProps {
 
 const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContract }) => {
   const [isAdding, setIsAdding] = useState(false);
+  /** Numarul contractului aflat in editare. Gol cand se adauga unul nou. */
+  const [editez, setEditez] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiText, setAiText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,22 +152,57 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
     }
   };
 
+  /**
+   * Deschide un contract existent, cu tot cu aparatele pe care e trecut.
+   *
+   * Pana acum contractele se puteau doar adauga. Ce iesea gresit din PDF ramanea
+   * gresit, si singura scapare era sa fie facut altul cu acelasi numar.
+   */
+  const deschideEditarea = (c: Contract) => {
+    setFormData({
+      name: c.name || '',
+      provider: c.provider || '',
+      contractNumber: c.contractNumber || '',
+      startDate: c.startDate || new Date().toISOString().split('T')[0],
+      endDate: c.endDate || '',
+      coverageDetails: c.coverageDetails || '',
+      contactPhone: c.contactPhone || '',
+      annualCost: c.annualCost || 0,
+      annualCostWithVat: c.annualCostWithVat || 0,
+      filePath: c.filePath,
+      fileUrl: c.fileUrl || '',
+      fileName: c.fileName || '',
+      fileSize: c.fileSize || 0,
+    });
+    setSelectedDevices(devices.filter(d => (d.contracts || [])
+      .some(x => x.contractNumber === c.contractNumber)).map(d => d.id));
+    setNotaPdf('');
+    setRanduriCitite([]);
+    setEditez(c.contractNumber);
+    setIsAdding(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedDevices.length === 0) {
       notify('Alege cel putin un dispozitiv pentru acest contract.', 'warning');
       return;
     }
+    const vechi = globalContracts.find(c => c.contractNumber === editez);
     const newContract: Contract = {
-      id: `CON-${Math.floor(Math.random() * 90000)}`,
-      ...formData
+      // La editare se pastreaza id-ul: e acelasi contract, nu altul.
+      id: vechi?.id || `CON-${crypto.randomUUID()}`,
+      ...formData,
     };
     onSaveContract(newContract, selectedDevices);
+    notify(editez ? 'Contract actualizat' : 'Contract salvat', 'success');
     setIsAdding(false);
     resetForm();
   };
 
   const resetForm = () => {
+    setEditez(null);
+    setRanduriCitite([]);
     setNotaPdf('');
     setFormData({
       name: '',
@@ -219,7 +256,15 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
             </div>
             
             <div className="flex justify-between items-start mb-6">
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
+                <button onClick={() => deschideEditarea(contract)}
+                  title="Modifica datele contractului"
+                  aria-label={`Modifica contractul ${contract.contractNumber}`}
+                  className="relative z-10 p-2 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-200 transition">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <div className="text-right">
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">Valoare fara TVA</p>
                 <p className="text-lg font-black text-indigo-600 tabular-nums">
@@ -280,10 +325,14 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in border border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
-                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Adauga Contract</h3>
-                  <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Asociaza contractul cu dispozitivele</p>
+                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                    {editez ? 'Modifica Contractul' : 'Adauga Contract'}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
+                    {editez ? `Nr. ${editez}` : 'Asociaza contractul cu dispozitivele'}
+                  </p>
                </div>
-               <button onClick={() => setIsAdding(false)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-6 h-6" /></button>
+               <button onClick={() => { setIsAdding(false); resetForm(); }} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-6 h-6" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 lg:p-12">
@@ -443,7 +492,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
                   onClick={() => document.getElementById('main-submit-btn')?.click()}
                   className="px-12 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-indigo-700 transition active:scale-95 flex items-center gap-3"
                >
-                  <ShieldCheck className="w-5 h-5" /> Salveaza Contract
+                  <ShieldCheck className="w-5 h-5" /> {editez ? 'Salveaza modificarile' : 'Salveaza Contract'}
                </button>
             </div>
           </div>
