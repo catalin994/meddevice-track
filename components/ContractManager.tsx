@@ -17,6 +17,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
   const [isAdding, setIsAdding] = useState(false);
   /** Numarul contractului aflat in editare. Gol cand se adauga unul nou. */
   const [editez, setEditez] = useState<string | null>(null);
+  /** Ce fise de contract au lista de aparate desfasurata. */
+  const [aratAparate, setAratAparate] = useState<Record<string, boolean>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiText, setAiText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -294,21 +296,59 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, onSaveContra
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-              <div className="flex -space-x-3 overflow-hidden">
-                {devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).slice(0, 4).map((d, i) => (
-                  <div key={d.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
-                    {d.image ? <img src={d.image} className="h-full w-full object-cover" /> : <div className="text-[10px] font-bold text-slate-500">{d.name.charAt(0)}</div>}
+            {/*
+              Care aparate, nu cate. Erau patru cerculete cu initiala numelui —
+              din ele nu se putea afla daca sterilizatorul cutare e sau nu pe
+              contract, si asta e chiar intrebarea care se pune.
+            */}
+            {(() => {
+              const acoperite = devices.filter(d =>
+                (d.contracts || []).some(c => c.contractNumber === contract.contractNumber));
+              const desfasurat = !!aratAparate[contract.contractNumber];
+              const aratate = desfasurat ? acoperite : acoperite.slice(0, 3);
+              return (
+                <div className="mt-8 pt-6 border-t border-slate-50 relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      Aparate acoperite ({acoperite.length})
+                    </span>
+                    {acoperite.length > 3 && (
+                      <button
+                        onClick={() => setAratAparate(p => ({ ...p, [contract.contractNumber]: !desfasurat }))}
+                        className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition">
+                        {desfasurat ? 'Arata mai putine' : `Vezi toate ${acoperite.length}`}
+                      </button>
+                    )}
                   </div>
-                ))}
-                {devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).length > 4 && (
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-white bg-slate-900 text-white text-[10px] font-black">
-                    +{devices.filter(d => d.contracts.some(c => c.contractNumber === contract.contractNumber)).length - 4}
-                  </div>
-                )}
-              </div>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dispozitive Acoperite</span>
-            </div>
+                  {acoperite.length === 0 ? (
+                    <p className="text-[12px] font-bold text-slate-500">Niciun aparat legat de acest contract.</p>
+                  ) : (
+                    <div className={`space-y-1.5 ${desfasurat ? 'max-h-56 overflow-y-auto custom-scrollbar pr-1' : ''}`}>
+                      {aratate.map(d => (
+                        <div key={d.id} className="flex items-center gap-2.5 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl">
+                          <div className="h-7 w-7 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                            {d.image
+                              ? <img src={d.image} alt="" className="h-full w-full object-cover" />
+                              : <span className="text-[10px] font-black text-slate-500">{d.name.charAt(0)}</span>}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-bold text-slate-900 truncate">{d.name}</p>
+                            <p className="text-[10px] font-bold text-slate-500 truncate">
+                              {[d.serialNumber, d.department].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {!desfasurat && acoperite.length > 3 && (
+                        <p className="text-[11px] font-bold text-slate-500 pl-1">
+                          si inca {acoperite.length - 3}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ))}
         {globalContracts.length === 0 && (
