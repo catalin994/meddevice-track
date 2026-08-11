@@ -19,7 +19,84 @@
         }
       } catch (e) {}
     </script>
-    <script type="module" crossorigin src="/meddevice-track/assets/index-CucwR8qW.js"></script>
+    <script>
+      /*
+       * Reparatia paginii negre.
+       *
+       * Aplicatia se instaleaza pe telefon cu un service worker care tine
+       * fisierele in cache. Cand telefonul ramane fara spatiu, Android sterge
+       * cache-ul, dar lasa service worker-ul inregistrat — iar el cere mai
+       * departe fisierele versiunii vechi, care la urmatoarea publicare nu mai
+       * exista pe server. Rezultatul: 404 pe pachetul principal, nimic nu
+       * porneste, si pe ecran ramane o pagina neagra, fara niciun mesaj.
+       *
+       * De-aici nu se mai poate iesi singur: codul care ar sti sa se repare e
+       * chiar cel care n-a apucat sa se incarce. Asa ca verificarea sta aici,
+       * in pagina, unde ajunge intotdeauna: daca dupa opt secunde aplicatia
+       * tot n-a desenat nimic, se sterge service worker-ul si cache-ul si se
+       * incarca din nou, curat.
+       *
+       * O singura data pe deschidere: santinela din sessionStorage opreste
+       * bucla de reincarcari daca serverul chiar e cazut.
+       */
+      (function () {
+        var CHEIE = 'biomedic_reparat';
+        var nepornita = function () {
+          var r = document.getElementById('root');
+          return !r || r.children.length === 0;
+        };
+        var repara = function (motiv) {
+          // Numai cand chiar n-a pornit nimic. Dupa ce aplicatia s-a desenat, un
+          // fisier care nu se incarca e o pagina care lipseste, nu un motiv sa
+          // se stearga tot ce tine aplicatia in viata.
+          if (!nepornita()) return;
+          // Si numai cu semnal. Fara retea, cache-ul e singurul loc din care mai
+          // porneste aplicatia intr-o sectie fara acoperire — sters, ar ramane
+          // cu un ecran gol pana iese in curte.
+          if (navigator.onLine === false) return;
+          try {
+            if (sessionStorage.getItem(CHEIE)) return;
+            sessionStorage.setItem(CHEIE, motiv);
+          } catch (e) { return; }
+          var gata = function () { location.reload(); };
+          var pasi = [];
+          if ('serviceWorker' in navigator) {
+            pasi.push(navigator.serviceWorker.getRegistrations()
+              .then(function (r) { return Promise.all(r.map(function (x) { return x.unregister(); })); }));
+          }
+          if (window.caches) {
+            pasi.push(caches.keys().then(function (k) {
+              return Promise.all(k.map(function (n) { return caches.delete(n); }));
+            }));
+          }
+          Promise.all(pasi).then(gata, gata);
+        };
+
+        // Un fisier care lipseste de pe server: se stie imediat, fara asteptare.
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) repara('fisier lipsa');
+        }, true);
+
+        // Plasa de siguranta pentru orice altceva a impiedicat pornirea.
+        window.addEventListener('load', function () {
+          setTimeout(function () { repara('nu a pornit'); }, 8000);
+        });
+
+        // A pornit: santinela se ridica, ca o cadere de maine sa se poata repara.
+        document.addEventListener('DOMContentLoaded', function () {
+          var cand = setInterval(function () {
+            var r = document.getElementById('root');
+            if (r && r.children.length > 0) {
+              clearInterval(cand);
+              try { sessionStorage.removeItem(CHEIE); } catch (e) {}
+            }
+          }, 1000);
+          setTimeout(function () { clearInterval(cand); }, 30000);
+        });
+      })();
+    </script>
+    <script type="module" crossorigin src="/meddevice-track/assets/index-CqfrDbDg.js"></script>
     <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-icons-CdwZrgy4.js">
     <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-db-CxvqBt6T.js">
     <link rel="stylesheet" crossorigin href="/meddevice-track/assets/index-CwkKgZSq.css">
