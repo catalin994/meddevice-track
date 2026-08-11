@@ -279,11 +279,17 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                 className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
                 ← Inapoi la contracte
               </button>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
-                {c.name || c.provider}
-              </h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
+                  {c.name || c.provider}
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl shrink-0">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nr. ctr.</span>
+                  <span className="text-[15px] font-black font-mono">{c.contractNumber}</span>
+                </span>
+              </div>
               <p className="text-sm text-slate-500 font-bold mt-1">
-                {c.provider} · nr. {c.contractNumber} · {c.startDate} — {c.endDate}
+                {c.provider} · {c.startDate} — {c.endDate}
               </p>
             </div>
             <button onClick={() => deschideEditarea(c)}
@@ -487,7 +493,13 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             </div>
 
             <h3 className="text-xl font-black text-slate-900 leading-none">{contract.provider}</h3>
-            <p className="text-[10px] font-mono text-slate-500 uppercase mt-1">Ref: {contract.contractNumber}</p>
+            {/* "Ref:" nu spune nimic. Pe hartie scrie nr. ctr., asa se cauta. */}
+            <p className="mt-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 text-white rounded-lg">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nr. ctr.</span>
+                <span className="text-[13px] font-black font-mono">{contract.contractNumber}</span>
+              </span>
+            </p>
 
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
@@ -653,7 +665,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                              <FormInput label="Denumirea contractului" name="name" value={formData.name} onChange={handleInputChange} placeholder="ex: Contract de prestari servicii mentenanta" />
                            </div>
                            <FormInput label="Furnizor Service" name="provider" value={formData.provider} onChange={handleInputChange} placeholder="ex: GE HealthCare" required />
-                           <FormInput label="Numar Contract" name="contractNumber" value={formData.contractNumber} onChange={handleInputChange} placeholder="MSLA-992-00" required />
+                           <FormInput label="Nr. contract" name="contractNumber" value={formData.contractNumber} onChange={handleInputChange} placeholder="MSLA-992-00" required />
                            <FormInput label="Data Inceput" name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} required />
                            <FormInput label="Data Expirare" name="endDate" type="date" value={formData.endDate} onChange={handleInputChange} required />
                            <FormInput label="Valoare fara TVA (lei)" name="annualCost" type="number" value={formData.annualCost.toString()} onChange={handleInputChange} placeholder="0.00" required />
