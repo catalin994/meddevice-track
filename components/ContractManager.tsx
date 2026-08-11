@@ -1,13 +1,15 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, Suspense } from 'react';
 import { notify } from '../services/notices';
-import { Contract, MedicalDevice, Invoice, InvoiceStatus, normaliseInvoiceStatus } from '../types';
-import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2, Pencil } from 'lucide-react';
+import { Contract, MedicalDevice, Invoice, InvoiceStatus, DeviceFile, normaliseInvoiceStatus } from '../types';
+import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2, Pencil, Eye } from 'lucide-react';
 import { analyzeContractText } from '../services/geminiService';
 import { citesteContractPdf } from '../services/contractParse';
-import { buildPath, uploadDataUrl } from '../services/fileStorage';
+import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
+import { saveFileAs } from '../services/fileService';
 
 import Portal from './Portal';
+const FileViewer = React.lazy(() => import('./FileViewer'));
 interface ContractManagerProps {
   devices: MedicalDevice[];
   /** Facturile: pe fisa unui contract se vede ce a venit pe el si ce a ramas. */
@@ -16,6 +18,37 @@ interface ContractManagerProps {
 }
 
 const lei = (n: number) => n.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * PDF-ul contractului, in forma pe care o intelege vizualizatorul de fisiere.
+ *
+ * Campurile citite din contract sunt bune ca sa stii ce contract e, dar nu si
+ * ce scrie in el. Intrebarile care se pun cu adevarat — ce intra la obiect,
+ * ce se plateste pentru deplasare, cine semneaza receptia — se citesc doar de
+ * pe pagina scanata, asa ca ea trebuie sa se deschida de aici.
+ */
+const pdfulContractului = (c: {
+  contractNumber?: string; filePath?: string; fileUrl?: string;
+  fileName?: string; fileSize?: number; startDate?: string;
+}): DeviceFile | null => {
+  if (!c.filePath && !c.fileUrl) return null;
+  return {
+    id: `CTR-${c.contractNumber || 'pdf'}`,
+    name: c.fileName || `Contract ${c.contractNumber || ''}.pdf`.replace(/\s+/g, ' ').trim(),
+    type: 'achizitie',
+    path: c.filePath,
+    url: c.fileUrl,
+    size: c.fileSize,
+    dateAdded: c.startDate || '',
+  };
+};
+
+/** Descarcarea: din Storage cand e urcat, din copia locala cand n-a apucat. */
+const descarcaPdf = async (f: DeviceFile) => {
+  const sursa = await resolveSource({ path: f.path, url: f.url });
+  if (sursa.blob || sursa.dataUrl) await saveFileAs(f.name, sursa.blob || sursa.dataUrl!);
+  else notify(sursa.error || 'Fisierul nu a putut fi descarcat.', 'warning');
+};
 
 const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [], onSaveContract }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -29,6 +62,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
   const [aiText, setAiText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
+  /** Contractul al carui PDF se citeste acum pe ecran. */
+  const [vadPdf, setVadPdf] = useState<DeviceFile | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -243,6 +278,17 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
    * raspunsul se aduna de mana din tab-ul de facturi, cautand dupa numarul
    * contractului — deci de obicei nu se aduna deloc.
    */
+  /*
+   * Vizualizatorul se randeaza si pe pagina unui contract, si in lista: sunt
+   * doua randari diferite ale aceleiasi componente, si pus intr-una singura
+   * butonul din cealalta n-ar deschide nimic.
+   */
+  const vizualizatorul = vadPdf && (
+    <Suspense fallback={null}>
+      <FileViewer file={vadPdf} onDownload={descarcaPdf} onClose={() => setVadPdf(null)} />
+    </Suspense>
+  );
+
   const contractDeschis = globalContracts.find(c => c.contractNumber === deschis);
   if (contractDeschis) {
     const c = contractDeschis;
@@ -292,11 +338,24 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                 {c.provider} · {c.startDate} — {c.endDate}
               </p>
             </div>
-            <button onClick={() => deschideEditarea(c)}
-              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition flex items-center gap-2">
-              <Pencil className="w-4 h-4" /> Modifica
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {pdfulContractului(c) && (
+                <button onClick={() => setVadPdf(pdfulContractului(c))}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition flex items-center gap-2 shadow-lg shadow-blue-600/20">
+                  <Eye className="w-4 h-4" /> Vezi contractul
+                </button>
+              )}
+              <button onClick={() => deschideEditarea(c)}
+                className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition flex items-center gap-2">
+                <Pencil className="w-4 h-4" /> Modifica
+              </button>
+            </div>
           </div>
+          {!pdfulContractului(c) && (
+            <p className="mt-4 text-[12px] font-bold text-slate-500">
+              Contractul n-are PDF atasat. Apasa Modifica si incarca-l — de acolo isi ia si datele.
+            </p>
+          )}
           {c.coverageDetails && (
             <p className="mt-5 text-[14px] font-semibold text-slate-600 leading-relaxed">{c.coverageDetails}</p>
           )}
@@ -431,6 +490,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             )}
           </div>
         </div>
+        {vizualizatorul}
       </div>
     );
   }
@@ -467,9 +527,22 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
             
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-2">
+            {/*
+              Se infasoara: cu doua butoane langa insigna, valoarea ramanea pe
+              trei randuri intr-o coloana din trei, si nu se mai citea.
+            */}
+            <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
+                {/* Se vede din lista care contracte au hartia scanata si care nu. */}
+                {pdfulContractului(contract) && (
+                  <button onClick={e => { e.stopPropagation(); setVadPdf(pdfulContractului(contract)); }}
+                    title="Vezi contractul scanat"
+                    aria-label={`Vezi PDF-ul contractului ${contract.contractNumber}`}
+                    className="relative z-10 p-2 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-200 transition">
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button onClick={e => { e.stopPropagation(); deschideEditarea(contract); }}
                   title="Modifica datele contractului"
                   aria-label={`Modifica contractul ${contract.contractNumber}`}
@@ -477,7 +550,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">Valoare fara TVA</p>
                 <p className="text-lg font-black text-indigo-600 tabular-nums">
                   {contract.annualCost.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} lei
@@ -506,10 +579,13 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                 <Calendar className="w-4 h-4 text-slate-500" />
                 <span>{contract.startDate} — {contract.endDate}</span>
               </div>
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                <Phone className="w-4 h-4 text-slate-500" />
-                <span>{contract.contactPhone}</span>
-              </div>
+              {/* Randul cu telefonul apare doar cand exista unul. */}
+              {!!contract.contactPhone && (
+                <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <span>{contract.contactPhone}</span>
+                </div>
+              )}
             </div>
 
             {/*
@@ -617,9 +693,16 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                                {citeste ? 'Se citeste...' : formData.fileName ? 'Alege alt PDF' : 'Incarca PDF-ul contractului'}
                              </button>
                              {formData.fileName && (
-                               <span className="text-[12px] font-bold text-emerald-300 truncate max-w-[240px]" title={formData.fileName}>
-                                 {formData.fileName}
-                               </span>
+                               <>
+                                 <span className="text-[12px] font-bold text-emerald-300 truncate max-w-[240px]" title={formData.fileName}>
+                                   {formData.fileName}
+                                 </span>
+                                 {/* Ce s-a atasat se poate citi pe loc, inainte de salvare. */}
+                                 <button type="button" onClick={() => setVadPdf(pdfulContractului(formData))}
+                                   className="px-4 py-3 bg-white/10 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-white/20 transition flex items-center gap-2">
+                                   <Eye className="w-4 h-4" /> Deschide
+                                 </button>
+                               </>
                              )}
                            </div>
                            {notaPdf && (
@@ -679,7 +762,12 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                                  : '—'}
                              </span>
                            </div>
-                           <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="555-000-0000" required />
+                           {/*
+                             Nu mai e obligatoriu. Contractele nu poarta un
+                             telefon de suport, deci un contract incarcat din
+                             PDF nu se putea salva pana nu se inventa unul.
+                           */}
+                           <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="optional" />
                            <div className="sm:col-span-2">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Obiectul contractului</label>
                               <textarea 
@@ -755,6 +843,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
         </div>
         </Portal>
       )}
+
+      {vizualizatorul}
     </div>
   );
 };
