@@ -760,6 +760,7 @@ NOTIFY pgrst, 'reload schema';
                 className="w-28 px-3 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold outline-none" />
               <span className="text-[11px] font-bold text-slate-500">
                 GB — Supabase nu spune cat da planul vostru, asa ca se scrie aici. Gratuit e 1 GB.
+                Se tine pe aparatul de la care se scrie, deci pe telefon trebuie trecuta din nou.
               </span>
             </div>
 
@@ -782,6 +783,18 @@ NOTIFY pgrst, 'reload schema';
                   <div className="h-full bg-slate-400 rounded-full"
                     style={{ width: `${Math.min(100, (spatiuLocal.octeti / spatiuLocal.limita) * 100)}%` }} />
                 </div>
+                {/*
+                  Cifra asta e alta pe fiecare aparat, si asta nastea intrebarea
+                  "de ce imi arata altceva pe telefon". Nu e spatiul din cloud si
+                  nu e ceva ce se poate alege: browserul o socoteste din cat loc
+                  liber are aparatul, si o schimba pe masura ce discul se umple.
+                */}
+                <p className="text-[11px] font-bold text-slate-500 mt-2 leading-relaxed">
+                  Copiile aparatului acesta: documentele deschise, aplicatia pentru offline si,
+                  daca s-a citit vreun document scanat, motorul de recunoastere a textului.
+                  Limita o pune browserul, dupa cat loc liber are aparatul — de-aia e alta pe
+                  telefon decat pe calculator, si nu are legatura cu spatiul din cloud de mai sus.
+                </p>
               </div>
             )}
           </div>
