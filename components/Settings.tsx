@@ -662,9 +662,10 @@ NOTIFY pgrst, 'reload schema';
 
           <div className="p-4 mb-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
             <p className="text-[13px] text-amber-200 font-semibold leading-relaxed">
-              Cele doua tabele nu sunt create de scripturile de mai sus. Pana rulezi acest script,
-              referatele si documentele de fundamentare se salveaza doar pe aparatul pe care le faci:
-              nu ajung pe telefon, si nu le vede nimeni altcineva.
+              Cele trei tabele nu sunt create de scripturile de mai sus. Pana rulezi acest script,
+              referatele, documentele de fundamentare si comenzile se salveaza doar pe aparatul pe
+              care le faci: nu ajung pe telefon, si nu le vede nimeni altcineva. Tot el adauga pe
+              facturi numarul comenzii, cel dupa care se leaga singure de comanda.
             </p>
           </div>
 
