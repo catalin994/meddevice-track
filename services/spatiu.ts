@@ -19,6 +19,9 @@ import { MedicalDevice, Invoice } from '../types';
  *   semnal. Aici browserul isi stie singur limita si o spune.
  */
 
+/** Orice document care isi tine fisierul in stocare: aceleasi doua campuri. */
+export interface CuFisier { filePath?: string; fileSize?: number }
+
 export interface FelSpatiu {
   /** "devices", "invoices", "sabloane" — primul nivel din cale. */
   fel: string;
@@ -131,6 +134,9 @@ export const spatiulDeAici = async (): Promise<SpatiuLocal> => {
 export const spatiulDinEvidenta = (
   devices: MedicalDevice[] = [],
   invoices: Invoice[] = [],
+  referate: CuFisier[] = [],
+  fundamentare: CuFisier[] = [],
+  comenzi: CuFisier[] = [],
 ): SpatiuCloud & { faraMarime: number } => {
   const peFeluri = new Map<string, FelSpatiu>();
   let faraMarime = 0;
@@ -154,6 +160,24 @@ export const spatiulDinEvidenta = (
     if (!inv.filePath) continue;
     pun('invoices', inv.fileSize);
   }
+  // Contractul e trecut in randul fiecarui aparat pe care il acopera, dar in
+  // stocare e un singur fisier. Socotit o data, dupa cale.
+  const contracte = new Set<string>();
+  for (const d of devices) {
+    for (const c of d.contracts || []) {
+      if (!c.filePath || contracte.has(c.filePath)) continue;
+      contracte.add(c.filePath);
+      pun('contracts', c.fileSize);
+    }
+  }
+  for (const [fel, lista] of [
+    ['referate', referate], ['fundamentare', fundamentare], ['comenzi', comenzi],
+  ] as [string, CuFisier[]][]) {
+    for (const x of lista) {
+      if (!x.filePath) continue;
+      pun(fel, x.fileSize);
+    }
+  }
 
   const randuri = [...peFeluri.values()].sort((a, b) => b.octeti - a.octeti);
   return {
@@ -168,6 +192,10 @@ export const spatiulDinEvidenta = (
 export const NUME_FEL: Record<string, string> = {
   devices: 'Documentele aparatelor',
   invoices: 'Facturi',
+  contracts: 'Contracte',
+  referate: 'Referate',
+  fundamentare: 'Documente de fundamentare',
+  comenzi: 'Comenzi',
   sabloane: 'Sabloane Word',
   tasks: 'Atasamente tichete',
   altele: 'Altele',

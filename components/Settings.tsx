@@ -64,7 +64,9 @@ const Settings: React.FC<SettingsProps> = ({
    * de date, daca functia e instalata. Ecranul arata mereu o cifra reala; ce
    * lipseste e precizia, nu raspunsul.
    */
-  const dinEvidenta = useMemo(() => spatiulDinEvidenta(devices, invoices), [devices, invoices]);
+  const dinEvidenta = useMemo(
+    () => spatiulDinEvidenta(devices, invoices, referate, foundationDocs, comenzi),
+    [devices, invoices, referate, foundationDocs, comenzi]);
   const masoaraSpatiul = useCallback(async () => {
     setSeMasoara(true);
     const [c, l] = await Promise.all([spatiulDinCloud(), spatiulDeAici()]);

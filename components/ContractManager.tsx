@@ -6,6 +6,7 @@ import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign,
 import { analyzeContractText } from '../services/geminiService';
 import { citesteContractPdf } from '../services/contractParse';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
+import { marime } from '../services/spatiu';
 import { saveFileAs } from '../services/fileService';
 
 import Portal from './Portal';
@@ -351,6 +352,18 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
               </button>
             </div>
           </div>
+          {/*
+            Numele fisierului si marimea lui. Intrebarea "unde e si cat ocupa"
+            se punea si nu avea raspuns nicaieri in aplicatie.
+          */}
+          {pdfulContractului(c) && (
+            <p className="mt-4 text-[12px] font-bold text-slate-500 break-words">
+              {c.fileName || 'contract.pdf'}
+              {!!c.fileSize && <> · {marime(c.fileSize)}</>}
+              {' · '}
+              {c.filePath ? 'in spatiul de fisiere din cloud' : 'doar pe acest aparat, inca neurcat'}
+            </p>
+          )}
           {!pdfulContractului(c) && (
             <p className="mt-4 text-[12px] font-bold text-slate-500">
               Contractul n-are PDF atasat. Apasa Modifica si incarca-l — de acolo isi ia si datele.
