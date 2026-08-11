@@ -655,7 +655,7 @@ NOTIFY pgrst, 'reload schema';
               <FileText className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate si documente de fundamentare</h2>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate, documente de fundamentare si comenzi</h2>
               <p className="text-[11px] text-indigo-300 font-bold">Ruleaza al treilea, dupa cel de conturi</p>
             </div>
           </div>

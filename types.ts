@@ -589,6 +589,8 @@ export interface Invoice {
   /** When it was marked as uploaded to ConectX (ISO date). */
   uploadedAt?: string;
   contractNumber?: string;   // optional link to a service contract
+  /** Numarul comenzii pe care vine factura, cand e tiparit pe ea. */
+  orderNumber?: string;
   /**
    * Articolul bugetar pe care se face plata.
    *

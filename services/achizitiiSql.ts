@@ -16,7 +16,7 @@
  *
  * Se poate rula de cate ori e nevoie.
  */
-export const ACHIZITII_SQL = `-- BIOMEDIC — REFERATE SI DOCUMENTE DE FUNDAMENTARE
+export const ACHIZITII_SQL = `-- BIOMEDIC — REFERATE, DOCUMENTE DE FUNDAMENTARE SI COMENZI
 -- Ruleaza in Supabase Dashboard -> SQL Editor -> RUN.
 -- Se poate rula de mai multe ori, in siguranta.
 --
@@ -104,6 +104,36 @@ ALTER TABLE public.documente_fundamentare
   -- plafonul acordului-cadru din care trag alocarile lunare
   ADD COLUMN IF NOT EXISTS "frameworkTotal"    NUMERIC;
 
+-- ── 3. COMENZI CATRE FURNIZOR ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.comenzi (
+  id                  TEXT PRIMARY KEY,
+  "number"            TEXT,
+  "date"              TEXT,
+  "supplier"          TEXT,
+  "supplierCui"       TEXT,
+  "referatNumber"     TEXT,
+  "offerNumber"       TEXT,
+  "contractNumber"    TEXT,
+  "frameworkContract" TEXT,
+  "warehouse"         TEXT,
+  "paymentDays"       INTEGER,
+  "items"             JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "currency"          TEXT,
+  "status"            TEXT,
+  "totalWithVat"      NUMERIC,
+  "deliveredAt"       TEXT,
+  "notes"             TEXT,
+  "deviceIds"         JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "filePath"          TEXT,
+  "fileUrl"           TEXT,
+  "fileName"          TEXT,
+  "fileSize"          NUMERIC,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Facturile stiu pe ce comanda vin: numarul e tiparit pe ele.
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "orderNumber" TEXT;
+
 -- Cautarea dupa referatul sustinut, pe dosarele mari.
 CREATE INDEX IF NOT EXISTS documente_fundamentare_referat_idx
   ON public.documente_fundamentare ("referatId");
@@ -115,11 +145,12 @@ CREATE INDEX IF NOT EXISTS documente_fundamentare_serie_idx
 -- ── 3. ACCES, dupa aceleasi reguli ca restul datelor ────────────────────────
 ALTER TABLE public.referate                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documente_fundamentare  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.comenzi                 ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['referate','documente_fundamentare'] LOOP
+  FOREACH t IN ARRAY ARRAY['referate','documente_fundamentare','comenzi'] LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Allow all public access" ON public.%I', t);
     EXECUTE format('DROP POLICY IF EXISTS "mt_read"   ON public.%I', t);
     EXECUTE format('DROP POLICY IF EXISTS "mt_insert" ON public.%I', t);
