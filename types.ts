@@ -608,6 +608,93 @@ export interface Invoice {
   updated_at?: string;
 }
 
+/**
+ * Comanda catre furnizor.
+ *
+ * Vine dupa referat si dupa contract, si e actul pe care furnizorul il executa:
+ * ce s-a cerut, cate bucati, la ce pret, pana cand se plateste. Pe hartia
+ * spitalului are numar propriu, data, gestiunea in care intra marfa, si
+ * trimiterile inapoi — la referat, la oferta, la contractul sau acordul-cadru
+ * pe care se sprijina.
+ */
+export enum ComandaStatus {
+  /** Trimisa furnizorului, inca fara raspuns. */
+  EMISA = 'Emisa',
+  CONFIRMATA = 'Confirmata',
+  /** A venit o parte din marfa. */
+  PARTIAL = 'Partial',
+  LIVRATA = 'Livrata',
+  ANULATA = 'Anulata',
+}
+
+export const COMANDA_STATUS_RO: Record<ComandaStatus, string> = {
+  [ComandaStatus.EMISA]: 'Emisa',
+  [ComandaStatus.CONFIRMATA]: 'Confirmata',
+  [ComandaStatus.PARTIAL]: 'Livrata partial',
+  [ComandaStatus.LIVRATA]: 'Livrata',
+  [ComandaStatus.ANULATA]: 'Anulata',
+};
+
+export const normaliseComandaStatus = (raw: unknown): ComandaStatus =>
+  Object.values(ComandaStatus).includes(raw as ComandaStatus)
+    ? (raw as ComandaStatus)
+    : ComandaStatus.EMISA;
+
+/** O pozitie din tabelul comenzii. */
+export interface ComandaItem {
+  id: string;
+  /** "CUTIE CASETE STERILIZARE PURE120" */
+  name: string;
+  /** Contul contabil din coloana a doua. */
+  account?: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  /** Cat a venit efectiv din pozitia asta. */
+  received?: number;
+}
+
+export const comandaValoare = (items: ComandaItem[] = []): number =>
+  items.reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice || 0), 0);
+
+/** Cate pozitii au venit integral. */
+export const comandaPrimit = (items: ComandaItem[] = []): number =>
+  items.reduce((s, it) => s + Math.min(it.received ?? 0, it.quantity || 0) * (it.unitPrice || 0), 0);
+
+export interface Comanda {
+  id: string;
+  /** "Nr.comanda: 1984" */
+  number: string;
+  /** "Data comenzii: 10.08.2026" */
+  date: string;
+  supplier: string;
+  supplierCui?: string;
+  /** Trimiterile de pe comanda, asa cum sunt tiparite. */
+  referatNumber?: string;
+  offerNumber?: string;
+  contractNumber?: string;
+  frameworkContract?: string;
+  /** "Gestiunea: G10 / PIESE SCHIMB DIVERSE" */
+  warehouse?: string;
+  /** Termenul de plata, in zile. */
+  paymentDays?: number;
+  items: ComandaItem[];
+  currency: string;
+  status: ComandaStatus;
+  /** Valoarea cu TVA, cand comanda o scrie. Fara TVA se calculeaza din pozitii. */
+  totalWithVat?: number;
+  /** Cand a venit marfa, ca sa se vada cat a durat. */
+  deliveredAt?: string;
+  notes?: string;
+  /** Aparatele pentru care s-a comandat, cand se stie. */
+  deviceIds?: string[];
+  filePath?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  updated_at?: string;
+}
+
 export const getUniqueDepartments = (devices: MedicalDevice[], tasks: MedicalTask[] = []): string[] => {
   const depts = new Set<string>(HOSPITAL_DEPARTMENTS);
   devices.forEach(d => { if (d.department) depts.add(d.department.trim()); });
