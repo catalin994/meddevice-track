@@ -3,9 +3,9 @@ import React, { useState, useMemo, useCallback, useRef, Suspense, lazy } from 'r
 import {
   Receipt, ShieldCheck, TrendingUp, Plus, X, Search, Loader2, Upload, FileText,
   CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark,
-  FolderOpen, FileSpreadsheet, FileSignature
+  FolderOpen, FileSpreadsheet, FileSignature, ShoppingCart
 } from 'lucide-react';
-import { MedicalDevice, Invoice, InvoiceStatus, Contract, Referat, FoundationDoc, normaliseInvoiceStatus } from '../types';
+import { MedicalDevice, Invoice, InvoiceStatus, Contract, Referat, FoundationDoc, Comanda, normaliseInvoiceStatus } from '../types';
 import ContractManager from './ContractManager';
 import { saveFileAs, dataUrlToBlob } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
@@ -25,12 +25,14 @@ const FinanceCharts = lazy(() => import('./FinanceCharts'));
 const ReferatManager = lazy(() => import('./ReferatManager'));
 const FoundationDocManager = lazy(() => import('./FoundationDocManager'));
 const BugetPanel = lazy(() => import('./BugetPanel'));
+const ComenziManager = lazy(() => import('./ComenziManager'));
 
 interface FinanceManagerProps {
   devices: MedicalDevice[];
   invoices: Invoice[];
   referate: Referat[];
   foundationDocs: FoundationDoc[];
+  comenzi: Comanda[];
   onUpsertInvoice: (invoice: Invoice) => void;
   onDeleteInvoice: (id: string) => void;
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
@@ -38,10 +40,12 @@ interface FinanceManagerProps {
   onDeleteReferat: (id: string) => void;
   onUpsertFoundationDoc: (d: FoundationDoc) => void;
   onDeleteFoundationDoc: (id: string) => void;
+  onUpsertComanda: (c: Comanda) => void;
+  onDeleteComanda: (id: string) => void;
   canDelete: boolean;
 }
 
-type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'CONTRACTS';
+type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'COMENZI' | 'CONTRACTS';
 
 const emptyForm = () => ({
   invoiceNumber: '',
@@ -53,6 +57,7 @@ const emptyForm = () => ({
   status: InvoiceStatus.NOT_UPLOADED,
   uploadedAt: '',
   contractNumber: '',
+  orderNumber: '',
   budgetArticle: '',
   description: '',
   fileUrl: '',
@@ -90,6 +95,8 @@ interface BulkDraft {
   amount: number;
   currency: string;
   contractNumber: string;
+  /** Comanda de la care a plecat factura, cand e trecuta pe ea. */
+  orderNumber: string;
   /** Ce s-a facturat, citit din tabelul de pozitii al facturii. */
   description: string;
   /** Recunoscuta ca a serviciului tehnic, dupa denumire. */
@@ -132,9 +139,10 @@ const downloadInvoicePdf = async (inv: Invoice) => {
 };
 
 const FinanceManager: React.FC<FinanceManagerProps> = ({
-  devices, invoices, referate, foundationDocs,
+  devices, invoices, referate, foundationDocs, comenzi,
   onUpsertInvoice, onDeleteInvoice, onSaveContract,
   onUpsertReferat, onDeleteReferat, onUpsertFoundationDoc, onDeleteFoundationDoc,
+  onUpsertComanda, onDeleteComanda,
   canDelete,
 }) => {
   const [tab, setTab] = useState<FinanceTab>('OVERVIEW');
@@ -352,6 +360,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         // nu il completa, si se tasta de mana la fiecare factura.
         dueDate: fields.dueDate || prev.dueDate,
         contractNumber: fields.contractNumber || prev.contractNumber,
+        orderNumber: fields.orderNumber || prev.orderNumber,
         supplier: fields.supplier || prev.supplier,
         description: fields.description || prev.description,
         fileUrl: base64,
@@ -371,6 +380,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         fields.dueDate && `scadenta ${fields.dueDate}`,
         fields.deviceIds.length && `${fields.deviceIds.length} dispozitiv${fields.deviceIds.length === 1 ? '' : 'e'}`,
         fields.contractNumber && `contract ${fields.contractNumber}`,
+        fields.orderNumber && `comanda ${fields.orderNumber}`,
       ].filter(Boolean);
       const lipsa = [
         !fields.invoiceNumber && 'numarul',
@@ -450,6 +460,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           amount: fields.amount,
           currency: fields.currency,
           contractNumber: fields.contractNumber,
+          orderNumber: fields.orderNumber,
           description: fields.description,
           aMea: triere.aMea, poate: triere.poate, motive: triere.motive,
           raport: gasesteRaport(deLegatSingur(fields.potriviri), devices, dataFact),
@@ -467,7 +478,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           include: false, isDuplicate: false,
           invoiceNumber: file.name.replace(/\.pdf$/i, ''), supplier: '', amount: 0, currency: 'RON',
           issueDate: new Date().toISOString().split('T')[0], dueDate: '',
-          contractNumber: '', description: '', aMea: false, poate: false, motive: [], raport: null,
+          contractNumber: '', orderNumber: '', description: '', aMea: false, poate: false, motive: [], raport: null,
           deviceIds: [], potriviri: [], file, fileName: file.name, cale,
           eroare: err?.message ? `Nu s-a putut citi: ${err.message}` : 'Nu s-a putut citi PDF-ul',
         });
@@ -633,6 +644,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         currency: d.currency,
         status: InvoiceStatus.NOT_UPLOADED,
         contractNumber: d.contractNumber || undefined,
+        orderNumber: d.orderNumber || undefined,
         description: d.description.trim() || undefined,
         deviceIds: d.deviceIds,
         filePath,
@@ -694,6 +706,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       status: normaliseInvoiceStatus(inv.status),
       uploadedAt: inv.uploadedAt || '',
       contractNumber: inv.contractNumber || '',
+      orderNumber: inv.orderNumber || '',
       budgetArticle: inv.budgetArticle || '',
       description: inv.description || '',
       fileUrl: inv.fileUrl || '',
@@ -737,6 +750,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       status: form.status,
       uploadedAt,
       contractNumber: form.contractNumber || undefined,
+      orderNumber: form.orderNumber.trim() || undefined,
       budgetArticle: form.budgetArticle.trim() || undefined,
       deviceIds: selectedDeviceIds,
       description: form.description || undefined,
@@ -793,7 +807,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Dosarul achizitiei, de la referat la factura</p>
             </div>
           </div>
-          <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' ? 'hidden' : 'flex'}`}>
+          <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' || tab === 'COMENZI' ? 'hidden' : 'flex'}`}>
             {/*
               webkitdirectory: fara el butonul spunea "Import Folder PDF" dar
               deschidea un selector de fisiere — folderul nu se putea alege.
@@ -824,6 +838,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             ['BUDGET', 'Buget', Landmark, 'Buget'],
             ['REFERATE', 'Referate', FileSignature, 'Referate'],
             ['FUNDAMENTARE', 'Documente de fundamentare', FolderOpen, 'Fundamentare'],
+            ['COMENZI', 'Comenzi', ShoppingCart, 'Comenzi'],
             ['CONTRACTS', 'Contracte', ShieldCheck, 'Contracte'],
           ] as [FinanceTab, string, any, string][]).map(([key, label, Icon, scurt]) => (
             <button key={key} onClick={() => setTab(key)}
@@ -1049,6 +1064,21 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       {tab === 'BUDGET' && (
         <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
           <BugetPanel docs={foundationDocs} invoices={invoices} moneda={dominantCurrency} />
+        </Suspense>
+      )}
+
+      {/* ============ COMENZI ============ */}
+      {tab === 'COMENZI' && (
+        <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+          <ComenziManager
+            comenzi={comenzi}
+            invoices={invoices}
+            referate={referate}
+            devices={devices}
+            onUpsert={onUpsertComanda}
+            onDelete={onDeleteComanda}
+            canDelete={canDelete}
+          />
         </Suspense>
       )}
 
@@ -1497,6 +1527,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                       <option key={c.contractNumber} value={c.contractNumber}>{c.contractNumber} · {c.provider}</option>
                     ))}
                   </select>
+                </Field>
+                {/* Firul spre comanda emisa: cu el, comanda stie cat s-a facturat. */}
+                <Field label="Comanda">
+                  <input value={form.orderNumber} onChange={e => setForm(p => ({ ...p, orderNumber: e.target.value }))}
+                    placeholder="nr. comenzii, ex. 1984" className="fin-input" />
                 </Field>
                 {/* Pagina de buget il deduce cand lipseste; scris aici, are ultimul cuvant. */}
                 <Field label="Articol bugetar">

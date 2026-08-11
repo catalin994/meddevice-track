@@ -22,6 +22,8 @@ export interface InvoiceFields {
   dueDate: string;
   supplier: string;
   contractNumber: string;
+  /** Comanda de la care a plecat factura, cand e trecuta pe ea. */
+  orderNumber: string;
   /** Ce s-a facturat: denumirea produsului sau a serviciului. */
   description: string;
   deviceIds: string[];
@@ -333,6 +335,39 @@ const gasesteNumar = (linii: string[]): string => {
   return '';
 };
 
+/**
+ * Numarul comenzii de la care a plecat factura.
+ *
+ * Il scriu si e-Factura ("Nr. comanda 037528"), si facturile obisnuite
+ * ("conform comenzii nr. 1984"). E singurul fir care leaga hartia primita de
+ * comanda emisa, asa ca merita cautat chiar daca de multe ori lipseste.
+ *
+ * Nu se ghiceste: fara o eticheta de comanda pe rand, campul ramane gol.
+ * O legatura gresita ar arata o comanda ca facturata cand de fapt nu e.
+ */
+const gasesteComanda = (linii: string[]): string => {
+  const TIPARE: RegExp[] = [
+    // "conform comenzii nr. 1984" / "in baza comenzii 1984"
+    /\bcomenzi[i]?\s*(?:nr\.?|no\.?|num[aă]rul|num[aă]r|:)?\s*[:.]?\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{0,20})/i,
+    // "Nr. comanda: 037528" — eticheta inaintea valorii
+    /\b(?:nr\.?|no\.?|num[aă]rul|num[aă]r|number|referin[țt][aă])\s*(?:de\s+)?comand[aă]\s*[:.]?\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{0,20})/i,
+    // "Comanda nr. 1984" / "Comanda: 1984"
+    /\bcomand[aă]\s*(?:nr\.?|no\.?|num[aă]rul|num[aă]r|:)?\s*[:.]?\s*([A-Za-z0-9][A-Za-z0-9\-\/._]{0,20})/i,
+  ];
+  for (const re of TIPARE) {
+    for (const linie of linii) {
+      const m = norm(linie).match(re);
+      if (!m) continue;
+      const candidat = m[1].replace(/[.,;:]+$/, '');
+      // "comanda dumneavoastra", "comanda ferma" — cuvinte, nu numere.
+      if (!/\d/.test(candidat)) continue;
+      if (laISO(candidat)) continue;
+      return candidat;
+    }
+  }
+  return '';
+};
+
 const gasesteSuma = (linii: string[]): { amount: number; currency: string } => {
   let cel: { valoare: number; moneda: string; rang: number } | null = null;
 
@@ -561,6 +596,7 @@ export const extractInvoiceFields = (
     dueDate,
     supplier,
     contractNumber: contract?.contractNumber || '',
+    orderNumber: gasesteComanda(linii),
     description: descriere,
     // Potrivirea aparatelor sta separat: are nevoie de denumirea deja citita,
     // si e regula pe care se umbla cel mai des cand ceva nu se leaga bine.

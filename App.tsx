@@ -1206,12 +1206,15 @@ const App: React.FC = () => {
                     invoices={invoices}
                     referate={referate}
                     foundationDocs={foundationDocs}
+                    comenzi={comenzi}
                     onUpsertInvoice={handleUpsertInvoice}
                     onDeleteInvoice={handleDeleteInvoice}
                     onUpsertReferat={handleUpsertReferat}
                     onDeleteReferat={handleDeleteReferat}
                     onUpsertFoundationDoc={handleUpsertFoundationDoc}
                     onDeleteFoundationDoc={handleDeleteFoundationDoc}
+                    onUpsertComanda={handleUpsertComanda}
+                    onDeleteComanda={handleDeleteComanda}
                     canDelete={canDelete}
                     onSaveContract={handleSaveContract}
                   />
