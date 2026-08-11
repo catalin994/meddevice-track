@@ -47,9 +47,9 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, hasPermission, ROLE_LABELS } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB, getAllComenziFromDB, saveComenziToDB, deleteComandaFromDB } from './services/storageService';
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
@@ -144,6 +144,7 @@ const App: React.FC = () => {
   // Dosarul achizitiei: referatul de necesitate si documentele care il sustin
   const [referate, setReferate] = useState<Referat[]>([]);
   const [foundationDocs, setFoundationDocs] = useState<FoundationDoc[]>([]);
+  const [comenzi, setComenzi] = useState<Comanda[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -359,6 +360,7 @@ const App: React.FC = () => {
       ]);
       getAllReferateFromDB().then(setReferate).catch(() => {});
       getAllFoundationDocsFromDB().then(setFoundationDocs).catch(() => {});
+      getAllComenziFromDB().then(setComenzi).catch(() => {});
       
       const deviceMap = new Map<string, MedicalDevice>();
       localDevices.forEach(d => deviceMap.set(d.id, d));
@@ -560,6 +562,8 @@ const App: React.FC = () => {
             await getAllReferateFromDB().catch(() => []), setReferate, saveReferateToDB);
           await sincronizeaza<FoundationDoc>('documente_fundamentare',
             await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB);
+          await sincronizeaza<Comanda>('comenzi',
+            await getAllComenziFromDB().catch(() => []), setComenzi, saveComenziToDB);
 
           setSyncStatus('cloud');
           setSyncMessage(sarite.length
@@ -799,6 +803,44 @@ const App: React.FC = () => {
       console.error('[Fundamentare] stergere esuata:', err);
     } finally { setIsSyncing(false); }
   }, [isSupabaseConfigured, foundationDocs, logAudit, canDelete, recordDeletion]);
+
+  const handleUpsertComanda = useCallback(async (c: Comanda) => {
+    const payload: Comanda = { ...c, updated_at: new Date().toISOString() };
+    logAudit(comenzi.some(x => x.id === payload.id) ? 'update' : 'create', 'comanda',
+      payload.id, payload.number || payload.id, payload.supplier);
+    setComenzi(prev => {
+      const map = new Map(prev.map(x => [x.id, x]));
+      map.set(payload.id, payload);
+      return Array.from(map.values());
+    });
+    setIsSyncing(true);
+    try {
+      await saveComenziToDB([payload]);
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('comenzi').upsert([payload], { onConflict: 'id' });
+        if (error) console.warn('[Comenzi] sincronizare amanata:', error.message);
+      }
+    } catch (err) {
+      console.error('[Comenzi] sincronizare amanata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, comenzi, logAudit]);
+
+  const handleDeleteComanda = useCallback(async (id: string) => {
+    if (!canDelete) { const m = 'Doar un administrator poate sterge comenzi.';
+      setSyncMessage(m); notify(m, 'error'); return; }
+    if (!id) return;
+    const target = comenzi.find(x => x.id === id);
+    logAudit('delete', 'comanda', id, target?.number || id, target?.supplier);
+    setComenzi(prev => prev.filter(x => x.id !== id));
+    setIsSyncing(true);
+    try {
+      await deleteComandaFromDB(id);
+      await recordDeletion('comanda', id);
+      if (isSupabaseConfigured && supabase) await supabase.from('comenzi').delete().eq('id', id);
+    } catch (err) {
+      console.error('[Comenzi] stergere esuata:', err);
+    } finally { setIsSyncing(false); }
+  }, [isSupabaseConfigured, comenzi, logAudit, canDelete, recordDeletion]);
 
   const handleDeleteInvoice = useCallback(async (id: string) => {
     if (!canDelete) { const m = 'Doar un administrator poate sterge facturi.';

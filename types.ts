@@ -66,7 +66,7 @@ export type DeviceCategory = typeof DEVICE_CATEGORIES[number];
  */
 export interface Deletion {
   id: string;                                  // "device:DEV-0001"
-  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare';
+  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare' | 'comanda';
   entityId: string;
   deletedAt: string;
   updated_at?: string;
@@ -570,7 +570,7 @@ export interface AuditEntry {
   timestamp: string;
   userName: string;
   action: 'create' | 'update' | 'delete';
-  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare';
+  entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare' | 'comanda';
   entityId: string;
   entityName: string;
   details?: string;

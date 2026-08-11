@@ -1,4 +1,4 @@
-import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion, Referat, FoundationDoc } from '../types';
+import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion, Referat, FoundationDoc , Comanda } from '../types';
 
 // Numele bazei locale ramane cel vechi dupa redenumirea aplicatiei: schimbarea
 // lui ar deschide o baza noua, goala, si ar abandona datele de pe fiecare telefon.
@@ -11,7 +11,8 @@ const STORE_DELETIONS = 'deletions';
 const STORE_BLOBS = 'fileblobs';
 const STORE_REFERATE = 'referate';
 const STORE_FUNDAMENTARE = 'fundamentare';
-const DB_VERSION = 8;
+const STORE_COMENZI = 'comenzi';
+const DB_VERSION = 9;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -66,6 +67,7 @@ const openOnce = (): Promise<IDBDatabase> =>
       // v8: dosarul achizitiei — referatul si documentele care il sustin
       if (!db.objectStoreNames.contains(STORE_REFERATE))     db.createObjectStore(STORE_REFERATE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(STORE_FUNDAMENTARE)) db.createObjectStore(STORE_FUNDAMENTARE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_COMENZI)) db.createObjectStore(STORE_COMENZI, { keyPath: 'id' });
     };
 
     // Another window still holds an older version. Waiting for the timeout
@@ -297,6 +299,10 @@ export const getAllReferateFromDB = () => citesteTot<Referat>(STORE_REFERATE);
 export const saveFoundationDocsToDB = (d: FoundationDoc[]) => salveaza(STORE_FUNDAMENTARE, d);
 export const deleteFoundationDocFromDB = (id: string) => sterge(STORE_FUNDAMENTARE, id);
 export const getAllFoundationDocsFromDB = () => citesteTot<FoundationDoc>(STORE_FUNDAMENTARE);
+
+export const saveComenziToDB = (c: Comanda[]) => salveaza(STORE_COMENZI, c);
+export const deleteComandaFromDB = (id: string) => sterge(STORE_COMENZI, id);
+export const getAllComenziFromDB = () => citesteTot<Comanda>(STORE_COMENZI);
 
 export const saveAuditToDB = async (entries: AuditEntry[]): Promise<void> => {
   const db = await initDB();
