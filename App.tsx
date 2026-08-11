@@ -910,11 +910,22 @@ const App: React.FC = () => {
    * in the row, so this is the step that actually makes syncing cheap. Runs one
    * file at a time and stops at the first failure rather than leaving records
    * half-rewritten.
+   *
+   * Toate cele sapte feluri de document, nu doar primele trei. Un contract
+   * atasat de pe telefon fara semnal ramane in randul lui pana il ridica cineva
+   * de-aici; cat sta acolo, fiecare telefon il descarca intreg la fiecare
+   * sincronizare. Referatele, documentele de fundamentare, contractele si
+   * comenzile lipseau din maturat de cand au fost adaugate.
    */
   const migrateFilesToStorage = useCallback(async (
     onProgress?: (done: number, total: number, label: string) => void
   ) => {
-    const jobs: Array<{ kind: 'device' | 'task' | 'invoice'; ownerId: string; id: string; name: string; dataUrl: string }> = [];
+    type Fel = 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare' | 'contract' | 'comanda';
+    const DOSAR: Record<Fel, string> = {
+      device: 'devices', task: 'tasks', invoice: 'invoices',
+      referat: 'referate', fundamentare: 'fundamentare', contract: 'contracts', comanda: 'comenzi',
+    };
+    const jobs: Array<{ kind: Fel; ownerId: string; id: string; name: string; dataUrl: string }> = [];
 
     devices.forEach(d => (d.files || []).forEach(f => {
       if (!f.path && f.url?.startsWith('data:')) {
@@ -926,10 +937,37 @@ const App: React.FC = () => {
         jobs.push({ kind: 'task', ownerId: t.id, id: a.id, name: a.name, dataUrl: a.url });
       }
     }));
-    invoices.forEach(inv => {
-      if (!inv.filePath && inv.fileUrl?.startsWith('data:')) {
-        jobs.push({ kind: 'invoice', ownerId: inv.id, id: inv.id, name: inv.fileName || 'factura.pdf', dataUrl: inv.fileUrl });
+
+    /** Aceeasi forma la toate: filePath cand e urcat, fileUrl cand a ramas pe loc. */
+    const cuDosar = <T extends { id: string; filePath?: string; fileUrl?: string; fileName?: string }>(
+      lista: T[], kind: Fel, implicit: string,
+    ) => lista.forEach(x => {
+      if (!x.filePath && x.fileUrl?.startsWith('data:')) {
+        jobs.push({ kind, ownerId: x.id, id: x.id, name: x.fileName || implicit, dataUrl: x.fileUrl });
       }
+    });
+    cuDosar(invoices, 'invoice', 'factura.pdf');
+    cuDosar(referate, 'referat', 'referat.pdf');
+    cuDosar(foundationDocs, 'fundamentare', 'document.pdf');
+    cuDosar(comenzi, 'comanda', 'comanda.pdf');
+
+    /*
+     * Contractul e tinut in randul fiecarui aparat pe care e trecut, deci
+     * acelasi PDF apare de cate ori e aparatul. Se urca o data, dupa numarul
+     * contractului, si calea se scrie apoi in toate copiile.
+     */
+    const contracteDeUrcat = new Map<string, { id: string; name: string; dataUrl: string }>();
+    devices.forEach(d => (d.contracts || []).forEach(c => {
+      if (!c.filePath && c.fileUrl?.startsWith('data:') && !contracteDeUrcat.has(c.contractNumber)) {
+        contracteDeUrcat.set(c.contractNumber, {
+          id: c.id || c.contractNumber,
+          name: c.fileName || 'contract.pdf',
+          dataUrl: c.fileUrl,
+        });
+      }
+    }));
+    contracteDeUrcat.forEach((c, numar) => {
+      jobs.push({ kind: 'contract', ownerId: numar, id: c.id, name: c.name, dataUrl: c.dataUrl });
     });
 
     if (jobs.length === 0) return { moved: 0, total: 0, error: null as string | null };
@@ -938,21 +976,29 @@ const App: React.FC = () => {
     let moved = 0;
     for (const job of jobs) {
       onProgress?.(moved, jobs.length, job.name);
-      const folder = job.kind === 'device' ? 'devices' : job.kind === 'task' ? 'tasks' : 'invoices';
-      const { path, error } = await uploadDataUrl(buildPath(folder, job.ownerId, job.id, job.name), job.dataUrl);
+      const { path, error } = await uploadDataUrl(buildPath(DOSAR[job.kind], job.ownerId, job.id, job.name), job.dataUrl);
       if (error || !path) return { moved, total: jobs.length, error };
       paths.set(`${job.kind}:${job.ownerId}:${job.id}`, path);
       moved++;
     }
     onProgress?.(moved, jobs.length, '');
 
+    // Un aparat poate avea si documente proprii, si contracte de rescris. Se
+    // trece o singura data prin lista si se salveaza o singura versiune a lui.
+    const caleaContractului = (c: { contractNumber: string; id?: string }) =>
+      paths.get(`contract:${c.contractNumber}:${c.id || c.contractNumber}`);
     const touchedDevices = devices
-      .filter(d => (d.files || []).some(f => paths.has(`device:${d.id}:${f.id}`)))
+      .filter(d => (d.files || []).some(f => paths.has(`device:${d.id}:${f.id}`))
+        || (d.contracts || []).some(c => caleaContractului(c)))
       .map(d => ({
         ...d,
         files: (d.files || []).map(f => {
           const path = paths.get(`device:${d.id}:${f.id}`);
           return path ? { ...f, path, url: undefined } : f;
+        }),
+        contracts: (d.contracts || []).map(c => {
+          const filePath = caleaContractului(c);
+          return filePath ? { ...c, filePath, fileUrl: undefined } : c;
         }),
       }));
 
@@ -966,16 +1012,21 @@ const App: React.FC = () => {
         }),
       }));
 
-    const touchedInvoices = invoices
-      .filter(inv => paths.has(`invoice:${inv.id}:${inv.id}`))
-      .map(inv => ({ ...inv, filePath: paths.get(`invoice:${inv.id}:${inv.id}`), fileUrl: undefined }));
+    const rescrise = <T extends { id: string; filePath?: string; fileUrl?: string }>(lista: T[], kind: Fel) =>
+      lista.filter(x => paths.has(`${kind}:${x.id}:${x.id}`))
+        .map(x => ({ ...x, filePath: paths.get(`${kind}:${x.id}:${x.id}`), fileUrl: undefined }));
 
     if (touchedDevices.length) await handleUpsertDevices(touchedDevices);
     if (touchedTasks.length) await handleUpsertTasks(touchedTasks);
-    for (const inv of touchedInvoices) await handleUpsertInvoice(inv);
+    for (const inv of rescrise(invoices, 'invoice')) await handleUpsertInvoice(inv);
+    for (const r of rescrise(referate, 'referat')) await handleUpsertReferat(r);
+    for (const d of rescrise(foundationDocs, 'fundamentare')) await handleUpsertFoundationDoc(d);
+    for (const c of rescrise(comenzi, 'comanda')) await handleUpsertComanda(c);
 
     return { moved, total: jobs.length, error: null as string | null };
-  }, [devices, tasks, invoices, handleUpsertDevices, handleUpsertTasks, handleUpsertInvoice]);
+  }, [devices, tasks, invoices, referate, foundationDocs, comenzi,
+      handleUpsertDevices, handleUpsertTasks, handleUpsertInvoice,
+      handleUpsertReferat, handleUpsertFoundationDoc, handleUpsertComanda]);
 
   const handleSelectDevice = useCallback((d: import('./types').MedicalDevice) => {
     navigate('DEVICE_DETAIL', d.id);
@@ -1226,7 +1277,20 @@ const App: React.FC = () => {
                     <p className="text-xs text-slate-500 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
                   </div>
                 )}
-                {view === 'SETTINGS' && <Settings devices={devices} invoices={invoices} onImport={handleUpsertDevices} auditLog={auditLog} currentUser={currentUser} onMigrateFiles={migrateFilesToStorage} />}
+                {view === 'SETTINGS' && (
+                  <Settings
+                    devices={devices}
+                    invoices={invoices}
+                    tasks={tasks}
+                    referate={referate}
+                    foundationDocs={foundationDocs}
+                    comenzi={comenzi}
+                    onImport={handleUpsertDevices}
+                    auditLog={auditLog}
+                    currentUser={currentUser}
+                    onMigrateFiles={migrateFilesToStorage}
+                  />
+                )}
               </Suspense>
             </div>
           )}

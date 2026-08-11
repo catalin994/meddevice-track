@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { notify } from '../services/notices';
-import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice } from '../types';
+import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice, MedicalTask, Referat, FoundationDoc, Comanda } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
@@ -23,13 +23,25 @@ interface SettingsProps {
   devices: MedicalDevice[];
   /** Pentru socoteala spatiului: facturile isi tin PDF-ul in aceeasi stocare. */
   invoices?: Invoice[];
+  /*
+   * Restul dosarului, numai ca sa se stie cate documente n-au ajuns inca in
+   * Storage. Socoteala se facea doar pe aparate, deci un contract ramas pe
+   * telefon nu aparea nicaieri si scria linistit ca totul e in regula.
+   */
+  tasks?: MedicalTask[];
+  referate?: Referat[];
+  foundationDocs?: FoundationDoc[];
+  comenzi?: Comanda[];
   onImport: (devices: MedicalDevice[]) => void;
   auditLog?: AuditEntry[];
   currentUser?: AppUser | null;
   onMigrateFiles?: (onProgress?: (done: number, total: number, label: string) => void) => Promise<{ moved: number; total: number; error: string | null }>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ devices, invoices = [], onImport, auditLog = [], currentUser = null, onMigrateFiles }) => {
+const Settings: React.FC<SettingsProps> = ({
+  devices, invoices = [], tasks = [], referate = [], foundationDocs = [], comenzi = [],
+  onImport, auditLog = [], currentUser = null, onMigrateFiles,
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
   const [inputUrl, setInputUrl] = useState(config.url || '');
@@ -143,13 +155,26 @@ const Settings: React.FC<SettingsProps> = ({ devices, invoices = [], onImport, a
 
   // User management (admin only)
   // How much is still stored as base64 inside the rows themselves
+  /**
+   * Cate documente stau inca in interiorul randurilor, din toate cele sapte
+   * feluri. Numarand doar documentele aparatelor, un contract sau o comanda
+   * ramase pe telefon nu se vedeau, si ecranul spunea ca totul e in Storage.
+   */
   const inlineFiles = useMemo(() => {
     let count = 0, bytes = 0;
-    devices.forEach(d => (d.files || []).forEach(f => {
-      if (!f.path && f.url?.startsWith('data:')) { count++; bytes += Math.round(f.url.length * 0.75); }
-    }));
+    const pun = (url?: string) => {
+      if (!url?.startsWith('data:')) return;
+      count++; bytes += Math.round(url.length * 0.75);
+    };
+    devices.forEach(d => {
+      (d.files || []).forEach(f => { if (!f.path) pun(f.url); });
+      (d.contracts || []).forEach(c => { if (!c.filePath) pun(c.fileUrl); });
+    });
+    tasks.forEach(t => (t.attachments || []).forEach(a => { if (!a.path) pun(a.url); }));
+    [...invoices, ...referate, ...foundationDocs, ...comenzi]
+      .forEach(x => { if (!x.filePath) pun(x.fileUrl); });
     return { count, mb: bytes / (1024 * 1024) };
-  }, [devices]);
+  }, [devices, tasks, invoices, referate, foundationDocs, comenzi]);
 
   const [scanQuality, setScanQualityState] = useState<ScanQualityId>(() => getScanQuality().id);
   const chooseScanQuality = useCallback((id: ScanQualityId) => {
@@ -830,7 +855,7 @@ NOTIFY pgrst, 'reload schema';
                     {inlineFiles.count === 1 ? 'Un document' : `${inlineFiles.count} documente`}
                   </span>{inlineFiles.mb >= 0.1 ? ` (~${inlineFiles.mb.toFixed(1)} MB)` : ''}
                   {inlineFiles.count === 1 ? ' este' : ' sunt'} inca salvat
-                  {inlineFiles.count === 1 ? '' : 'e'} in interiorul randurilor dispozitivelor.
+                  {inlineFiles.count === 1 ? '' : 'e'} in interiorul randurilor, nu in Storage.
                   Fiecare telefon le descarca integral la fiecare sincronizare.
                   Mutarea lor in Storage lasa in rand doar o referinta.
                 </p>

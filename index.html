@@ -41,11 +41,21 @@
        */
       (function () {
         var CHEIE = 'biomedic_reparat';
+        /*
+         * Cand pagina pleaca, browserul taie cererile pornite si fiecare fisier
+         * ramas la jumatate isi anunta esecul — la fel ca unul care chiar
+         * lipseste de pe server. O reincarcare obisnuita ajungea astfel sa
+         * para o aplicatie stricata, si isi stergea copiile degeaba.
+         */
+        var pleaca = false;
+        window.addEventListener('pagehide', function () { pleaca = true; });
+        window.addEventListener('beforeunload', function () { pleaca = true; });
         var nepornita = function () {
           var r = document.getElementById('root');
           return !r || r.children.length === 0;
         };
         var repara = function (motiv) {
+          if (pleaca) return;
           // Numai cand chiar n-a pornit nimic. Dupa ce aplicatia s-a desenat, un
           // fisier care nu se incarca e o pagina care lipseste, nu un motiv sa
           // se stearga tot ce tine aplicatia in viata.
@@ -72,16 +82,39 @@
           Promise.all(pasi).then(gata, gata);
         };
 
-        // Un fisier care lipseste de pe server: se stie imediat, fara asteptare.
+        /*
+         * Un fisier al aplicatiei care nu s-a incarcat.
+         *
+         * Numai fisierele aplicatiei, de pe acelasi server: fonturile vin de la
+         * Google si intr-un spital care filtreaza adresele din afara ele cad la
+         * fiecare deschidere. Fara fonturi aplicatia arata mai simplu, atat.
+         *
+         * Si nu se crede pe cuvant. Un fisier isi anunta esecul la fel si cand
+         * lipseste de pe server, si cand cererea a fost taiata la mijloc — de o
+         * reincarcare, de un semnal pierdut, de orice. Prima inseamna aplicatie
+         * stricata, a doua nu inseamna nimic, iar din evenimentul in sine nu se
+         * pot deosebi. Asa ca se mai intreaba o data serverul: se repara doar
+         * cand raspunde negru pe alb ca fisierul nu mai e acolo. Fara retea nu
+         * se atinge nimic — pretul unei greseli e cache-ul pentru offline.
+         */
         window.addEventListener('error', function (e) {
           var t = e.target;
-          if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) repara('fisier lipsa');
+          if (!t || (t.tagName !== 'SCRIPT' && t.tagName !== 'LINK')) return;
+          var adresa = t.src || t.href || '';
+          if (adresa.indexOf(location.origin + '/') !== 0) return;
+          if (pleaca || !nepornita()) return;
+          fetch(adresa, { cache: 'no-store' }).then(function (r) {
+            if (r.status === 404 || r.status === 403 || r.status === 410) repara('fisier lipsa');
+          }, function () { /* n-a raspuns: poate fi reteaua, nu se umbla la nimic */ });
         }, true);
 
-        // Plasa de siguranta pentru orice altceva a impiedicat pornirea.
-        window.addEventListener('load', function () {
-          setTimeout(function () { repara('nu a pornit'); }, 8000);
-        });
+        /*
+         * Atat. Nu si "daca dupa cateva secunde n-a pornit nimic": pe o retea
+         * proasta, un telefon poate trage pachetul principal mai mult decat
+         * orice numar ales aici, si atunci reparatia ar sterge tocmai copiile
+         * pentru offline, fara sa fie nimic stricat. Un fisier care lipseste de
+         * pe server se stie sigur; "dureaza mult" nu inseamna nimic.
+         */
 
         // A pornit: santinela se ridica, ca o cadere de maine sa se poata repara.
         document.addEventListener('DOMContentLoaded', function () {
