@@ -528,16 +528,11 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Dispozitiv Asociat (Optional)</label>
-                <div className="relative">
-                  <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.deviceId} onChange={(e) => setFormData({...formData, deviceId: e.target.value})}>
-                    <option value="">Fara dispozitiv</option>
-                    {devices.map(d => <option key={d.id} value={d.id}>{d.name} ({d.serialNumber})</option>)}
-                  </select>
-                  <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
-                </div>
-              </div>
+              <AlegeDispozitivul
+                devices={devices}
+                value={formData.deviceId}
+                onChange={id => setFormData(f => ({ ...f, deviceId: id }))}
+              />
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Descrierea Problemei</label>
                 <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Descrie problema raportata de departament..." />
@@ -567,6 +562,117 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           </div>
         </div>
         </Portal>
+      )}
+    </div>
+  );
+};
+
+/** "Ecograf" trebuie sa gaseasca si "ECOGRAF", si "ecográf". */
+const faraSemne = (x: string) =>
+  x.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+   .replace(/[șş]/g, 's').replace(/[țţ]/g, 't').replace(/[ăâ]/g, 'a').replace(/î/g, 'i')
+   .toLowerCase();
+
+/** Cate randuri se deseneaza. Un spital are mii de aparate; lista se scurteaza. */
+const CAT_ARAT = 40;
+
+/**
+ * Alegerea aparatului pe un tichet.
+ *
+ * Era o lista derulanta cu toate aparatele din spital, in ordinea in care vin
+ * din baza de date. Ca sa deschizi un tichet pentru injectomatul de la ATI
+ * trebuia sa-l gasesti cu ochiul printre cateva mii, pe telefon, deruland.
+ *
+ * Se cauta acum dupa cum e scris pe aparat: denumire, serie sau model. Seria e
+ * cea care conteaza cand in sectie sunt sase aparate la fel — si tocmai ea nu
+ * se putea cauta.
+ */
+const AlegeDispozitivul: React.FC<{
+  devices: MedicalDevice[];
+  value: string;
+  onChange: (id: string) => void;
+}> = ({ devices, value, onChange }) => {
+  const [cauta, setCauta] = useState('');
+  const ales = useMemo(() => devices.find(d => d.id === value) || null, [devices, value]);
+
+  const potrivite = useMemo(() => {
+    const q = faraSemne(cauta.trim());
+    if (!q) return devices;
+    // Bucatile despartite de spatiu se cer toate: "ecograf ge" gaseste ecograful
+    // GE fara sa ceara cuvintele in ordinea de pe eticheta.
+    const parti = q.split(/\s+/).filter(Boolean);
+    return devices.filter(d => {
+      const fan = faraSemne(`${d.name} ${d.serialNumber} ${d.model} ${d.manufacturer} ${d.department}`);
+      return parti.every(x => fan.includes(x));
+    });
+  }, [devices, cauta]);
+
+  const aratate = potrivite.slice(0, CAT_ARAT);
+
+  return (
+    <div className="space-y-2">
+      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">
+        Dispozitiv Asociat (Optional)
+      </label>
+
+      {ales ? (
+        <div className="flex items-center gap-3 p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/20">
+          <div className="p-2 bg-white/20 rounded-lg shrink-0"><CheckCircle2 className="w-4 h-4" /></div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-black truncate">{ales.name}</p>
+            <p className="text-[10px] font-bold uppercase tracking-tighter text-white/70 truncate">
+              {ales.serialNumber}{ales.model ? ` · ${ales.model}` : ''}{ales.department ? ` · ${ales.department}` : ''}
+            </p>
+          </div>
+          <button type="button" onClick={() => onChange('')} aria-label="Scoate dispozitivul de pe tichet"
+            className="p-2 bg-white/15 hover:bg-white/25 rounded-lg transition shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input
+              value={cauta}
+              onChange={e => setCauta(e.target.value)}
+              placeholder="Cauta dupa denumire, serie sau model..."
+              aria-label="Cauta dispozitivul dupa denumire, serie sau model"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+            />
+          </div>
+          {devices.length === 0 ? (
+            <p className="text-[12px] font-bold text-slate-500 px-1">Nu e niciun dispozitiv in inventar.</p>
+          ) : potrivite.length === 0 ? (
+            <p className="text-[12px] font-bold text-slate-500 px-1">
+              Niciun dispozitiv nu se potriveste. Tichetul se poate deschide si fara.
+            </p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+              {aratate.map(d => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => { onChange(d.id); setCauta(''); }}
+                  className="w-full text-left p-3.5 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:bg-blue-50/40 transition flex items-center gap-3"
+                >
+                  <div className="p-2 bg-slate-50 text-slate-500 rounded-lg shrink-0"><Fingerprint className="w-4 h-4" /></div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-black text-slate-900 truncate">{d.name}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-500 truncate">
+                      {d.serialNumber}{d.model ? ` · ${d.model}` : ''}{d.department ? ` · ${d.department}` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {potrivite.length > aratate.length && (
+                <p className="text-[11px] font-bold text-slate-500 text-center py-2">
+                  Inca {potrivite.length - aratate.length}. Scrie mai exact ca sa le vezi.
+                </p>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

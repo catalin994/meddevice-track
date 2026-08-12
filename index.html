@@ -32,9 +32,9 @@
        *
        * De-aici nu se mai poate iesi singur: codul care ar sti sa se repare e
        * chiar cel care n-a apucat sa se incarce. Asa ca verificarea sta aici,
-       * in pagina, unde ajunge intotdeauna: daca dupa opt secunde aplicatia
-       * tot n-a desenat nimic, se sterge service worker-ul si cache-ul si se
-       * incarca din nou, curat.
+       * in pagina, unde ajunge intotdeauna: cand un fisier al aplicatiei nu se
+       * incarca si serverul confirma ca nu mai e acolo, se sterge service
+       * worker-ul si cache-ul si se incarca din nou, curat.
        *
        * O singura data pe deschidere: santinela din sessionStorage opreste
        * bucla de reincarcari daca serverul chiar e cazut.
