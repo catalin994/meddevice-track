@@ -32,9 +32,9 @@
        *
        * De-aici nu se mai poate iesi singur: codul care ar sti sa se repare e
        * chiar cel care n-a apucat sa se incarce. Asa ca verificarea sta aici,
-       * in pagina, unde ajunge intotdeauna: daca dupa opt secunde aplicatia
-       * tot n-a desenat nimic, se sterge service worker-ul si cache-ul si se
-       * incarca din nou, curat.
+       * in pagina, unde ajunge intotdeauna: cand un fisier al aplicatiei nu se
+       * incarca si serverul confirma ca nu mai e acolo, se sterge service
+       * worker-ul si cache-ul si se incarca din nou, curat.
        *
        * O singura data pe deschidere: santinela din sessionStorage opreste
        * bucla de reincarcari daca serverul chiar e cazut.
@@ -129,10 +129,10 @@
         });
       })();
     </script>
-    <script type="module" crossorigin src="/meddevice-track/assets/index-MIPgYUKD.js"></script>
-    <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-icons-CdwZrgy4.js">
+    <script type="module" crossorigin src="/meddevice-track/assets/index-C1X7cxNG.js"></script>
+    <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-icons-zoQSqG-w.js">
     <link rel="modulepreload" crossorigin href="/meddevice-track/assets/vendor-db-CxvqBt6T.js">
-    <link rel="stylesheet" crossorigin href="/meddevice-track/assets/index-CwkKgZSq.css">
+    <link rel="stylesheet" crossorigin href="/meddevice-track/assets/index-s4-LwMeq.css">
   <link rel="manifest" href="/meddevice-track/manifest.webmanifest"></head>
   <body class="app-bg text-slate-900 antialiased">
     <div id="root"></div>
