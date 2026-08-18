@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useRef, Suspense, lazy } from 'r
 import {
   Receipt, ShieldCheck, TrendingUp, Plus, X, Search, Loader2, Upload, FileText,
   CheckCircle, AlertTriangle, Clock, Trash2, Pencil, Download, Wallet, CalendarClock, Landmark,
-  FolderOpen, FileSpreadsheet, FileSignature, ShoppingCart
+  FolderOpen, FileSpreadsheet, FileSignature, ShoppingCart, FolderTree
 } from 'lucide-react';
 import { MedicalDevice, Invoice, InvoiceStatus, Contract, Referat, FoundationDoc, Comanda, normaliseInvoiceStatus } from '../types';
 import ContractManager from './ContractManager';
@@ -27,6 +27,7 @@ const ReferatManager = lazy(() => import('./ReferatManager'));
 const FoundationDocManager = lazy(() => import('./FoundationDocManager'));
 const BugetPanel = lazy(() => import('./BugetPanel'));
 const ComenziManager = lazy(() => import('./ComenziManager'));
+const DosarAchizitie = lazy(() => import('./DosarAchizitie'));
 
 interface FinanceManagerProps {
   devices: MedicalDevice[];
@@ -48,7 +49,7 @@ interface FinanceManagerProps {
   canDelete: boolean;
 }
 
-type FinanceTab = 'OVERVIEW' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'COMENZI' | 'CONTRACTS';
+type FinanceTab = 'OVERVIEW' | 'DOSARE' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'COMENZI' | 'CONTRACTS';
 
 const emptyForm = () => ({
   invoiceNumber: '',
@@ -822,7 +823,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Dosarul achizitiei, de la referat la factura</p>
             </div>
           </div>
-          <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' || tab === 'COMENZI' ? 'hidden' : 'flex'}`}>
+          <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' || tab === 'COMENZI' || tab === 'DOSARE' ? 'hidden' : 'flex'}`}>
             {/*
               webkitdirectory: fara el butonul spunea "Import Folder PDF" dar
               deschidea un selector de fisiere — folderul nu se putea alege.
@@ -849,6 +850,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         <div className="flex flex-wrap gap-2 mt-8">
           {([
             ['OVERVIEW', 'Sumar', TrendingUp, 'Sumar'],
+            ['DOSARE', 'Dosare achizitie', FolderTree, 'Dosare'],
             ['INVOICES', 'Facturi', Receipt, 'Facturi'],
             ['BUDGET', 'Buget', Landmark, 'Buget'],
             ['REFERATE', 'Referate', FileSignature, 'Referate'],
@@ -1079,6 +1081,19 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       {tab === 'BUDGET' && (
         <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
           <BugetPanel docs={foundationDocs} invoices={invoices} moneda={dominantCurrency} />
+        </Suspense>
+      )}
+
+      {/* ============ DOSARE ============ */}
+      {tab === 'DOSARE' && (
+        <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
+          <DosarAchizitie
+            referate={referate}
+            foundationDocs={foundationDocs}
+            comenzi={comenzi}
+            invoices={invoices}
+            devices={devices}
+          />
         </Suspense>
       )}
 
