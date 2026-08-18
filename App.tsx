@@ -58,6 +58,7 @@ import { buildPath, uploadDataUrl } from './services/fileStorage';
 import { randMaiNou, campuriDiferite, Diferenta } from './services/conflicte';
 import { notify } from './services/notices';
 import LoginScreen from './components/LoginScreen';
+import { vineDinEmailDeRecuperare } from './services/authService';
 import { LogoTile, LogoMark } from './components/Logo';
 
 const VIEW_LABELS: Record<string, string> = {
@@ -1229,7 +1230,15 @@ const App: React.FC = () => {
         </div>
       );
     }
-    if (authState === 'anon' || authState === 'locked') {
+    /*
+     * Legatura din emailul de recuperare are intaietate fata de sesiune.
+     *
+     * Supabase preia jetonul din adresa la incarcare si deschide o sesiune, deci
+     * cine apasa legatura ajunge autentificat — si, fara conditia asta, direct
+     * in aplicatie, cu parola veche neschimbata si fara sa vada vreodata
+     * formularul. Adica exact omul care si-a uitat parola ramanea fara ea.
+     */
+    if (authState === 'anon' || authState === 'locked' || vineDinEmailDeRecuperare()) {
       return <LoginScreen onLogin={handleLogin} lockedUser={authState === 'locked' ? lockedUser : null} />;
     }
     if (currentUser && !currentUser.approved) {

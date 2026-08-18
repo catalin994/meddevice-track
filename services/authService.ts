@@ -1,4 +1,5 @@
 import { AppUser, UserRole } from '../types';
+import { getAppBaseUrl } from './appUrl';
 import { supabase } from './supabase';
 
 const LOCK_KEY = 'meditrack_device_pin';
@@ -31,6 +32,15 @@ const RO_ERRORS: Array<[RegExp, string]> = [
   [/signups not allowed|signup.*disabled/i,
     'Inregistrarile noi sunt oprite in Supabase. Authentication -> Sign In / Providers -> porneste "Allow new users to sign up".'],
   [/rate limit|too many/i, 'Prea multe incercari. Reincearca peste un minut.'],
+  // Legatura din emailul de recuperare e de o singura folosinta si tine o ora.
+  // Fara traducerea asta, pe ecran statea "Auth session missing!", in engleza,
+  // fara sa spuna nimanui ce are de facut.
+  [/auth session missing|session_not_found|session from session_id claim in jwt does not exist/i,
+    'Legatura din email a expirat sau a fost deja folosita. Cere alta de la "Am uitat parola".'],
+  [/token has expired|otp_expired|invalid.*token/i,
+    'Legatura din email a expirat. Cere alta de la "Am uitat parola".'],
+  [/same.*password|new password should be different/i,
+    'Parola noua trebuie sa fie alta decat cea veche.'],
   [/failed to fetch|network/i, 'Nu am putut contacta serverul. Verifica internetul.'],
 ];
 
@@ -106,6 +116,65 @@ export const signUp = async (email: string, password: string, name: string): Pro
   const profile = await loadProfile(data.user.id, data.user.email || email);
   if (!profile) return { ok: false, error: 'Cont creat, dar profilul lipseste. Ruleaza scriptul de securitate.' };
   return { ok: true, user: profile };
+};
+
+/**
+ * Parola uitata.
+ *
+ * Pana acum nu exista nimic: cine isi uita parola nu mai intra deloc, si nici
+ * administratorul nu avea ce sa-i faca din aplicatie. Intr-un serviciu tehnic
+ * asta inseamna un om care nu-si poate face treaba pana cand nu ajunge cineva
+ * la consola Supabase.
+ *
+ * Se trimite un email cu o legatura de intoarcere in aplicatie. Raspunsul e
+ * acelasi si cand adresa nu exista in evidenta — altfel ecranul ar spune
+ * oricui care adrese au cont aici.
+ */
+export const cerParolaNoua = async (email: string): Promise<AuthResult> => {
+  if (!supabase) return { ok: false, error: 'Cloud-ul nu este configurat.' };
+  const adresa = email.trim();
+  if (!adresa) return { ok: false, error: 'Scrie adresa de email.' };
+  try {
+    await supabase.auth.resetPasswordForEmail(adresa, {
+      redirectTo: `${getAppBaseUrl()}?parolaNoua=1`,
+    });
+  } catch {
+    return { ok: false, error: 'Nu s-a putut trimite emailul. Incearca din nou.' };
+  }
+  return { ok: true };
+};
+
+/**
+ * Parola noua, dupa ce s-a intrat pe legatura din email.
+ *
+ * Supabase pune sesiunea de recuperare in adresa paginii si o preia singur la
+ * incarcare, deci aici nu mai e nevoie de niciun jeton: sesiunea exista deja,
+ * si i se schimba parola.
+ */
+export const punParolaNoua = async (parola: string): Promise<AuthResult> => {
+  if (!supabase) return { ok: false, error: 'Cloud-ul nu este configurat.' };
+  if (parola.length < 6) return { ok: false, error: 'Parola trebuie sa aiba cel putin 6 caractere.' };
+  const { data, error } = await supabase.auth.updateUser({ password: parola });
+  if (error || !data.user) return { ok: false, error: translate(error?.message || 'Parola nu a putut fi schimbata.') };
+  const profile = await loadProfile(data.user.id, data.user.email || '');
+  return { ok: true, user: profile || undefined };
+};
+
+/**
+ * Aplicatia a fost deschisa dintr-un email de recuperare?
+ *
+ * Supabase raspunde fie cu "?parolaNoua=1" din redirectTo, fie cu un fragment
+ * "#...type=recovery" — se accepta amandoua, ca sa nu depinda de setarile
+ * proiectului.
+ */
+export const vineDinEmailDeRecuperare = (): boolean => {
+  try {
+    const cauta = new URLSearchParams(window.location.search);
+    if (cauta.get('parolaNoua')) return true;
+    return /type=recovery/.test(window.location.hash || '');
+  } catch {
+    return false;
+  }
 };
 
 /** The signed-in user, refreshed from the server when reachable. */

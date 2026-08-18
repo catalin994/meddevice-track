@@ -5,6 +5,7 @@ import { AppUser } from '../types';
 import {
   signIn, signUp, signOut,
   hasDeviceLock, setDeviceLock, verifyDeviceLock,
+  cerParolaNoua, punParolaNoua, vineDinEmailDeRecuperare,
 } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
 import { LogoTile } from './Logo';
@@ -15,7 +16,7 @@ interface LoginScreenProps {
   lockedUser?: AppUser | null;
 }
 
-type Mode = 'signin' | 'signup' | 'setPin' | 'unlock';
+type Mode = 'signin' | 'signup' | 'setPin' | 'unlock' | 'uitatParola' | 'parolaNoua';
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="theme-static fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[900] overflow-y-auto">
@@ -37,7 +38,10 @@ const field =
   'placeholder:text-white/25 outline-none focus:border-blue-500 transition-colors';
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null }) => {
-  const [mode, setMode] = useState<Mode>(lockedUser ? 'unlock' : 'signin');
+  const [mode, setMode] = useState<Mode>(
+    // Legatura din emailul de recuperare are prioritate: cine ajunge aici cu ea
+    // vine tocmai ca sa-si puna alta parola, nu ca sa se autentifice.
+    vineDinEmailDeRecuperare() ? 'parolaNoua' : lockedUser ? 'unlock' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -60,6 +64,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
     setConfirmPin('');
     setMode('setPin');
   }, [onLogin]);
+
+  const cerResetare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError(''); setNotice('');
+    const res = await cerParolaNoua(email);
+    setBusy(false);
+    if (!res.ok) { setError(res.error || 'Nu s-a putut trimite emailul.'); return; }
+    // Acelasi raspuns si cand adresa n-are cont: altfel ecranul ar spune oricui
+    // ce adrese sunt inregistrate aici.
+    setNotice('Daca adresa are cont, ti-am trimis un email cu o legatura pentru parola noua. Verifica si in spam.');
+    setMode('signin');
+  };
+
+  const schimbParola = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPin) { setError('Cele doua parole nu sunt la fel.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    const res = await punParolaNoua(password);
+    setBusy(false);
+    if (!res.ok) { setError(res.error || 'Parola nu a putut fi schimbata.'); return; }
+    // Adresa ramane cu jetonul de recuperare in ea; curatata, o reincarcare
+    // n-ar mai deschide din nou formularul.
+    try { window.history.replaceState({}, '', window.location.pathname); } catch { /* ignore */ }
+    if (res.user) { finish(res.user); return; }
+    setNotice('Parola a fost schimbata. Autentifica-te cu ea.');
+    setPassword(''); setConfirmPin(''); setMode('signin');
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +221,87 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
     );
   }
 
+  /* ── Am uitat parola ──────────────────────────────────────────────────── */
+  if (mode === 'uitatParola') {
+    return (
+      <Shell>
+        <form onSubmit={cerResetare} className="space-y-4">
+          <p className="text-white/50 text-xs font-bold tracking-wide px-1">Parola uitata</p>
+          <p className="text-white/40 text-[13px] font-semibold leading-relaxed px-1">
+            Scrie adresa cu care intri in aplicatie. Primesti pe email o legatura de unde iti pui alta parola.
+          </p>
+
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Email" autoComplete="email" inputMode="email" className={field} />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl">
+              <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-red-300 text-xs font-semibold leading-relaxed">{error}</p>
+            </div>
+          )}
+
+          <button type="submit" disabled={busy}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-bold text-sm transition active:scale-95 flex items-center justify-center gap-2">
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+            Trimite legatura
+          </button>
+
+          <button type="button" onClick={() => { setMode('signin'); setError(''); setNotice(''); }}
+            className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
+            <ArrowLeft className="w-3.5 h-3.5" /> Inapoi la autentificare
+          </button>
+        </form>
+      </Shell>
+    );
+  }
+
+  /* ── Parola noua, venind din email ────────────────────────────────────── */
+  if (mode === 'parolaNoua') {
+    return (
+      <Shell>
+        <form onSubmit={schimbParola} className="space-y-4">
+          <p className="text-white/50 text-xs font-bold tracking-wide px-1">Parola noua</p>
+          <p className="text-white/40 text-[13px] font-semibold leading-relaxed px-1">
+            Scrie parola noua de doua ori. Dupa ce o salvezi, intri direct in aplicatie.
+          </p>
+
+          <div className="relative">
+            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input required type="password" value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="Parola noua (min. 6 caractere)" autoComplete="new-password" className={field} />
+          </div>
+          <div className="relative">
+            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input required type="password" value={confirmPin} onChange={e => setConfirmPin(e.target.value)}
+              placeholder="Inca o data" autoComplete="new-password" className={field} />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl">
+              <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-red-300 text-xs font-semibold leading-relaxed">{error}</p>
+            </div>
+          )}
+
+          <button type="submit" disabled={busy}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-bold text-sm transition active:scale-95 flex items-center justify-center gap-2">
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+            Salveaza parola
+          </button>
+
+          <button type="button" onClick={() => { setMode('signin'); setError(''); setPassword(''); setConfirmPin(''); }}
+            className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
+            <ArrowLeft className="w-3.5 h-3.5" /> Renunt
+          </button>
+        </form>
+      </Shell>
+    );
+  }
+
   /* ── Email + parola ───────────────────────────────────────────────────── */
   const isSignUp = mode === 'signup';
   return (
@@ -242,6 +354,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
           className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
           {isSignUp ? <><ArrowLeft className="w-3.5 h-3.5" /> Am deja cont</> : 'Nu ai cont? Inregistreaza-te'}
         </button>
+
+        {!isSignUp && (
+          <button type="button" onClick={() => { setMode('uitatParola'); setError(''); setNotice(''); }}
+            className="w-full text-white/40 hover:text-white/70 text-xs font-bold transition">
+            Am uitat parola
+          </button>
+        )}
       </form>
 
       {!isSignUp && (
