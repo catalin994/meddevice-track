@@ -50,7 +50,7 @@ const prefetchModules = () => {
 
 import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS, sePoatePuneLaLoc, NUME_ENTITATE } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
-import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB, getAllComenziFromDB, saveComenziToDB, deleteComandaFromDB } from './services/storageService';
+import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB, getAllComenziFromDB, saveComenziToDB, deleteComandaFromDB, getAllContracteFromDB, saveContracteToDB } from './services/storageService';
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
@@ -150,6 +150,8 @@ const App: React.FC = () => {
   const [comenzi, setComenzi] = useState<Comanda[]>([]);
   /** Ce s-a sters, cu tot cu continut, ca sa se poata pune la loc. */
   const [deletions, setDeletions] = useState<Deletion[]>([]);
+  /** Contractele, cu casa lor: unul de consumabile nu se leaga de niciun aparat. */
+  const [contracte, setContracte] = useState<Contract[]>([]);
   /** Randul pe care a scris si altcineva, cat timp se asteapta alegerea. */
   const [conflict, setConflict] = useState<{
     ce: string; nume: string; diferente: Diferenta[]; candLui?: string;
@@ -656,6 +658,8 @@ const App: React.FC = () => {
             await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB, 'fundamentare');
           await sincronizeaza<Comanda>('comenzi',
             await getAllComenziFromDB().catch(() => []), setComenzi, saveComenziToDB, 'comanda');
+          await sincronizeaza<Contract>('contracte',
+            await getAllContracteFromDB().catch(() => []), setContracte, saveContracteToDB);
 
           setSyncStatus('cloud');
           setSyncMessage(sarite.length
@@ -997,7 +1001,26 @@ const App: React.FC = () => {
           : (d.contracts || []).filter(c => !acelasi(c)),
       }));
     if (updated.length > 0) await handleUpsertDevices(updated);
-  }, [devices, handleUpsertDevices]);
+
+    /*
+     * Si in tabelul lui, care e casa contractului.
+     *
+     * Copia din randul fiecarui aparat ramane — de ea atarna tot ce citeste
+     * contractele de pe fisa aparatului — dar un contract fara niciun aparat
+     * bifat n-avea unde sa stea, si nu se putea salva deloc.
+     */
+    const payload: Contract = { ...contract, deviceIds, updated_at: new Date().toISOString() };
+    setContracte(prev => {
+      const map = new Map(prev.map(c => [c.id, c]));
+      map.set(payload.id, payload);
+      return Array.from(map.values());
+    });
+    await saveContracteToDB([payload]).catch(() => {});
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('contracte').upsert([payload], { onConflict: 'id' });
+      if (error) console.warn('[Contracte] sincronizare amanata:', error.message);
+    }
+  }, [devices, handleUpsertDevices, isSupabaseConfigured]);
 
   const handleQRScan = useCallback((scanned: string) => {
     setShowScanner(false);
@@ -1439,6 +1462,7 @@ const App: React.FC = () => {
                     onUpsertComanda={handleUpsertComanda}
                     onDeleteComanda={handleDeleteComanda}
                     canDelete={canDelete}
+                    contracte={contracte}
                     onSaveContract={handleSaveContract}
                   />
                 )}

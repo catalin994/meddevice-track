@@ -131,6 +131,31 @@ CREATE TABLE IF NOT EXISTS public.comenzi (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── 4. CONTRACTE ────────────────────────────────────────────────────────────
+-- Contractele stateau doar in randul fiecarui aparat pe care erau trecute. Unul
+-- de consumabile sau de service general, care nu se leaga de un aparat anume,
+-- n-avea unde sa stea si nu se putea salva deloc.
+CREATE TABLE IF NOT EXISTS public.contracte (
+  id                  TEXT PRIMARY KEY,
+  "contractNumber"    TEXT,
+  "name"              TEXT,
+  "provider"          TEXT,
+  "startDate"         TEXT,
+  "endDate"           TEXT,
+  "coverageDetails"   TEXT,
+  "contactPhone"      TEXT,
+  "annualCost"        NUMERIC,
+  "annualCostWithVat" NUMERIC,
+  "deviceIds"         JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "filePath"          TEXT,
+  "fileUrl"           TEXT,
+  "fileName"          TEXT,
+  "fileSize"          NUMERIC,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS contracte_numar_idx ON public.contracte ("contractNumber");
+
 -- Facturile stiu pe ce comanda vin: numarul e tiparit pe ele.
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS "orderNumber" TEXT;
 
@@ -150,7 +175,7 @@ ALTER TABLE public.comenzi                 ENABLE ROW LEVEL SECURITY;
 DO $$
 DECLARE t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['referate','documente_fundamentare','comenzi'] LOOP
+  FOREACH t IN ARRAY ARRAY['referate','documente_fundamentare','comenzi','contracte'] LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Allow all public access" ON public.%I', t);
     EXECUTE format('DROP POLICY IF EXISTS "mt_read"   ON public.%I', t);
     EXECUTE format('DROP POLICY IF EXISTS "mt_insert" ON public.%I', t);

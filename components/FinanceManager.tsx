@@ -33,6 +33,8 @@ interface FinanceManagerProps {
   referate: Referat[];
   foundationDocs: FoundationDoc[];
   comenzi: Comanda[];
+  /** Contractele din tabelul lor, inclusiv cele fara niciun aparat bifat. */
+  contracte?: Contract[];
   onUpsertInvoice: (invoice: Invoice) => void;
   onDeleteInvoice: (id: string) => void;
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
@@ -139,7 +141,7 @@ const downloadInvoicePdf = async (inv: Invoice) => {
 };
 
 const FinanceManager: React.FC<FinanceManagerProps> = ({
-  devices, invoices, referate, foundationDocs, comenzi,
+  devices, invoices, referate, foundationDocs, comenzi, contracte = [],
   onUpsertInvoice, onDeleteInvoice, onSaveContract,
   onUpsertReferat, onDeleteReferat, onUpsertFoundationDoc, onDeleteFoundationDoc,
   onUpsertComanda, onDeleteComanda,
@@ -1084,7 +1086,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
       {/* ============ CONTRACTS ============ */}
       {tab === 'CONTRACTS' && (
-        <ContractManager devices={devices} invoices={invoices} onSaveContract={onSaveContract} />
+        <ContractManager devices={devices} invoices={invoices} contracte={contracte} onSaveContract={onSaveContract} />
       )}
 
       {/* ============ BULK IMPORT REVIEW MODAL ============ */}

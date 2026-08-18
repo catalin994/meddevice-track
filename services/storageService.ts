@@ -1,4 +1,4 @@
-import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion, Referat, FoundationDoc , Comanda } from '../types';
+import { MedicalDevice, MedicalTask, Invoice, AuditEntry, Deletion, Referat, FoundationDoc , Comanda, Contract } from '../types';
 
 // Numele bazei locale ramane cel vechi dupa redenumirea aplicatiei: schimbarea
 // lui ar deschide o baza noua, goala, si ar abandona datele de pe fiecare telefon.
@@ -12,7 +12,8 @@ const STORE_BLOBS = 'fileblobs';
 const STORE_REFERATE = 'referate';
 const STORE_FUNDAMENTARE = 'fundamentare';
 const STORE_COMENZI = 'comenzi';
-const DB_VERSION = 9;
+const STORE_CONTRACTE = 'contracte';
+const DB_VERSION = 10;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -68,6 +69,10 @@ const openOnce = (): Promise<IDBDatabase> =>
       if (!db.objectStoreNames.contains(STORE_REFERATE))     db.createObjectStore(STORE_REFERATE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(STORE_FUNDAMENTARE)) db.createObjectStore(STORE_FUNDAMENTARE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(STORE_COMENZI)) db.createObjectStore(STORE_COMENZI, { keyPath: 'id' });
+      // Contractele au acum casa lor. Tinute doar in randul fiecarui aparat, un
+      // contract de consumabile — care nu se leaga de niciun aparat — n-avea
+      // unde sa stea, si nu se putea salva deloc.
+      if (!db.objectStoreNames.contains(STORE_CONTRACTE)) db.createObjectStore(STORE_CONTRACTE, { keyPath: 'id' });
     };
 
     // Another window still holds an older version. Waiting for the timeout
@@ -303,6 +308,10 @@ export const getAllFoundationDocsFromDB = () => citesteTot<FoundationDoc>(STORE_
 export const saveComenziToDB = (c: Comanda[]) => salveaza(STORE_COMENZI, c);
 export const deleteComandaFromDB = (id: string) => sterge(STORE_COMENZI, id);
 export const getAllComenziFromDB = () => citesteTot<Comanda>(STORE_COMENZI);
+
+export const saveContracteToDB = (c: Contract[]) => salveaza(STORE_CONTRACTE, c);
+export const deleteContractFromDB = (id: string) => sterge(STORE_CONTRACTE, id);
+export const getAllContracteFromDB = () => citesteTot<Contract>(STORE_CONTRACTE);
 
 export const saveAuditToDB = async (entries: AuditEntry[]): Promise<void> => {
   const db = await initDB();

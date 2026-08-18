@@ -106,10 +106,19 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deletions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles   ENABLE ROW LEVEL SECURITY;
 
+-- Tabelul de setari comune poate lipsi pe o baza mai veche: se creeaza aici, ca
+-- scriptul sa mearga rulat singur.
+CREATE TABLE IF NOT EXISTS public.setari (
+    cheie TEXT PRIMARY KEY,
+    valoare JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.setari     ENABLE ROW LEVEL SECURITY;
+
 DO $$
 DECLARE t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['devices','tasks','invoices','audit_logs','deletions'] LOOP
+  FOREACH t IN ARRAY ARRAY['devices','tasks','invoices','audit_logs','deletions','setari'] LOOP
     -- scoate vechiul acces public
     EXECUTE format('DROP POLICY IF EXISTS "Allow all public access" ON public.%I', t);
     EXECUTE format('DROP POLICY IF EXISTS "mt_read"   ON public.%I', t);

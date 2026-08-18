@@ -169,6 +169,9 @@ export interface Contract {
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  /** Aparatele acoperite, tinute si pe contract, nu doar in randul fiecarui aparat. */
+  deviceIds?: string[];
+  updated_at?: string;
 }
 
 /**

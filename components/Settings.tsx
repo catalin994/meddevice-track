@@ -7,7 +7,7 @@ import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, Lo
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import {
-  spatiulDinCloud, spatiulDeAici, spatiulDinEvidenta, iaLimitaGB, punLimitaGB, marime, NUME_FEL,
+  spatiulDinCloud, spatiulDeAici, spatiulDinEvidenta, iaLimitaGB, punLimitaGB, limitaDinCloud, marime, NUME_FEL,
   LIMITA_IMPLICITA_GB, SpatiuCloud, SpatiuLocal,
 } from '../services/spatiu';
 import { listProfiles, updateProfile } from '../services/authService';
@@ -70,6 +70,8 @@ const Settings: React.FC<SettingsProps> = ({
   const [spatiuLocal, setSpatiuLocal] = useState<SpatiuLocal | null>(null);
   const [seMasoara, setSeMasoara] = useState(false);
   const [limitaGB, setLimitaGB] = useState(() => iaLimitaGB());
+  // Valoarea comuna, adusa din cloud dupa ce ecranul s-a desenat cu cea locala.
+  useEffect(() => { limitaDinCloud().then(setLimitaGB); }, []);
 
   /**
    * Intai socoteala din evidenta, care merge oricum, apoi cea exacta din baza
@@ -407,6 +409,15 @@ ALTER TABLE public.deletions
   ADD COLUMN IF NOT EXISTS "payload"    JSONB,
   ADD COLUMN IF NOT EXISTS "restoredAt" TEXT;
 
+-- Setarile care trebuie sa fie la fel pe toate aparatele. Tinute in
+-- localStorage, ramaneau pe aparatul de la care fusesera scrise: limita
+-- abonamentului trecuta pe calculator arata tot 1 GB pe telefon.
+CREATE TABLE IF NOT EXISTS public.setari (
+    cheie TEXT PRIMARY KEY,
+    valoare JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id TEXT PRIMARY KEY,
     timestamp TEXT,
@@ -703,17 +714,17 @@ NOTIFY pgrst, 'reload schema';
               <FileText className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate, documente de fundamentare si comenzi</h2>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate, fundamentare, comenzi si contracte</h2>
               <p className="text-[11px] text-indigo-300 font-bold">Ruleaza al treilea, dupa cel de conturi</p>
             </div>
           </div>
 
           <div className="p-4 mb-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
             <p className="text-[13px] text-amber-200 font-semibold leading-relaxed">
-              Cele trei tabele nu sunt create de scripturile de mai sus. Pana rulezi acest script,
-              referatele, documentele de fundamentare si comenzile se salveaza doar pe aparatul pe
-              care le faci: nu ajung pe telefon, si nu le vede nimeni altcineva. Tot el adauga pe
-              facturi numarul comenzii, cel dupa care se leaga singure de comanda.
+              Cele patru tabele nu sunt create de scripturile de mai sus. Pana rulezi acest script,
+              referatele, documentele de fundamentare, comenzile si contractele se salveaza doar pe
+              aparatul pe care le faci: nu ajung pe telefon, si nu le vede nimeni altcineva. Tot el
+              adauga pe facturi numarul comenzii, cel dupa care se leaga singure de comanda.
             </p>
           </div>
 
@@ -803,12 +814,12 @@ NOTIFY pgrst, 'reload schema';
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center gap-3">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Limita abonamentului</label>
               <input type="number" min="0.1" step="0.1" value={limitaGB}
-                onChange={e => { const v = parseFloat(e.target.value) || LIMITA_IMPLICITA_GB; setLimitaGB(v); punLimitaGB(v); }}
+                onChange={e => { const v = parseFloat(e.target.value) || LIMITA_IMPLICITA_GB; setLimitaGB(v); void punLimitaGB(v); }}
                 aria-label="Limita de stocare, in gigaocteti"
                 className="w-28 px-3 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold outline-none" />
               <span className="text-[11px] font-bold text-slate-500">
                 GB — Supabase nu spune cat da planul vostru, asa ca se scrie aici. Gratuit e 1 GB.
-                Se tine pe aparatul de la care se scrie, deci pe telefon trebuie trecuta din nou.
+                Se salveaza pentru toata lumea: scrisa o data, o stiu si telefoanele.
               </span>
             </div>
 

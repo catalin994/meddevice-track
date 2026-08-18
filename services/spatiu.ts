@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { MedicalDevice, Invoice } from '../types';
+import { iaSetareLocal, iaSetareDinCloud, punSetare } from './setari';
 
 /**
  * Cat loc ocupa fisierele, si cat a mai ramas.
@@ -44,24 +45,33 @@ export interface SpatiuLocal {
   limita: number;
 }
 
-/** Cheia sub care se tine limita abonamentului, scrisa de om. */
-const CHEIE_LIMITA = 'meditrack_limita_stocare_gb';
-
 /** Planul gratuit Supabase da un gigaoctet. Se poate schimba din ecran. */
 export const LIMITA_IMPLICITA_GB = 1;
 
+/**
+ * Limita abonamentului.
+ *
+ * E acelasi cloud pentru toata lumea, deci si limita trebuie sa fie aceeasi.
+ * Tinuta doar in localStorage, cum era, ramanea pe aparatul de la care fusese
+ * scrisa: trecuta pe calculator, telefonul arata tot 1 GB, si bara de spatiu
+ * spunea alta poveste in fiecare loc.
+ *
+ * Se citeste local, ca ecranul sa nu astepte reteaua, si se improspateaza din
+ * cloud in fundal.
+ */
 export const iaLimitaGB = (): number => {
-  try {
-    const v = parseFloat(localStorage.getItem(CHEIE_LIMITA) || '');
-    return Number.isFinite(v) && v > 0 ? v : LIMITA_IMPLICITA_GB;
-  } catch {
-    return LIMITA_IMPLICITA_GB;
-  }
+  const v = Number(iaSetareLocal<number | string>('limita_stocare_gb', LIMITA_IMPLICITA_GB));
+  return Number.isFinite(v) && v > 0 ? v : LIMITA_IMPLICITA_GB;
 };
 
-export const punLimitaGB = (gb: number) => {
-  try { localStorage.setItem(CHEIE_LIMITA, String(gb)); } catch { /* ramane implicita */ }
+/** Aceeasi valoare, dar cea din cloud daca se poate ajunge la ea. */
+export const limitaDinCloud = async (): Promise<number> => {
+  const v = Number(await iaSetareDinCloud<number>('limita_stocare_gb'));
+  return Number.isFinite(v) && v > 0 ? v : iaLimitaGB();
 };
+
+export const punLimitaGB = async (gb: number): Promise<{ inCloud: boolean }> =>
+  punSetare('limita_stocare_gb', gb);
 
 /** "1,4 GB", "812 MB", "96 kB" — cifre pe care le citeste un om. */
 export const marime = (octeti: number): string => {

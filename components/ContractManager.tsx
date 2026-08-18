@@ -15,6 +15,8 @@ interface ContractManagerProps {
   devices: MedicalDevice[];
   /** Facturile: pe fisa unui contract se vede ce a venit pe el si ce a ramas. */
   invoices?: Invoice[];
+  /** Contractele din tabelul lor, inclusiv cele care n-au niciun aparat. */
+  contracte?: Contract[];
   onSaveContract: (contract: Contract, deviceIds: string[]) => void;
 }
 
@@ -51,7 +53,7 @@ const descarcaPdf = async (f: DeviceFile) => {
   else notify(sursa.error || 'Fisierul nu a putut fi descarcat.', 'warning');
 };
 
-const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [], onSaveContract }) => {
+const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [], contracte = [], onSaveContract }) => {
   const [isAdding, setIsAdding] = useState(false);
   /** Numarul contractului aflat in editare. Gol cand se adauga unul nou. */
   const [editez, setEditez] = useState<string | null>(null);
@@ -158,13 +160,20 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
     }
   };
 
-  // Extract all unique contracts from all devices to show a global list.
-  // Fix: Explicitly type the Map to ensure globalContracts is inferred as Contract[].
-  const globalContracts = Array.from(
-    new Map<string, Contract>(
-      devices.flatMap(d => d.contracts).map(c => [c.contractNumber, c])
-    ).values()
-  );
+  /*
+   * Toate contractele, din amandoua locurile.
+   *
+   * Copia din randul aparatelor a ramas — de ea atarna ce se vede pe fisa
+   * fiecarui aparat — dar lista se face acum si din tabelul contractelor, unde
+   * stau si cele care nu se leaga de niciun aparat. Cand acelasi numar apare in
+   * amandoua, tabelul are ultimul cuvant: acolo se scrie la salvare.
+   */
+  const globalContracts = React.useMemo(() => {
+    const map = new Map<string, Contract>();
+    devices.flatMap(d => d.contracts || []).forEach(c => map.set(c.contractNumber, c));
+    contracte.forEach(c => map.set(c.contractNumber, c));
+    return Array.from(map.values());
+  }, [devices, contracte]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -228,10 +237,11 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedDevices.length === 0) {
-      notify('Alege cel putin un dispozitiv pentru acest contract.', 'warning');
-      return;
-    }
+    /*
+     * Fara aparate se poate. Un contract de consumabile sau de service general
+     * nu se leaga de un aparat anume, si pana acum nu se putea salva deloc:
+     * ecranul cerea o bifa care n-avea ce sa insemne.
+     */
     const vechi = globalContracts.find(c => c.contractNumber === editez);
     const newContract: Contract = {
       // La editare se pastreaza id-ul: e acelasi contract, nu altul.
