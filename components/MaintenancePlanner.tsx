@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { notify } from '../services/notices';
+import { scrieTabel } from '../services/exportExcel';
 import { MedicalDevice, MaintenanceRecord, MaintenanceType, DeviceStatus, DEVICE_STATUS_RO } from '../types';
 import { 
   Calendar, Check, Clock, Save, CalendarDays, 
@@ -127,114 +128,57 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
 
   const handleExportSchedule = useCallback(async () => {
     if (devices.length === 0) return notify('Nu exista dispozitive de exportat.', 'warning');
-    const XLSX = await import('xlsx');
 
-    const now = new Date();
-    const dateStr = now.toLocaleDateString();
-    const timeStr = now.toLocaleTimeString();
-    const reportId = `MT-REP-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    // Status aggregation for the header
-    const statusCounts = devices.reduce((acc, d) => {
+    const acum = new Date();
+    const peStare = devices.reduce((acc, d) => {
       acc[d.status] = (acc[d.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // 1. Prepare Table Data
-    const tableHeader = [
-      'DENUMIRE DISPOZITIV',
-      'PRODUCATOR',
-      'MODEL / VERSIUNE',
-      'NUMAR SERIE',
-      'DEPARTAMENT',
-      'LUNA PROGRAMATA',
-      'CICLU MENTENANTA',
-      'DETALII TEHNICE',
-      'STATUS DISPOZITIV'
-    ];
-
-    const tableRows = devices.map(device => {
+    const randuri = devices.map(device => {
       const draft = drafts[device.id] || { nextScheduledDate: '', frequency: 'N/A', tasks: 'N/A' };
-      const serviceDate = new Date(draft.nextScheduledDate);
-      const serviceWindow = isNaN(serviceDate.getTime())
+      const data = new Date(draft.nextScheduledDate);
+      const fereastra = isNaN(data.getTime())
         ? 'NEPROGRAMAT'
-        : `${MONTHS[serviceDate.getMonth()].toUpperCase()} ${serviceDate.getFullYear()}`;
-
+        : `${MONTHS[data.getMonth()].toUpperCase()} ${data.getFullYear()}`;
       return [
-        device.name.toUpperCase(),
+        device.name,
         device.manufacturer,
         device.model,
         device.serialNumber,
         device.department,
-        serviceWindow,
-        (FREQUENCY_RO[draft.frequency] || draft.frequency).toUpperCase(),
+        fereastra,
+        FREQUENCY_RO[draft.frequency] || draft.frequency,
         draft.tasks,
-        (DEVICE_STATUS_RO[device.status] || device.status).toUpperCase()
+        DEVICE_STATUS_RO[device.status] || device.status,
       ];
     });
 
-    // 2. Construct Aesthetic AOA (Array of Arrays) with detailed summary
-    const aoa = [
-      ['BIOMEDIC - SISTEM DE MANAGEMENT AL DISPOZITIVELOR MEDICALE'],
-      ['PROGRAM DE MENTENANTA SI SERVICE'],
-      [''],
-      ['SUMAR'],
-      [`ID RAPORT: ${reportId}`, ``, `TOTAL DISPOZITIVE: ${devices.length}`],
-      [`GENERAT: ${dateStr} ${timeStr}`, ``, `DISPOZITIVE ACTIVE: ${statusCounts[DeviceStatus.ACTIVE] || 0}`],
-      [`PREGATIT PENTRU: DEPARTAMENTUL TEHNIC`, ``, `DISPOZITIVE IN SERVICE: ${statusCounts[DeviceStatus.MAINTENANCE] || 0}`],
-      [''],
-      ['------------------------------------------------------------------------------------------------------------------------------------'],
-      [''],
-      tableHeader,
-      ...tableRows,
-      [''],
-      ['--- SFARSITUL RAPORTULUI DE SERVICE ---'],
-      [''],
-      ['NOTA DE CONFIDENTIALITATE: Acest document contine date despre dispozitive medicale. Accesul este restrictionat personalului autorizat.'],
-      ['Biomedic | Date proprietare infrastructura clinica']
-    ];
-
     try {
-      const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-
-      // 3. Apply Professional Sheet Configurations (Cols & Rows)
-      
-      // Column widths based on header and data content with extra padding for aesthetics
-      const colWidths = tableHeader.map((_, colIndex) => {
-        let maxLen = tableHeader[colIndex].length;
-        tableRows.forEach(row => {
-          const val = row[colIndex] ? String(row[colIndex]).length : 0;
-          if (val > maxLen) maxLen = val;
-        });
-        return { wch: Math.min(Math.max(maxLen + 6, 20), 65) }; 
+      await scrieTabel({
+        fisier: `Biomedic_Raport_Echipamente_${acum.toISOString().split('T')[0]}`,
+        foaie: 'Raport',
+        titlu: 'BIOMEDIC — PROGRAM DE MENTENANTA SI SERVICE',
+        subtitlu: `Generat: ${acum.toLocaleString('ro-RO')}  •  ${devices.length} `
+          + `${devices.length === 1 ? 'dispozitiv' : 'dispozitive'}`
+          + `  •  active: ${peStare[DeviceStatus.ACTIVE] || 0}`
+          + `  •  in service: ${peStare[DeviceStatus.MAINTENANCE] || 0}`,
+        coloane: [
+          { cap: 'Denumire dispozitiv', latime: 32 },
+          { cap: 'Producator', latime: 20 },
+          { cap: 'Model / versiune', latime: 20 },
+          { cap: 'Numar serie', latime: 22, centrat: true },
+          { cap: 'Departament', latime: 20 },
+          { cap: 'Luna programata', latime: 18, centrat: true },
+          { cap: 'Ciclu mentenanta', latime: 18, centrat: true },
+          { cap: 'Detalii tehnice', latime: 40 },
+          { cap: 'Stare dispozitiv', latime: 18, centrat: true },
+        ],
+        randuri,
       });
-      worksheet['!cols'] = colWidths;
-
-      // Row heights (Create visual hierarchy)
-      const rowHeights = [
-        { hpt: 25 }, // System Header
-        { hpt: 35 }, // Title (Large)
-        { hpt: 10 }, // Spacer
-        { hpt: 20 }, // Executive Summary label
-        { hpt: 18 }, // Summary Row 1
-        { hpt: 18 }, // Summary Row 2
-        { hpt: 18 }, // Summary Row 3
-        { hpt: 10 }, // Spacer
-        { hpt: 12 }, // Separator Line
-        { hpt: 15 }, // Spacer
-        { hpt: 30 }, // Main Table Headers (Taller/Deeper for visibility)
-      ];
-      worksheet['!rows'] = rowHeights;
-
-      // 4. Create Workbook and Download
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Raport");
-      
-      const fileDate = now.toISOString().split('T')[0];
-      XLSX.writeFile(workbook, `Biomedic_Raport_Echipamente_${fileDate}.xlsx`);
     } catch (err) {
-      console.error("Export error:", err);
-      notify('Generarea raportului a esuat. Verifica daca ferestrele pop-up sunt permise.', 'error');
+      console.error('Export error:', err);
+      notify('Generarea raportului a esuat.', 'error');
     }
   }, [devices, drafts]);
 

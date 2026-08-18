@@ -20,6 +20,7 @@ import {
 } from '../services/trierFacturi';
 import { potrivesteAparate, deLegatSingur, Potrivire } from '../services/asociereAparate';
 import { notify } from '../services/notices';
+import { scrieTabel } from '../services/exportExcel';
 import { ocrPdf, needsOcr } from '../services/invoiceOcr';
 const FinanceCharts = lazy(() => import('./FinanceCharts'));
 const ReferatManager = lazy(() => import('./ReferatManager'));
@@ -664,28 +665,40 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   // ---- Centralizator Excel export ----
   const handleExportExcel = useCallback(async () => {
     if (invoices.length === 0) return;
-    const XLSX = await import('xlsx');
-    const rows = [...invoices]
+    const randuri = [...invoices]
       .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''))
-      .map(inv => ({
-        'NR. FACTURA': inv.invoiceNumber,
-        'FURNIZOR': inv.supplier,
-        'DATA EMITERII': inv.issueDate,
-        'SCADENTA': inv.dueDate || '',
-        'SUMA': inv.amount,
-        'MONEDA': inv.currency,
-        'STATUS CONECTX': STATUS_LABELS[effectiveStatus(inv)],
-        'DATA INCARCARII': inv.uploadedAt || '',
-        'CONTRACT': inv.contractNumber || '',
-        'DISPOZITIVE': inv.deviceIds.map(id => devicesMap.get(id)?.name || id).join(', '),
-        'SERII': inv.deviceIds.map(id => devicesMap.get(id)?.serialNumber || '').filter(Boolean).join(', '),
-        'DESCRIERE': inv.description || '',
-      }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 40 }, { wch: 30 }, { wch: 30 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Centralizator Facturi');
-    XLSX.writeFile(wb, `Centralizator_Facturi_${new Date().toISOString().split('T')[0]}.xlsx`);
+      .map(inv => [
+        inv.invoiceNumber,
+        inv.supplier,
+        inv.issueDate,
+        inv.dueDate || '',
+        inv.amount,
+        inv.currency,
+        STATUS_LABELS[effectiveStatus(inv)],
+        inv.uploadedAt || '',
+        inv.contractNumber || '',
+        inv.orderNumber || '',
+        inv.deviceIds.map(id => devicesMap.get(id)?.name || id).join(', '),
+        inv.deviceIds.map(id => devicesMap.get(id)?.serialNumber || '').filter(Boolean).join(', '),
+        inv.description || '',
+      ]);
+    await scrieTabel({
+      fisier: `Centralizator_Facturi_${new Date().toISOString().split('T')[0]}`,
+      foaie: 'Centralizator Facturi',
+      titlu: 'BIOMEDIC — CENTRALIZATOR FACTURI',
+      subtitlu: `Generat: ${new Date().toLocaleString('ro-RO')}  •  ${invoices.length} `
+        + `${invoices.length === 1 ? 'factura' : 'facturi'}`,
+      coloane: [
+        { cap: 'Nr. factura', latime: 18 }, { cap: 'Furnizor', latime: 28 },
+        { cap: 'Data emiterii', latime: 14, centrat: true }, { cap: 'Scadenta', latime: 13, centrat: true },
+        { cap: 'Suma', latime: 13, centrat: true }, { cap: 'Moneda', latime: 9, centrat: true },
+        { cap: 'Stare ConectX', latime: 18, centrat: true }, { cap: 'Data incarcarii', latime: 16, centrat: true },
+        { cap: 'Contract', latime: 18 }, { cap: 'Comanda', latime: 14 },
+        { cap: 'Dispozitive', latime: 34 }, { cap: 'Serii', latime: 28 },
+        { cap: 'Descriere', latime: 40 },
+      ],
+      randuri,
+    });
   }, [invoices, devicesMap]);
 
   // ---- Form handlers ----

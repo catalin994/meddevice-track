@@ -59,8 +59,8 @@ export default defineConfig(({ mode }) => {
             globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js,docx}'],
             maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
             globIgnores: [
-              '**/vendor-exceljs-*.js',   // 920K — export Excel
-              '**/vendor-xlsx-*.js',      // 420K — import Excel
+              '**/vendor-exceljs-*.js',   // 920K — scrie toate listele in Excel
+              '**/vendor-xlsx-*.js',      // 420K — citeste importurile, inclusiv .xls vechi
               '**/vendor-recharts-*.js',  // 376K — graficele din Panou
               '**/vendor-ai-*.js',        // 284K — extragere date din PDF
               '**/pdf-*.js',              // 464K — randare PDF
