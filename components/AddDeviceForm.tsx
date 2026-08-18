@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useMemo, useCallback } from 'react';
+import ConfirmDialog from './ConfirmDialog';
 import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
 import { CATEGORII_CU_METROLOGIE } from '../services/termene';
-import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert } from 'lucide-react';
+import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert, AlertTriangle } from 'lucide-react';
 import DepartmentPicker from './DepartmentPicker';
 
 interface AddDeviceFormProps {
@@ -98,8 +99,29 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     }
   }, [compressImage]);
 
+  /**
+   * Aparatul care are deja seria scrisa acum.
+   *
+   * Doua fise pentru acelasi aparat rup istoricul in doua: jumatate din
+   * mentenante pe una, jumatate pe cealalta, si niciuna nu spune adevarul. Mai
+   * incurca si potrivirea facturilor, care se face tocmai dupa serie.
+   *
+   * Nu opreste pe nimeni — se intampla sa fie doua aparate cu aceeasi serie
+   * gresit trecuta pe etichete — dar nu se mai adauga din greseala.
+   */
+  const seriaLuata = useMemo(() => {
+    const s = (formData.serialNumber || '').trim().toLowerCase();
+    if (!s) return null;
+    return devices.find(d => (d.serialNumber || '').trim().toLowerCase() === s) || null;
+  }, [devices, formData.serialNumber]);
+
+  /** Aparatul care asteapta confirmarea, cand seria e deja luata. */
+  const [intrebSeria, setIntrebSeria] = useState<MedicalDevice | null>(null);
+
   const handleSingleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (seriaLuata && !intrebSeria) { setIntrebSeria(seriaLuata); return; }
+    setIntrebSeria(null);
     setIsSubmitting(true);
     const finalDept = (formData.department || 'Nealocat').trim();
     
@@ -130,7 +152,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     
     await onSave(newDevice);
     setIsSubmitting(false);
-  }, [formData, onSave]);
+  }, [formData, onSave, seriaLuata, intrebSeria]);
 
   const handleGenerateBatch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +239,23 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
         {previewDevices.length > 0 ? (
           <div className="space-y-6">
             <h3 className="font-black text-xl">Adauga {previewDevices.length} dispozitive</h3>
+            {(() => {
+              // Seriile care exista deja, in orice fel de lot — generat sau adus
+              // din Excel. Fara asta, un import repetat dubla jumatate din
+              // inventar si nimeni nu observa pana la urmatoarea inventariere.
+              const avem = new Map(devices.map(d => [(d.serialNumber || '').trim().toLowerCase(), d]));
+              const cad = previewDevices.filter(d => avem.has((d.serialNumber || '').trim().toLowerCase()));
+              if (cad.length === 0) return null;
+              return (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <p className="text-[13px] font-bold text-amber-900 leading-relaxed">
+                    <span className="font-black">{cad.length}</span> {cad.length === 1 ? 'serie exista' : 'serii exista'} deja in inventar
+                    {' '}({cad.slice(0, 3).map(d => d.serialNumber).join(', ')}{cad.length > 3 ? ' si altele' : ''}).
+                    Adaugate asa, aparatele vor avea cate doua fise si istoricul li se rupe in doua.
+                  </p>
+                </div>
+              );
+            })()}
             <div className="max-h-60 overflow-y-auto bg-slate-50 p-4 rounded-xl space-y-2">
               {previewDevices.map((d, i) => <div key={i} className="text-xs bg-white p-2 rounded border">{d.name} ({d.serialNumber})</div>)}
             </div>
@@ -234,7 +273,12 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
               </div>
               <FormField label="Producator" name="manufacturer" value={formData.manufacturer} onChange={handleChange} required />
               <FormField label="Model" name="model" value={formData.model} onChange={handleChange} required />
-              {activeTab === 'single' && <FormField label="Numar serie" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required />}
+              {activeTab === 'single' && (
+                <FormField label="Numar serie" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required
+                  avertisment={seriaLuata
+                    ? `Seria asta e deja pe "${seriaLuata.name}" (${seriaLuata.department || 'fara sectie'}). Doua fise pentru acelasi aparat ii rup istoricul in doua.`
+                    : ''} />
+              )}
               <div className="space-y-2">
                 <DepartmentPicker
                   value={formData.department}
@@ -252,6 +296,24 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
           </form>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!intrebSeria}
+        tone="neutral"
+        title="Seria exista deja"
+        icon={<AlertTriangle className="w-8 h-8" />}
+        body={<>
+          Seria <span className="font-black text-slate-900">{formData.serialNumber}</span> e trecuta pe{' '}
+          <span className="font-black text-slate-900">{intrebSeria?.name}</span>
+          {intrebSeria?.department ? `, ${intrebSeria.department}` : ''}.
+          Doua fise pentru acelasi aparat ii rup istoricul in doua si incurca potrivirea facturilor,
+          care se face tot dupa serie.
+        </>}
+        confirmLabel="Adaug oricum"
+        cancelLabel="Ma intorc"
+        onCancel={() => setIntrebSeria(null)}
+        onConfirm={() => { void handleSingleSubmit({ preventDefault: () => {} } as React.FormEvent); }}
+      />
     </div>
   );
 };
@@ -260,10 +322,16 @@ const TabButton = React.memo(({ active, onClick, label, icon }: any) => (
   <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500'}`}>{icon}{label}</button>
 ));
 
-const FormField = React.memo(({ label, name, value, onChange, type = "text", required = false }: any) => (
+const FormField = React.memo(({ label, name, value, onChange, type = "text", required = false, avertisment = '' }: any) => (
   <div className="space-y-2">
     <label className="text-[10px] font-black uppercase text-slate-500">{label}</label>
-    <input required={required} name={name} type={type} value={value} onChange={onChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" />
+    <input required={required} name={name} type={type} value={value} onChange={onChange}
+      className={`w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none ${
+        avertisment ? 'border-amber-400 bg-amber-50/50' : 'border-slate-200'
+      }`} />
+    {avertisment && (
+      <p className="text-[11px] font-bold text-amber-700 leading-relaxed px-1">{avertisment}</p>
+    )}
   </div>
 ));
 
