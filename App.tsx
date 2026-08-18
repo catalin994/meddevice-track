@@ -16,6 +16,7 @@ const importCommandPalette = () => import('./components/CommandPalette');
 
 const Dashboard = lazy(importDashboard);
 const QRScanner = lazy(importQRScanner);
+const ConflictDialog = lazy(() => import('./components/ConflictDialog'));
 const DocumentScanner = lazy(importDocumentScanner);
 const DeviceList = lazy(importDeviceList);
 const DeviceDetail = lazy(importDeviceDetail);
@@ -54,6 +55,7 @@ import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange,
 import { getInitialTheme, applyTheme, Theme } from './services/themeService';
 import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import { buildPath, uploadDataUrl } from './services/fileStorage';
+import { randMaiNou, campuriDiferite, Diferenta } from './services/conflicte';
 import { notify } from './services/notices';
 import LoginScreen from './components/LoginScreen';
 import { LogoTile, LogoMark } from './components/Logo';
@@ -147,6 +149,11 @@ const App: React.FC = () => {
   const [comenzi, setComenzi] = useState<Comanda[]>([]);
   /** Ce s-a sters, cu tot cu continut, ca sa se poata pune la loc. */
   const [deletions, setDeletions] = useState<Deletion[]>([]);
+  /** Randul pe care a scris si altcineva, cat timp se asteapta alegerea. */
+  const [conflict, setConflict] = useState<{
+    ce: string; nume: string; diferente: Diferenta[]; candLui?: string;
+  } | null>(null);
+  const alegeConflict = useRef<((care: 'meu' | 'lui') => void) | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -311,6 +318,45 @@ const App: React.FC = () => {
       updated_at: d.updated_at || d.updatedAt
     } as MedicalDevice;
   }, []);
+
+  /**
+   * Verifica daca randul din cloud s-a schimbat de cand a fost incarcat, si
+   * daca da, intreaba ce se pastreaza.
+   *
+   * Intoarce true cand salvarea poate merge mai departe. Cand cloud-ul nu
+   * raspunde nu intreaba nimic si lasa salvarea sa treaca: intr-o sectie fara
+   * semnal, o aplicatie care refuza sa salveze e mai rea decat o suprascriere.
+   */
+  const potSalva = useCallback(async (
+    tabel: string,
+    ce: string,
+    alMeu: any,
+    nume: string,
+    updatedAtLocal?: string,
+  ): Promise<boolean> => {
+    if (!isSupabaseConfigured) return true;
+    const alLui = await randMaiNou<any>(tabel, alMeu.id, updatedAtLocal);
+    if (!alLui) return true;
+    const care = await new Promise<'meu' | 'lui'>(resolve => {
+      alegeConflict.current = resolve;
+      setConflict({ ce, nume, diferente: campuriDiferite(alMeu, alLui), candLui: alLui.updated_at });
+    });
+    setConflict(null);
+    alegeConflict.current = null;
+    if (care === 'meu') return true;
+    // Varianta colegului ramane: se aduce in aplicatie, ca ecranul sa nu mai
+    // arate ce tocmai a fost aruncat.
+    switch (tabel) {
+      case 'devices': setDevices(prev => prev.map(d => (d.id === alLui.id ? normalizeDevice(alLui) : d))); break;
+      case 'invoices': setInvoices(prev => prev.map(x => (x.id === alLui.id ? alLui : x))); break;
+      case 'referate': setReferate(prev => prev.map(x => (x.id === alLui.id ? alLui : x))); break;
+      case 'documente_fundamentare': setFoundationDocs(prev => prev.map(x => (x.id === alLui.id ? alLui : x))); break;
+      case 'comenzi': setComenzi(prev => prev.map(x => (x.id === alLui.id ? alLui : x))); break;
+      case 'tasks': setTasks(prev => prev.map(x => (x.id === alLui.id ? alLui : x))); break;
+    }
+    notify('S-a pastrat varianta din cloud.', 'info');
+    return false;
+  }, [isSupabaseConfigured, normalizeDevice]);
 
   /** Records that an entity was deleted, locally and in the cloud, so other
    *  devices remove it instead of uploading their stale copy back. */
@@ -675,6 +721,17 @@ const App: React.FC = () => {
     const payload: MedicalDevice[] = items.map(d => ({ ...normalizeDevice(d), updated_at: now }));
     if (payload.length === 0) return;
 
+    /*
+     * Un singur aparat inseamna cineva care tocmai a completat un formular, si
+     * acolo merita intrebat. Un import de doua mii de randuri sau maturatul
+     * documentelor spre Storage nu: acolo n-are cine sa raspunda la doua mii de
+     * intrebari, iar ce se scrie nu vine din editarea nimanui.
+     */
+    if (payload.length === 1) {
+      const vechi = devicesMap.get(payload[0].id);
+      if (vechi && !(await potSalva('devices', 'aparatul', payload[0], payload[0].name, vechi.updated_at))) return;
+    }
+
     // Audit: individual entries for small edits, one summary entry for bulk imports
     if (payload.length <= 3) {
       payload.forEach(p => logAudit(devicesMap.has(p.id) ? 'update' : 'create', 'device', p.id, p.name, `SN: ${p.serialNumber}`));
@@ -701,7 +758,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, normalizeDevice, devicesMap, logAudit]);
+  }, [isSupabaseConfigured, normalizeDevice, devicesMap, logAudit, potSalva]);
 
   const handleUpsertTasks = useCallback(async (data: MedicalTask | MedicalTask[]) => {
     const now = new Date().toISOString();
@@ -734,6 +791,9 @@ const App: React.FC = () => {
   const handleUpsertInvoice = useCallback(async (invoice: Invoice) => {
     const payload: Invoice = { ...invoice, updated_at: new Date().toISOString() };
 
+    const veche = invoices.find(i => i.id === payload.id);
+    if (veche && !(await potSalva('invoices', 'factura', payload, payload.invoiceNumber, veche.updated_at))) return;
+
     logAudit(invoices.some(i => i.id === payload.id) ? 'update' : 'create', 'invoice', payload.id, payload.invoiceNumber, `${payload.supplier} · ${payload.amount} ${payload.currency}`);
 
     setInvoices(prev => {
@@ -754,7 +814,7 @@ const App: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, invoices, logAudit, recordDeletion]);
+  }, [isSupabaseConfigured, invoices, logAudit, recordDeletion, potSalva]);
 
   /*
    * Referate si documente de fundamentare — salvare si stergere, dupa acelasi
@@ -763,6 +823,9 @@ const App: React.FC = () => {
    */
   const handleUpsertReferat = useCallback(async (referat: Referat) => {
     const payload: Referat = { ...referat, updated_at: new Date().toISOString() };
+    const vechiR = referate.find(r => r.id === payload.id);
+    if (vechiR && !(await potSalva('referate', 'referatul', payload, payload.number, vechiR.updated_at))) return;
+
     logAudit(referate.some(r => r.id === payload.id) ? 'update' : 'create', 'referat',
       payload.id, payload.number, `${payload.department} · ${payload.subject}`);
     setReferate(prev => {
@@ -813,6 +876,9 @@ const App: React.FC = () => {
 
   const handleUpsertFoundationDoc = useCallback(async (doc: FoundationDoc) => {
     const payload: FoundationDoc = { ...doc, updated_at: new Date().toISOString() };
+    const vechiD = foundationDocs.find(d => d.id === payload.id);
+    if (vechiD && !(await potSalva('documente_fundamentare', 'documentul', payload, payload.number || payload.type, vechiD.updated_at))) return;
+
     logAudit(foundationDocs.some(d => d.id === payload.id) ? 'update' : 'create', 'fundamentare',
       payload.id, payload.number || payload.type, payload.supplier);
     setFoundationDocs(prev => {
@@ -851,6 +917,9 @@ const App: React.FC = () => {
 
   const handleUpsertComanda = useCallback(async (c: Comanda) => {
     const payload: Comanda = { ...c, updated_at: new Date().toISOString() };
+    const vechiC = comenzi.find(x => x.id === payload.id);
+    if (vechiC && !(await potSalva('comenzi', 'comanda', payload, payload.number || payload.id, vechiC.updated_at))) return;
+
     logAudit(comenzi.some(x => x.id === payload.id) ? 'update' : 'create', 'comanda',
       payload.id, payload.number || payload.id, payload.supplier);
     setComenzi(prev => {
@@ -1396,6 +1465,20 @@ const App: React.FC = () => {
 
       {isSidebarOpen && (
         <div className="fixed inset-0 scrim z-[90] lg:hidden transition-opacity duration-300" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Doi oameni pe acelasi rand: se alege, nu se suprascrie pe tacute. */}
+      {conflict && (
+        <Suspense fallback={null}>
+          <ConflictDialog
+            open
+            ce={conflict.ce}
+            nume={conflict.nume}
+            diferente={conflict.diferente}
+            candLui={conflict.candLui}
+            onAlege={care => alegeConflict.current?.(care)}
+          />
+        </Suspense>
       )}
 
       {showScanner && (
