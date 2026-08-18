@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { notify } from '../services/notices';
-import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice, MedicalTask, Referat, FoundationDoc, Comanda } from '../types';
+import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice, MedicalTask, Referat, FoundationDoc, Comanda, Deletion, sePoatePuneLaLoc, NUME_ENTITATE, ZILE_IN_COS } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
@@ -18,6 +18,13 @@ import { buildUploadSet } from '../services/syncMerge';
 
 declare const __BUILD_ID__: string;
 const BUILD_ID = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+
+/** "o zi", "5 zile", "30 de zile" — peste nouasprezece, romaneste cere "de". */
+const numeZile = (n: number) => {
+  if (n === 1) return 'zi';
+  const ultimele = n % 100;
+  return ultimele === 0 || ultimele >= 20 ? 'de zile' : 'zile';
+};
 
 interface SettingsProps {
   devices: MedicalDevice[];
@@ -36,11 +43,16 @@ interface SettingsProps {
   auditLog?: AuditEntry[];
   currentUser?: AppUser | null;
   onMigrateFiles?: (onProgress?: (done: number, total: number, label: string) => void) => Promise<{ moved: number; total: number; error: string | null }>;
+  /** Ce s-a sters, ca sa se poata pune la loc. */
+  deletions?: Deletion[];
+  onRestore?: (d: Deletion) => void | Promise<void>;
+  canDelete?: boolean;
 }
 
 const Settings: React.FC<SettingsProps> = ({
   devices, invoices = [], tasks = [], referate = [], foundationDocs = [], comenzi = [],
   onImport, auditLog = [], currentUser = null, onMigrateFiles,
+  deletions = [], onRestore, canDelete = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
@@ -385,6 +397,15 @@ CREATE TABLE IF NOT EXISTS public.deletions (
     "deletedAt" TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+-- Cosul de stergeri: randul sters se pastreaza intreg, ca sa poata fi pus la
+-- loc. "restoredAt" anuleaza piatra de mormant fara s-o stearga — stearsa, un
+-- alt telefon care inca o are ar urca-o inapoi si ar sterge din nou.
+ALTER TABLE public.deletions
+  ADD COLUMN IF NOT EXISTS "entityName" TEXT,
+  ADD COLUMN IF NOT EXISTS "deletedBy"  TEXT,
+  ADD COLUMN IF NOT EXISTS "payload"    JSONB,
+  ADD COLUMN IF NOT EXISTS "restoredAt" TEXT;
 
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id TEXT PRIMARY KEY,
@@ -828,6 +849,79 @@ NOTIFY pgrst, 'reload schema';
           );
         })()}
       </div>
+
+      {/* ── COSUL DE STERGERI ── */}
+      {onRestore && (() => {
+        /*
+         * Ce s-a sters in ultimele treizeci de zile si mai are continut pastrat.
+         * Restul pietrelor de mormant raman in baza de date — sincronizarea are
+         * nevoie de ele ca stergerea sa ajunga pe toate aparatele — dar aici nu
+         * au ce cauta: nu se mai pot pune la loc, si ar ascunde ce se poate.
+         */
+        const acum = Date.now();
+        const inCos = deletions
+          .filter(d => sePoatePuneLaLoc(d, acum))
+          .sort((a, b) => (b.deletedAt || '').localeCompare(a.deletedAt || ''));
+        return (
+          <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+            <div className="flex items-center gap-5 mb-6">
+              <div className="p-5 bg-amber-100 text-amber-600 rounded-3xl">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Cosul de stergeri</h2>
+                <p className="text-sm text-slate-500 font-semibold mt-1">
+                  Ce s-a sters in ultimele {ZILE_IN_COS} de zile se poate pune la loc
+                </p>
+              </div>
+            </div>
+
+            {inCos.length === 0 ? (
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
+                <p className="text-sm font-semibold text-slate-600 leading-relaxed">
+                  Cosul e gol. Ce se sterge de-acum incolo ajunge aici si se poate pune la loc
+                  timp de {ZILE_IN_COS} de zile.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {inCos.map(d => {
+                  const zile = Math.max(0, ZILE_IN_COS - Math.floor((acum - Date.parse(d.deletedAt)) / 86400000));
+                  return (
+                    <div key={d.id} className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-black text-slate-900 truncate">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mr-2">
+                            {NUME_ENTITATE[d.entity]}
+                          </span>
+                          {d.entityName || d.entityId}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                          sters {d.deletedAt.slice(0, 10)}
+                          {d.deletedBy ? ` de ${d.deletedBy}` : ''}
+                          {' · '}
+                          <span className={zile <= 5 ? 'text-red-600' : ''}>
+                            {zile === 0 ? 'expira azi' : `mai poate fi pus la loc ${zile} ${numeZile(zile)}`}
+                          </span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => onRestore(d)}
+                        disabled={!canDelete}
+                        title={canDelete ? undefined : 'Doar un administrator poate pune la loc'}
+                        className="px-5 py-3 bg-emerald-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                      >
+                        <RefreshCw className="w-4 h-4" /> Pune la loc
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* FILE STORAGE MIGRATION */}
       {onMigrateFiles && (

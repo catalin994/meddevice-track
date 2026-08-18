@@ -47,7 +47,7 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS, sePoatePuneLaLoc, NUME_ENTITATE } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB, getAllComenziFromDB, saveComenziToDB, deleteComandaFromDB } from './services/storageService';
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
@@ -145,6 +145,8 @@ const App: React.FC = () => {
   const [referate, setReferate] = useState<Referat[]>([]);
   const [foundationDocs, setFoundationDocs] = useState<FoundationDoc[]>([]);
   const [comenzi, setComenzi] = useState<Comanda[]>([]);
+  /** Ce s-a sters, cu tot cu continut, ca sa se poata pune la loc. */
+  const [deletions, setDeletions] = useState<Deletion[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -312,15 +314,39 @@ const App: React.FC = () => {
 
   /** Records that an entity was deleted, locally and in the cloud, so other
    *  devices remove it instead of uploading their stale copy back. */
-  const recordDeletion = useCallback(async (entity: Deletion['entity'], entityId: string) => {
+  /*
+   * Cat de mare poate fi randul pastrat in cos.
+   *
+   * O fisa cu documente ramase inauntru, netrecute inca prin Storage, poate
+   * avea megaocteti de base64. Pastrata, ar umfla tabelul de stergeri pentru
+   * totdeauna. Peste pragul asta se tine doar urma, si cosul spune deschis ca
+   * randul acela nu se mai poate pune la loc.
+   */
+  const CAT_INCAPE = 1_000_000;
+
+  const recordDeletion = useCallback(async (
+    entity: Deletion['entity'],
+    entityId: string,
+    entityName?: string,
+    payload?: any,
+  ) => {
+    let pastrat: any = payload;
+    try {
+      if (pastrat && JSON.stringify(pastrat).length > CAT_INCAPE) pastrat = undefined;
+    } catch { pastrat = undefined; }
+
     const tombstone: Deletion = {
       id: `${entity}:${entityId}`,
       entity,
       entityId,
+      entityName,
+      deletedBy: getCachedProfile()?.name || undefined,
+      payload: pastrat,
       deletedAt: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     await saveDeletionsToDB([tombstone]).catch(() => {});
+    setDeletions(prev => [tombstone, ...prev.filter(d => d.id !== tombstone.id)]);
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('deletions').upsert([tombstone], { onConflict: 'id' });
       if (error) console.warn('[Sync] Deletion not recorded in cloud:', error.message);
@@ -407,17 +433,22 @@ const App: React.FC = () => {
           // deleted anywhere must disappear here too, and must never be
           // uploaded back to the cloud.
           const tombstones = new Map<string, Deletion>(localDeletions.map(d => [d.id, d]));
+          // Cloud-ul are ultimul cuvant: acolo ajunge si anularea unei pietre de
+          // mormant, cand cineva a pus la loc de pe alt aparat.
           (deletionRes.data || []).forEach(d => { if (d?.id) tombstones.set(d.id, d); });
 
+          // Ce a fost pus la loc nu mai sterge pe nimeni.
+          const inVigoare = Array.from(tombstones.values()).filter(d => !d.restoredAt);
           const deletedDeviceIds = new Set(
-            Array.from(tombstones.values()).filter(d => d.entity === 'device').map(d => d.entityId)
+            inVigoare.filter(d => d.entity === 'device').map(d => d.entityId)
           );
           const deletedTaskIds = new Set(
-            Array.from(tombstones.values()).filter(d => d.entity === 'task').map(d => d.entityId)
+            inVigoare.filter(d => d.entity === 'task').map(d => d.entityId)
           );
 
           // Persist the combined log and push back any tombstone the cloud lacks
           const allTombstones = Array.from(tombstones.values());
+          setDeletions(allTombstones);
           if (allTombstones.length > 0) {
             await saveDeletionsToDB(allTombstones).catch(() => {});
             const cloudIds = new Set((deletionRes.data || []).map(d => d.id));
@@ -524,6 +555,8 @@ const App: React.FC = () => {
             locale: T[],
             aplica: (finale: T[]) => void,
             salveaza: (items: T[]) => Promise<void>,
+            /** Ce s-a sters din felul asta, ca sa nu se invie. */
+            fel?: Deletion['entity'],
           ) => {
             try {
               const res = await fetchAllRows<T>(tabel);
@@ -532,8 +565,20 @@ const App: React.FC = () => {
                 sarite.push(tabel);
                 return;
               }
-              const dinCloud = res.data;
-              const harta = new Map<string, T>(locale.map(i => [i.id, i]));
+              /*
+               * Sterse in alta parte.
+               *
+               * Fara filtrul asta, o factura stearsa de pe calculator se
+               * intorcea de pe telefon: telefonul o avea inca local, n-o gasea
+               * in cloud, si o socotea "mai noua decat nimic" — asa ca o urca
+               * inapoi. Stergerea parea sa mearga, si a doua zi factura era din
+               * nou acolo, fara ca cineva sa inteleaga de ce.
+               */
+              const sterse = fel
+                ? new Set(inVigoare.filter(d => d.entity === fel).map(d => d.entityId))
+                : new Set<string>();
+              const dinCloud = res.data.filter(c => !sterse.has(c.id));
+              const harta = new Map<string, T>(locale.filter(i => !sterse.has(i.id)).map(i => [i.id, i]));
               for (const c of dinCloud) {
                 const local = harta.get(c.id);
                 const tCloud = c.updated_at ? new Date(c.updated_at).getTime() : 0;
@@ -557,13 +602,13 @@ const App: React.FC = () => {
             }
           };
 
-          await sincronizeaza<Invoice>('invoices', localInvoices, setInvoices, saveInvoicesToDB);
+          await sincronizeaza<Invoice>('invoices', localInvoices, setInvoices, saveInvoicesToDB, 'invoice');
           await sincronizeaza<Referat>('referate',
-            await getAllReferateFromDB().catch(() => []), setReferate, saveReferateToDB);
+            await getAllReferateFromDB().catch(() => []), setReferate, saveReferateToDB, 'referat');
           await sincronizeaza<FoundationDoc>('documente_fundamentare',
-            await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB);
+            await getAllFoundationDocsFromDB().catch(() => []), setFoundationDocs, saveFoundationDocsToDB, 'fundamentare');
           await sincronizeaza<Comanda>('comenzi',
-            await getAllComenziFromDB().catch(() => []), setComenzi, saveComenziToDB);
+            await getAllComenziFromDB().catch(() => []), setComenzi, saveComenziToDB, 'comanda');
 
           setSyncStatus('cloud');
           setSyncMessage(sarite.length
@@ -613,7 +658,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteDeviceFromDB(safeId);
-      await recordDeletion('device', safeId);
+      await recordDeletion('device', safeId, target?.name || safeId, target);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('devices').delete().eq('id', safeId);
       }
@@ -759,7 +804,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteReferatFromDB(id);
-      await recordDeletion('referat', id);
+      await recordDeletion('referat', id, target?.number || id, target);
       if (isSupabaseConfigured && supabase) await supabase.from('referate').delete().eq('id', id);
     } catch (err) {
       console.error('[Referate] stergere esuata:', err);
@@ -797,7 +842,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteFoundationDocFromDB(id);
-      await recordDeletion('fundamentare', id);
+      await recordDeletion('fundamentare', id, target?.number || target?.type || id, target);
       if (isSupabaseConfigured && supabase) await supabase.from('documente_fundamentare').delete().eq('id', id);
     } catch (err) {
       console.error('[Fundamentare] stergere esuata:', err);
@@ -835,7 +880,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteComandaFromDB(id);
-      await recordDeletion('comanda', id);
+      await recordDeletion('comanda', id, target?.number || id, target);
       if (isSupabaseConfigured && supabase) await supabase.from('comenzi').delete().eq('id', id);
     } catch (err) {
       console.error('[Comenzi] stergere esuata:', err);
@@ -853,7 +898,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteInvoiceFromDB(id);
-      await recordDeletion('invoice', id);
+      await recordDeletion('invoice', id, target?.invoiceNumber || id, target);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('invoices').delete().eq('id', id);
       }
@@ -902,6 +947,55 @@ const App: React.FC = () => {
     const updated = { ...device, files: [...(device.files || []), file] };
     await handleUpsertDevices(updated);
   }, [devices, handleUpsertDevices]);
+
+  /**
+   * Pune la loc ceva sters.
+   *
+   * Piatra de mormant nu se sterge, se anuleaza. Stearsa, un alt telefon care
+   * inca o are local ar urca-o inapoi la urmatoarea sincronizare — e chiar ce
+   * face codul de mai sus, ca o stergere sa ajunga peste tot — si ar sterge din
+   * nou exact ce tocmai s-a recuperat.
+   */
+  const handleRestoreDeletion = useCallback(async (d: Deletion) => {
+    if (!canDelete) {
+      const m = 'Doar un administrator poate pune la loc.';
+      setSyncMessage(m); notify(m, 'error'); return;
+    }
+    if (!sePoatePuneLaLoc(d)) {
+      notify('Randul acesta nu mai poate fi pus la loc.', 'warning');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      switch (d.entity) {
+        case 'device':       await handleUpsertDevices(d.payload as MedicalDevice); break;
+        case 'task':         await handleUpsertTasks(d.payload as MedicalTask); break;
+        case 'invoice':      await handleUpsertInvoice(d.payload as Invoice); break;
+        case 'referat':      await handleUpsertReferat(d.payload as Referat); break;
+        case 'fundamentare': await handleUpsertFoundationDoc(d.payload as FoundationDoc); break;
+        case 'comanda':      await handleUpsertComanda(d.payload as Comanda); break;
+      }
+
+      const anulata: Deletion = {
+        ...d,
+        restoredAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await saveDeletionsToDB([anulata]).catch(() => {});
+      setDeletions(prev => prev.map(x => (x.id === anulata.id ? anulata : x)));
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('deletions').upsert([anulata], { onConflict: 'id' });
+        if (error) console.warn('[Cos] anularea nu a ajuns in cloud:', error.message);
+      }
+      logAudit('update', d.entity, d.entityId, d.entityName || d.entityId, 'pus la loc din cos');
+      notify(`${NUME_ENTITATE[d.entity]} ${d.entityName || ''} a fost pus(a) la loc`.replace(/\s+/g, ' ').trim(), 'success');
+    } catch (err: any) {
+      notify(`Nu s-a putut pune la loc: ${err?.message || 'eroare'}`, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [canDelete, isSupabaseConfigured, logAudit, handleUpsertDevices, handleUpsertTasks,
+      handleUpsertInvoice, handleUpsertReferat, handleUpsertFoundationDoc, handleUpsertComanda]);
 
   /**
    * Moves documents that are still inline base64 into Storage.
@@ -1046,7 +1140,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await deleteTaskFromDB(safeId);
-      await recordDeletion('task', safeId);
+      await recordDeletion('task', safeId, target?.title || safeId, target);
       if (isSupabaseConfigured && supabase) {
         await supabase.from('tasks').delete().eq('id', safeId);
       }
@@ -1289,6 +1383,9 @@ const App: React.FC = () => {
                     auditLog={auditLog}
                     currentUser={currentUser}
                     onMigrateFiles={migrateFilesToStorage}
+                    deletions={deletions}
+                    onRestore={handleRestoreDeletion}
+                    canDelete={canDelete}
                   />
                 )}
               </Suspense>

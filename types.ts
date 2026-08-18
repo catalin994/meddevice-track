@@ -69,8 +69,48 @@ export interface Deletion {
   entity: 'device' | 'task' | 'invoice' | 'referat' | 'fundamentare' | 'comanda';
   entityId: string;
   deletedAt: string;
+  /** Cum se numea, ca sa se poata citi in cos fara sa fie desfacut payload-ul. */
+  entityName?: string;
+  /** Cine a sters. */
+  deletedBy?: string;
+  /**
+   * Randul sters, intreg.
+   *
+   * Fara el, piatra de mormant spune doar ca ceva a disparut. Cu el, se poate
+   * pune la loc — si asta e singura deosebire dintre o apasare gresita si o
+   * pierdere definitiva de istoric.
+   */
+  payload?: any;
+  /**
+   * Cand a fost pus la loc.
+   *
+   * Piatra de mormant nu se sterge niciodata, se anuleaza. Stearsa, un alt
+   * telefon care inca o are ar urca-o inapoi la urmatoarea sincronizare si ar
+   * sterge din nou ce tocmai s-a recuperat.
+   */
+  restoredAt?: string;
   updated_at?: string;
 }
+
+/** Cate zile se tine ce s-a sters, cu tot cu continut. */
+export const ZILE_IN_COS = 30;
+
+/** Piatra de mormant care inca poate fi pusa la loc. */
+export const sePoatePuneLaLoc = (d: Deletion, acum = Date.now()): boolean => {
+  if (d.restoredAt || !d.payload) return false;
+  const t = Date.parse(d.deletedAt || '');
+  if (!Number.isFinite(t)) return false;
+  return acum - t <= ZILE_IN_COS * 24 * 60 * 60 * 1000;
+};
+
+export const NUME_ENTITATE: Record<Deletion['entity'], string> = {
+  device: 'Aparat',
+  task: 'Tichet',
+  invoice: 'Factura',
+  referat: 'Referat',
+  fundamentare: 'Document de fundamentare',
+  comanda: 'Comanda',
+};
 
 export interface TaskAttachment {
   id: string;
