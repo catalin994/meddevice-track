@@ -236,12 +236,17 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="bg-white p-4 sm:p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
-          <div className="relative flex-1 sm:max-w-md">
+          {/*
+            Se strangea pana la un patrat cu o lupa in el, cand restul barei
+            cerea loc — in Inventar cautarea e lata cat randul, aici ajungea o
+            iconita. Aceeasi unealta trebuie sa arate la fel in amandoua.
+          */}
+          <div className="relative flex-1 min-w-[180px] sm:max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
             <input 
               type="text"
               placeholder="Cauta tichete, departamente..."
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold shadow-inner focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-sm font-bold outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -272,9 +277,16 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               </button>
             ))}
           </div>
+          {/*
+            Rosu plin statea langa albastru plin, doua butoane care se certau, si
+            rosul mai inseamna si stergere in restul aplicatiei. Raportarea unui
+            incident e o actiune obisnuita, facuta des — ramane rosie ca sa se
+            gaseasca repede, dar in tonul discret, ca butonul principal al
+            ecranului sa fie unul singur.
+          */}
           <button
             onClick={() => setIsReportingIncident(true)}
-            className="px-6 py-3.5 bg-red-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-red-600/20 hover:bg-red-700 transition flex items-center gap-2 active:scale-95"
+            className="px-6 py-3.5 bg-red-50 text-red-700 border-2 border-red-200 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-red-100 transition flex items-center gap-2 active:scale-95"
           >
             <Siren className="w-4 h-4" /> Raporteaza Incident
           </button>
@@ -703,13 +715,18 @@ const TaskCard = React.memo(({
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
               <Building className="w-3 h-3" /> {task.department}
             </span>
+            {/*
+              Era scris cu majuscule, albastru, pe fundal albastru, cu inca o
+              caseta pentru serie — cantarea mai mult decat titlul tichetului de
+              sub el, si ochiul citea intai aparatul, nu ce s-a stricat. Ramane
+              acelasi lucru, spus mai incet.
+            */}
             {task.deviceName && (
-              <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md uppercase tracking-tighter flex items-center gap-1.5 border border-blue-100 shadow-sm">
-                <Info className="w-3 h-3 opacity-50" /> {task.deviceName}
+              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5 min-w-0">
+                <Info className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="truncate">{task.deviceName}</span>
                 {device?.serialNumber && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-mono text-[11px] font-black tracking-tight border border-indigo-100">
-                    SN: {device.serialNumber}
-                  </span>
+                  <span className="font-mono text-slate-500 shrink-0">· {device.serialNumber}</span>
                 )}
               </span>
             )}
@@ -719,7 +736,7 @@ const TaskCard = React.memo(({
               </span>
             )}
           </div>
-          <h4 className="text-lg font-black text-slate-900 leading-tight truncate">{task.title}</h4>
+          <h4 className="text-[17px] font-black text-slate-900 leading-tight break-words">{task.title}</h4>
           <p className="text-sm text-slate-500 mt-1 line-clamp-2 max-w-3xl font-medium">{task.description}</p>
           {task.notes && (
             <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">

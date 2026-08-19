@@ -74,10 +74,18 @@ const VIEW_LABELS: Record<string, string> = {
 };
 
 /** Forms that fit the header of a phone without being cut mid-word. */
+/** Unde bara de actiuni de teren n-are ce cauta. */
+const ECRANE_FARA_ACTIUNI = new Set(['SETTINGS', 'FINANCE', 'ADD_DEVICE', 'PLANNER']);
+
 const VIEW_LABELS_SHORT: Record<string, string> = {
   DEVICE_DETAIL: 'Dispozitiv',
   ADD_DEVICE: 'Adauga',
   TASKS: 'Tichete',
+  // "Configurare" nu incapea in cele ~140px ramase pe telefon si iesea
+  // "CONFIGURA...". Un titlu taiat nu spune nimic mai mult decat unul scurt.
+  SETTINGS: 'Setari',
+  PLANNER: 'Planificare',
+  FINANCE: 'Financiar',
 };
 
 /**
@@ -1353,7 +1361,14 @@ const App: React.FC = () => {
           </header>
         )}
 
-        {!isStandalone && (
+        {/*
+          Nu pe orice ecran.
+          "Dispozitiv nou" si "Scaneaza QR" sunt actiunile de teren: isi au rostul
+          pe Panou, in Inventar, pe fisa unui aparat. Pe Configurare, in Financiar
+          sau in mijlocul unui formular de adaugare n-au ce cauta — si pe telefon
+          mananca din putinul de deasupra continutului.
+        */}
+        {!isStandalone && !ECRANE_FARA_ACTIUNI.has(view) && (
           <div className="shrink-0 flex items-stretch gap-2 sm:gap-3 px-3 sm:px-6 lg:px-10 py-2.5 sm:py-3 bg-white border-b border-slate-200 z-40">
             {canEdit && (
               <PrimaryAction

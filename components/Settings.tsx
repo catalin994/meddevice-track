@@ -588,14 +588,19 @@ NOTIFY pgrst, 'reload schema';
       
       {/* CLOUD CONNECTION PANEL */}
       <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-5">
-            <div className={`p-5 rounded-3xl ${isSupabaseConfigured ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-              <Cloud className="w-10 h-10" />
+        {/*
+          Iconita se micsoreaza pe telefon si subtitlul nu mai e scris cu spatii
+          intre litere acolo: "INFRASTRUCTURA GLOBALA DE DATE" cadea pe trei
+          randuri si facea capul cardului mai inalt decat ce era in el.
+        */}
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-8 sm:mb-10">
+          <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+            <div className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl shrink-0 ${isSupabaseConfigured ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+              <Cloud className="w-7 h-7 sm:w-10 sm:h-10" />
             </div>
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
-              <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Infrastructura globala de date</p>
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
+              <p className="text-[12px] sm:text-sm text-slate-500 font-bold uppercase sm:tracking-widest mt-1">Infrastructura globala de date</p>
             </div>
           </div>
           <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
@@ -626,19 +631,35 @@ NOTIFY pgrst, 'reload schema';
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">URL Endpoint Proiect</label>
-                <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono" />
+                <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co"
+                  /* Mai marunt pe telefon: adresa proiectului are peste patruzeci de
+                     caractere si iesea din camp fara ca ceva sa arate ca mai continua. */
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-[11px] sm:text-sm font-mono" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
                 <div className="relative">
                   <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
-                  <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">{showKey ? "Ascunde" : "Arata"}</button>
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 rounded-lg">{showKey ? "Ascunde" : "Arata"}</button>
                 </div>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
-              {isSupabaseConfigured && <button onClick={() => setShowDisconnect(true)} className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black transition hover:bg-red-100" title="Deconecteaza Cloud" aria-label="Deconecteaza Cloud"><LogOut className="w-6 h-6" /></button>}
+              {/*
+                Scris, nu doar o iconita. Pe telefon, unde butoanele stau unul
+                sub altul, iesea o banda rosie fara nicio vorba pe ea — exact
+                butonul pe care cineva il apasa fara sa stie ce face. Titlul care
+                explica se vede doar cu mouse-ul pe el, adica niciodata pe
+                telefon.
+              */}
+              {isSupabaseConfigured && (
+                <button onClick={() => setShowDisconnect(true)}
+                  className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition hover:bg-red-100 flex items-center justify-center gap-2 shrink-0"
+                  aria-label="Deconecteaza cloud-ul de pe acest aparat">
+                  <LogOut className="w-5 h-5 shrink-0" /> Deconecteaza
+                </button>
+              )}
             </div>
         </div>
       </div>
@@ -660,7 +681,8 @@ NOTIFY pgrst, 'reload schema';
           </div>
 
           <div className="bg-black/50 rounded-2xl p-6 mb-6 shadow-inner relative group border border-white/5">
-            <pre className="text-xs font-mono text-blue-100 break-all whitespace-pre-wrap leading-relaxed">
+            {/* Loc pentru butonul de copiere: statea peste primele randuri. */}
+            <pre className="text-xs font-mono text-blue-100 break-all whitespace-pre-wrap leading-relaxed pt-12 sm:pt-0 sm:pr-36">
               {SQL_FIX}
             </pre>
             <button 
@@ -691,12 +713,12 @@ NOTIFY pgrst, 'reload schema';
           </div>
 
           <div className="bg-black/50 rounded-2xl p-6 shadow-inner relative border border-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
-            <pre className="text-xs font-mono text-emerald-100 break-all whitespace-pre-wrap leading-relaxed">
+            <pre className="text-xs font-mono text-emerald-100 break-all whitespace-pre-wrap leading-relaxed pt-12 sm:pt-0 sm:pr-36">
               {SECURITY_SQL}
             </pre>
             <button
               onClick={handleCopySecuritySql}
-              className="sticky top-0 float-right -mt-2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
+              className="sticky top-0 float-right -mt-2 z-10 px-3 py-3 bg-slate-900 hover:bg-slate-800 border border-white/20 shadow-lg text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
             >
               {copiedSec ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copiedSec ? 'Copiat' : 'Copiaza SQL'}
@@ -729,12 +751,12 @@ NOTIFY pgrst, 'reload schema';
           </div>
 
           <div className="bg-black/50 rounded-2xl p-6 shadow-inner relative border border-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
-            <pre className="text-xs font-mono text-indigo-100 break-all whitespace-pre-wrap leading-relaxed">
+            <pre className="text-xs font-mono text-indigo-100 break-all whitespace-pre-wrap leading-relaxed pt-12 sm:pt-0 sm:pr-36">
               {ACHIZITII_SQL}
             </pre>
             <button
               onClick={handleCopyAchizitiiSql}
-              className="sticky top-0 float-right -mt-2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
+              className="sticky top-0 float-right -mt-2 z-10 px-3 py-3 bg-slate-900 hover:bg-slate-800 border border-white/20 shadow-lg text-white rounded-xl transition-all flex items-center gap-2 text-[11px] font-bold"
             >
               {copiedAch ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copiedAch ? 'Copiat' : 'Copiaza SQL'}

@@ -837,7 +837,9 @@ const DeviceCard = React.memo(({
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
           {/* No truncation — a long device name wraps and stays fully readable */}
-          <h3 className="font-extrabold text-slate-900 text-xl sm:text-2xl leading-tight break-words group-hover:text-blue-600 transition-colors md:min-w-0">
+          {/* Era mai mare decat titlul paginii de deasupra lui. Un rand dintr-o
+              lista nu striga mai tare decat ecranul pe care sta. */}
+          <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl leading-tight break-words group-hover:text-blue-600 transition-colors md:min-w-0">
             {device.name || 'Dispozitiv fara nume'}
           </h3>
           <div className="flex items-center gap-2">
@@ -874,7 +876,6 @@ const DeviceCard = React.memo(({
               <Tag className="w-3 h-3" /> {tag}
             </span>
           ))}
-          <span className="text-[11px] font-medium text-slate-500">ID: {device.id.slice(0, 12)}…</span>
         </div>
       </div>
 
@@ -1194,8 +1195,13 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         </Portal>
       )}
 
-      {/* FILTER CONTROLS */}
-      <div className="hardware-card p-3 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col gap-3 sm:gap-6">
+      {/*
+        FILTRE. Cardul avea 32px de aer pe fiecare latura si 24 intre randuri —
+        pe un laptop, cautarea si filtrele impingeau primul aparat sub marginea
+        de jos a ecranului. Aerul ramane, dar cat sa se vada ca e un grup, nu cat
+        sa tina locul listei.
+      */}
+      <div className="hardware-card p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] flex flex-col gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 w-full">
           <div className="relative flex-1 min-w-0 group">
             <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-500'}`} />
@@ -1258,7 +1264,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
 
       <div className="space-y-4">
         <div ref={listTopRef} className="scroll-mt-4" />
-        <div className="flex items-center justify-between px-2 sm:px-8 py-2 flex-wrap gap-3">
+        <div className="flex items-center justify-between px-2 sm:px-4 py-1 flex-wrap gap-2 sm:gap-3">
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
               {filteredDevices.length}
@@ -1268,17 +1274,17 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 border-2 border-slate-200 rounded-2xl">
               <button
                 onClick={() => changeViewMode('cards')}
-                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
+                className={`p-2 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
                 title="Vizualizare carduri"
                aria-label="Vizualizare carduri">
-                <LayoutGrid className="w-6 h-6" />
+                <LayoutGrid className="w-5 h-5" />
               </button>
               <button
                 onClick={() => changeViewMode('list')}
-                className={`p-3 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
+                className={`p-2 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
                 title="Vizualizare lista compacta"
                aria-label="Vizualizare lista compacta">
-                <Rows3 className="w-6 h-6" />
+                <Rows3 className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -1291,22 +1297,23 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             )}
 
             {/*
-              Export, import and label printing are desk work. On a phone they
-              were four saturated buttons standing between the search box and
-              the first device — and a red "PDF" next to a list where red also
-              means delete. They fold away here and stay inline from sm up.
+              Export, import si etichete sunt treaba de birou, facuta rar.
+              Stateau deschise, cinci butoane colorate intre cautare si primul
+              aparat — pe telefon si pe laptop deopotriva — iar "PDF" era rosu
+              intr-o lista unde rosu inseamna si stergere. Se string acum sub un
+              singur buton, la orice latime: cine le vrea le deschide.
             */}
             <button
               onClick={() => setShowTools(t => !t)}
               aria-expanded={showTools}
-              className="sm:hidden flex items-center gap-2 px-4 py-3 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition active:scale-95 hover:border-slate-300"
             >
               <FileSpreadsheet className="w-4 h-4 shrink-0" />
               Export / Import
               <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${showTools ? 'rotate-180' : ''}`} />
             </button>
 
-            <div className={`${showTools ? 'grid grid-cols-2' : 'hidden'} w-full gap-2 sm:flex sm:w-auto sm:gap-3`}>
+            <div className={`${showTools ? 'grid grid-cols-2 sm:flex sm:flex-wrap' : 'hidden'} w-full gap-2 sm:w-auto sm:gap-3`}>
               <ToolButton
                 onClick={() => exportToExcel(filteredDevices)}
                 disabled={filteredDevices.length === 0}

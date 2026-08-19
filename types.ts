@@ -569,7 +569,7 @@ export const normaliseDeviceStatus = (raw: any): DeviceStatus => {
   if (!s) return DeviceStatus.ACTIVE;
   if (/casat|scos din uz|retired|dezafectat/.test(s)) return DeviceStatus.RETIRED;
   if (/defect|broken|nefunctional|stricat/.test(s)) return DeviceStatus.BROKEN;
-  if (/repar|maintenance|mentenan|service|revizie/.test(s)) return DeviceStatus.MAINTENANCE;
+  if (/repar|repair|maintenance|mentenan|service|revizie/.test(s)) return DeviceStatus.MAINTENANCE;
   return DeviceStatus.ACTIVE;
 };
 

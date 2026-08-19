@@ -74,7 +74,13 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
 
   return (
     <div className="space-y-8 animate-slide-up">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      {/*
+        Sase cifre, sase coloane pe ecran lat. Erau cinci, si a sasea ramanea
+        singura pe un rand nou — un cartonas orfan cat un sfert de ecran. Pe
+        telefon stau doua pe rand: una sub alta insemna sase ecrane de derulat
+        pana la primul lucru care cere ceva de facut.
+      */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
           title="Total Echipamente" value={devices.length}
           icon={<Activity className="w-5 h-5" />} color="text-blue-600" bgColor="bg-blue-50"
@@ -293,16 +299,17 @@ const StatCard = React.memo(({ title, value, icon, note, tone, color, bgColor }:
   title: string; value: number; icon: React.ReactNode;
   note: string; tone: keyof typeof TONES; color: string; bgColor: string;
 }) => (
-  <div className="hardware-card p-6 rounded-[2rem] group hover:border-blue-200 transition-colors">
-    <div className="flex items-center justify-between mb-4">
-      <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${bgColor} ${color}`}>
+  <div className="hardware-card p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] group hover:border-blue-200 transition-colors">
+    <div className="flex items-start justify-between gap-2 mb-3">
+      <div className={`p-2.5 rounded-xl transition-transform group-hover:scale-110 shrink-0 ${bgColor} ${color}`}>
         {icon}
       </div>
-      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${TONES[tone]}`}>{note}</span>
+      {/* Nota se infasoara pe cartonasul ingust de pe telefon in loc sa iasa. */}
+      <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-1 rounded-full text-right leading-tight ${TONES[tone]}`}>{note}</span>
     </div>
     <div>
-      <p className="text-[13px] font-bold text-slate-500 leading-snug min-h-[2.1rem]">{title}</p>
-      <p className="text-4xl font-extrabold text-slate-900 mt-1 tabular-nums tracking-tight">{value}</p>
+      <p className="text-[12px] sm:text-[13px] font-bold text-slate-500 leading-snug min-h-[2.1rem]">{title}</p>
+      <p className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-0.5 tabular-nums tracking-tight">{value}</p>
     </div>
   </div>
 ));
