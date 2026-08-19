@@ -48,7 +48,7 @@ const prefetchModules = () => {
   });
 };
 
-import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS, sePoatePuneLaLoc, NUME_ENTITATE } from './types';
+import { MedicalDevice, MedicalTask, Invoice, Contract, Deletion, ViewState, DeviceStatus, MaintenanceType, TaskStatus, TaskPriority, AppUser, AuditEntry, Referat, FoundationDoc, Comanda, hasPermission, ROLE_LABELS, sePoatePuneLaLoc, NUME_ENTITATE, normaliseDeviceStatus } from './types';
 import { supabase, isSupabaseConfigured, checkConnection, fetchAllRows, upsertInChunks } from './services/supabase';
 import { getAllDevicesFromDB, saveDevicesToDB, deleteDeviceFromDB, getAllTasksFromDB, saveTasksToDB, deleteTaskFromDB, getAllInvoicesFromDB, saveInvoicesToDB, deleteInvoiceFromDB, getAllAuditFromDB, saveAuditToDB, getAllDeletionsFromDB, saveDeletionsToDB, getAllReferateFromDB, saveReferateToDB, deleteReferatFromDB, getAllFoundationDocsFromDB, saveFoundationDocsToDB, deleteFoundationDocFromDB, getAllComenziFromDB, saveComenziToDB, deleteComandaFromDB, getAllContracteFromDB, saveContracteToDB } from './services/storageService';
 import { getCurrentUser, getCachedProfile, signOut as authSignOut, onAuthChange, hasDeviceLock } from './services/authService';
@@ -308,7 +308,7 @@ const App: React.FC = () => {
       id: safeId,
       name: d.name || d.Name || 'Unnamed Asset',
       category: d.category || d.Category || 'Altele',
-      status: d.status || d.Status || DeviceStatus.ACTIVE,
+      status: normaliseDeviceStatus(d.status ?? d.Status),
       department: d.department || d.Department || 'Unassigned',
       manufacturer: d.manufacturer || d.Manufacturer || 'Unknown',
       model: d.model || d.Model || 'N/A',
@@ -441,7 +441,8 @@ const App: React.FC = () => {
       localDevices.forEach(d => deviceMap.set(d.id, d));
       
       // Data Cleanup: Trim departments to unify duplicates
-      const cleanedDevices = (localDevices.length > 0 ? localDevices : MOCK_DEVICES).map(d => ({ ...d, department: (d.department || 'Unassigned').trim() }));
+      const cleanedDevices = (localDevices.length > 0 ? localDevices : MOCK_DEVICES)
+        .map(d => ({ ...d, department: (d.department || 'Unassigned').trim(), status: normaliseDeviceStatus(d.status) }));
       const cleanedTasks = localTasks.map(t => ({ ...t, department: (t.department || 'Unassigned').trim() }));
 
       setDevices(cleanedDevices);

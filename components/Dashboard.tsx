@@ -1,6 +1,6 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, Contract } from '../types';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, Contract, normaliseDeviceStatus } from '../types';
 import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock } from 'lucide-react';
 import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, Termen, FelTermen } from '../services/termene';
 
@@ -21,7 +21,9 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
       [DeviceStatus.BROKEN]: 0,
       [DeviceStatus.RETIRED]: 0,
     };
-    devices.forEach(d => counts[d.status]++);
+    // Prin normalizare: o stare venita dintr-un import nu mai deschide un cos al
+    // ei, cu numaratoarea pornita de la undefined — adica "NaN" sub grafic.
+    devices.forEach(d => counts[normaliseDeviceStatus(d.status)]++);
     return Object.entries(counts).map(([name, value]) => ({ name: DEVICE_STATUS_RO[name as DeviceStatus], value }));
   }, [devices]);
 

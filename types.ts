@@ -552,6 +552,27 @@ export const normaliseInvoiceStatus = (raw: unknown): InvoiceStatus =>
   raw === InvoiceStatus.UPLOADED ? InvoiceStatus.UPLOADED : InvoiceStatus.NOT_UPLOADED;
 
 // Romanian display labels — stored values stay in English so existing data keeps working
+/**
+ * Starea unui aparat, adusa la una dintre cele patru.
+ *
+ * Randurile vin si din importuri Excel, si din baze mai vechi, si de la
+ * recunoasterea automata — cu "In Repair", "in reparatie", "ACTIV" sau cine
+ * stie ce a scris cineva intr-o coloana. O stare din afara listei nu se vedea
+ * nicaieri ca greseala: aparatul lipsea din filtre, purta pe fisa eticheta
+ * scrisa in engleza, iar Panoul aduna un cos in plus si scria "NaN" sub grafic.
+ */
+export const normaliseDeviceStatus = (raw: any): DeviceStatus => {
+  const s = String(raw ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[șş]/g, 's').replace(/[țţ]/g, 't').replace(/[ăâ]/g, 'a').replace(/î/g, 'i')
+    .toLowerCase().trim();
+  if (!s) return DeviceStatus.ACTIVE;
+  if (/casat|scos din uz|retired|dezafectat/.test(s)) return DeviceStatus.RETIRED;
+  if (/defect|broken|nefunctional|stricat/.test(s)) return DeviceStatus.BROKEN;
+  if (/repar|maintenance|mentenan|service|revizie/.test(s)) return DeviceStatus.MAINTENANCE;
+  return DeviceStatus.ACTIVE;
+};
+
 export const DEVICE_STATUS_RO: Record<DeviceStatus, string> = {
   [DeviceStatus.ACTIVE]: 'Activ',
   [DeviceStatus.MAINTENANCE]: 'In mentenanta',
