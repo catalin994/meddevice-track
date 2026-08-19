@@ -462,11 +462,62 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         </div>
       </div>
 
-      {/* Phones get a 3x2 grid so every tab is reachable without horizontal scrolling */}
-      <div className="grid grid-cols-3 sm:flex border-b border-slate-100 px-1 sm:px-8 bg-white sm:overflow-x-auto no-scrollbar shadow-sm z-10">
+      {/*
+        Ce ai de facut cu aparatul, la vedere.
+        Fiecare actiune statea inauntrul unei sectiuni: interventia in Istoric
+        service, documentul in Arhiva, sarcina in Operatiuni, eticheta in
+        Identitate. Ca sa faci ceva trebuia intai sa ghicesti sub ce sectiune se
+        ascunde — si jumatate din sectiuni nici nu se vedeau. Stau acum toate
+        aici, si duc singure la locul lor.
+      */}
+      {!isStandalone && !isEditing && (
+        <div className="px-3 sm:px-8 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap gap-1.5 sm:gap-2">
+          <ActiuneFisa
+            icon={<Wrench className="w-4 h-4 shrink-0" />}
+            text="Adauga interventie"
+            scurt="Interventie"
+            onClick={() => setActiveTab('maintenance')}
+          />
+          <ActiuneFisa
+            icon={<CheckSquare className="w-4 h-4 shrink-0" />}
+            text="Adauga sarcina"
+            scurt="Sarcina"
+            onClick={() => setActiveTab('tasks')}
+          />
+          <ActiuneFisa
+            icon={<Upload className="w-4 h-4 shrink-0" />}
+            text="Incarca document"
+            scurt="Incarca"
+            onClick={() => { setActiveTab('docs'); setTimeout(() => fileInputRef.current?.click(), 60); }}
+          />
+          <ActiuneFisa
+            icon={<Camera className="w-4 h-4 shrink-0" />}
+            text="Scaneaza document"
+            scurt="Scaneaza"
+            onClick={() => setShowDocCapture(true)}
+          />
+          <ActiuneFisa
+            icon={<QrCode className="w-4 h-4 shrink-0" />}
+            text="Eticheta QR"
+            scurt="Eticheta"
+            onClick={() => setActiveTab('qr')}
+          />
+        </div>
+      )}
+
+      {/*
+        Sectiunile fisei, toate la vedere.
+        Pe telefon stau intr-o retea de 3x2. Pe ecran lat erau pe un rand care se
+        derula pe orizontala, cu bara de derulare ascunsa: "Identitate" iesea
+        taiat la marginea din dreapta si "Istoric" nu se vedea deloc — adica trei
+        din sase sectiuni ale unui aparat nu existau pentru cine se uita la ecran.
+        Acum se infasoara pe randul urmator daca nu incap, si nu se mai ascunde
+        nimic.
+      */}
+      <div className="grid grid-cols-3 sm:flex sm:flex-wrap border-b border-slate-100 px-1 sm:px-4 bg-white shadow-sm z-10">
         <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity className="w-4 h-4" />} label="Detalii Tehnice" shortLabel="Detalii" />
         <TabButton active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} icon={<Wrench className="w-4 h-4" />} label="Istoric Service" shortLabel="Service" />
-        <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Arhiva & Documente" shortLabel="Documente" />
+        <TabButton active={activeTab === 'docs'} onClick={() => setActiveTab('docs')} icon={<FileText className="w-4 h-4" />} label="Documente" shortLabel="Documente" />
         <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<CheckSquare className="w-4 h-4" />} label="Operatiuni" shortLabel="Sarcini" />
         <TabButton active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} icon={<QrCode className="w-4 h-4" />} label="Identitate" shortLabel="Cod QR" />
         <TabButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon={<Clock className="w-4 h-4" />} label="Istoric" shortLabel="Istoric" />
@@ -1252,17 +1303,38 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
   </div>
 ));
 
+/**
+ * Un buton din randul de actiuni al fisei.
+ *
+ * Pe telefon poarta forma scurta: cu "Adauga interventie" scris intreg, cele
+ * cinci actiuni cadeau pe patru randuri si impingeau fisa aparatului sub
+ * marginea ecranului.
+ */
+const ActiuneFisa = React.memo(({ icon, text, scurt, onClick }: {
+  icon: React.ReactNode; text: string; scurt: string; onClick: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    aria-label={text}
+    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:border-blue-300 hover:text-blue-700 transition active:scale-95"
+  >
+    {icon}
+    <span className="sm:hidden">{scurt}</span>
+    <span className="hidden sm:inline">{text}</span>
+  </button>
+));
+
 const TabButton = React.memo(({ active, onClick, icon, label, shortLabel }: any) => (
   <button
     onClick={onClick}
-    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-3 px-1 sm:px-8 py-3 sm:py-6 text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all relative whitespace-nowrap ${
+    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2.5 px-1 sm:px-5 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-wide transition-all relative whitespace-nowrap ${
       active ? 'text-blue-600 bg-blue-50/60 sm:bg-transparent' : 'text-slate-500 hover:text-slate-600'
     }`}
   >
     {icon}
     <span className="sm:hidden truncate max-w-full">{shortLabel || label}</span>
     <span className="hidden sm:inline">{label}</span>
-    {active && <div className="absolute bottom-0 left-2 right-2 sm:left-8 sm:right-8 h-1 bg-blue-600 rounded-full shadow-[0_-2px_10px_rgba(37,99,235,0.3)]" />}
+    {active && <div className="absolute bottom-0 left-2 right-2 sm:left-5 sm:right-5 h-1 bg-blue-600 rounded-full shadow-[0_-2px_10px_rgba(37,99,235,0.3)]" />}
   </button>
 ));
 
