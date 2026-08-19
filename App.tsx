@@ -307,6 +307,12 @@ const App: React.FC = () => {
     return devicesMap.get(String(selectedDeviceId).trim()) || null;
   }, [devicesMap, selectedDeviceId]);
 
+  /** Text curat, sau nimic — ca sa nu se salveze siruri goale peste ceva scris. */
+  const txtSauNimic = (v: any): string | undefined => {
+    const t = String(v ?? '').trim();
+    return t ? t : undefined;
+  };
+
   const normalizeDevice = useCallback((d: any): MedicalDevice => {
     const safeId = String(d.id || d.ID || crypto.randomUUID()).trim();
     const files = Array.isArray(d.files) ? d.files : [];
@@ -321,6 +327,7 @@ const App: React.FC = () => {
       manufacturer: d.manufacturer || d.Manufacturer || 'Unknown',
       model: d.model || d.Model || 'N/A',
       serialNumber: d.serialNumber || d.SerialNumber || 'N/A',
+      inventoryNumber: txtSauNimic(d.inventoryNumber ?? d.InventoryNumber ?? d.nr_inv),
       maintenanceHistory: Array.isArray(d.maintenanceHistory) ? d.maintenanceHistory : [],
       contracts: Array.isArray(d.contracts) ? d.contracts : [],
       files: files,

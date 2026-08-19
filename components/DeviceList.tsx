@@ -170,7 +170,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   wb.creator = 'Biomedic';
   wb.created = new Date();
 
-  const TOTAL_COLS = 14;
+  const TOTAL_COLS = 15;
   const statusColor = (status: string) => {
     if (status === 'Active') return 'FF059669';
     if (status === 'In Maintenance') return 'FFD97706';
@@ -194,6 +194,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
     { key: 'mfr',         width: 20 },
     { key: 'model',       width: 18 },
     { key: 'sn',          width: 16 },
+    { key: 'inv',         width: 14 },
     { key: 'dept',        width: 20 },
     { key: 'status',      width: 16 },
     { key: 'purchase',    width: 14 },
@@ -272,7 +273,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ws.addRow([]).height = 8;
 
   // Header row
-  const headers = ['#', 'Denumire echipament', 'Categorie', 'Producator', 'Model', 'Numar serie', 'Departament', 'Status', 'Data achizitiei', 'Expirare garantie', 'Urmatoarea mentenanta', 'CNCAN', 'Note', 'ID (nu modificati)'];
+  const headers = ['#', 'Denumire echipament', 'Categorie', 'Producator', 'Model', 'Numar serie', 'Numar inventar', 'Departament', 'Status', 'Data achizitiei', 'Expirare garantie', 'Urmatoarea mentenanta', 'CNCAN', 'Note', 'ID (nu modificati)'];
   const headerRow = ws.addRow(headers);
   headerRow.height = 30;
   headerRow.eachCell(cell => {
@@ -305,6 +306,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
       device.manufacturer || 'N/A',
       device.model || 'N/A',
       device.serialNumber || 'N/A',
+      device.inventoryNumber || '',
       device.department || 'N/A',
       DEVICE_STATUS_RO[device.status] || device.status || 'N/A',
       device.purchaseDate || '—',
@@ -322,15 +324,16 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
         cell.style = { font: { size: 9, color: { argb: 'FF94A3B8' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else if (col === 2) {
         cell.style = { font: { bold: true, size: 9, name: 'Arial' }, fill, border, alignment: { vertical: 'middle' } };
-      } else if (col === 6) {
+      } else if (col === 6 || col === 7) {
+        // seria si numarul de inventar: monospatiat, ca sa se citeasca cifra cu cifra
         cell.style = { font: { size: 8, name: 'Courier New', color: { argb: 'FF475569' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
-      } else if (col === 8) {
+      } else if (col === 9) {
         cell.style = { font: { bold: true, size: 8, color: { argb: statusColor(device.status) } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
-      } else if (col === 12) {
+      } else if (col === 13) {
         cell.style = { font: { bold: true, size: 8, color: { argb: device.isCNCAN ? 'FFF59E0B' : 'FF94A3B8' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
-      } else if (col >= 9 && col <= 11) {
+      } else if (col >= 10 && col <= 12) {
         cell.style = { font: { size: 8, color: { argb: 'FF64748B' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
-      } else if (col === 14) {
+      } else if (col === 15) {
         cell.style = { font: { size: 7, name: 'Courier New', color: { argb: 'FFCBD5E1' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } }, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else {
         cell.style = { font: { size: 9 }, fill, border, alignment: { vertical: 'middle' } };
@@ -445,6 +448,9 @@ const importFromExcel = (
       const mfrCol       = col('Manufacturer', 'Producator');
       const modelCol     = col('Model');
       const snCol        = col('Serial No.', 'Numar serie');
+      // Registrul spitalului se leaga pe numarul de inventar; se accepta si
+      // formele in care il scrie contabilitatea.
+      const invCol       = col('Numar inventar', 'Numar de inventar', 'Nr. inventar', 'Nr inventar', 'Inventar');
       const deptCol      = col('Department', 'Departament');
       const statusCol    = col('Status');
       const purchaseCol  = col('Purchase Date', 'Data achizitiei');
@@ -490,6 +496,7 @@ const importFromExcel = (
           manufacturer:        String(row[mfrCol]      ?? '').trim() || existing?.manufacturer || '',
           model:               String(row[modelCol]    ?? '').trim() || existing?.model || '',
           serialNumber:        String(row[snCol]       ?? '').trim() || existing?.serialNumber || '',
+          inventoryNumber:     invCol !== -1 ? (String(row[invCol] ?? '').trim() || existing?.inventoryNumber) : existing?.inventoryNumber,
           department:          String(row[deptCol]     ?? 'Nealocat').trim(),
           status:              Object.values(DeviceStatus).includes(status) ? status : DeviceStatus.ACTIVE,
           purchaseDate:        purchase || existing?.purchaseDate || new Date().toISOString().split('T')[0],
@@ -865,6 +872,15 @@ const DeviceCard = React.memo(({
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Serie</span>
             <span className="text-[15px] font-mono font-bold text-slate-900">{device.serialNumber || 'N/A'}</span>
           </div>
+          {device.inventoryNumber && (
+            <>
+              <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Inventar</span>
+                <span className="text-[15px] font-mono font-bold text-slate-900">{device.inventoryNumber}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1013,10 +1029,14 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       const model = (d.model || '').toLowerCase();
       const dept = (d.department || '').toLowerCase();
       const cat = (d.category || '').toLowerCase();
+      // Numarul de inventar e cel dupa care se cauta un aparat la o inventariere:
+      // pe eticheta lipita de aparat scrie el, nu seria.
+      const inv = (d.inventoryNumber || '').toLowerCase();
 
       const matchSearch = !effectiveSearch || 
         name.includes(effectiveSearch) || 
         sn.includes(effectiveSearch) ||
+        inv.includes(effectiveSearch) ||
         mfr.includes(effectiveSearch) ||
         model.includes(effectiveSearch) ||
         dept.includes(effectiveSearch) ||
@@ -1207,7 +1227,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-500'}`} />
             <input 
               type="text"
-              placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, categorie, serie sau departament...'}
+              placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, serie, numar de inventar, categorie sau sectie...'}
               className="w-full pl-10 sm:pl-14 pr-3 sm:pr-6 py-3 sm:py-4 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl sm:rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}

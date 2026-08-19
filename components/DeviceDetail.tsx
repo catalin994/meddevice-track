@@ -62,6 +62,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     manufacturer: device.manufacturer,
     model: device.model,
     serialNumber: device.serialNumber,
+    inventoryNumber: device.inventoryNumber || '',
     department: device.department,
     status: device.status,
     isCNCAN: !!device.isCNCAN,
@@ -90,6 +91,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         manufacturer: device.manufacturer,
         model: device.model,
         serialNumber: device.serialNumber,
+    inventoryNumber: device.inventoryNumber || '',
         department: device.department,
         status: device.status,
         isCNCAN: !!device.isCNCAN,
@@ -363,7 +365,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 .filter(d => d.id !== device.id)
                 .filter(d => {
                   const q = cautaAparat.toLowerCase().trim();
-                  return !q || `${d.name} ${d.serialNumber} ${d.department} ${d.model}`.toLowerCase().includes(q);
+                  return !q || `${d.name} ${d.serialNumber} ${d.inventoryNumber || ''} ${d.department} ${d.model}`.toLowerCase().includes(q);
                 })
                 .slice(0, 200)
                 .map(d => {
@@ -544,6 +546,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            <input name="serialNumber" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={editForm.serialNumber} onChange={handleEditChange} />
                         </div>
                         <div className="space-y-1">
+                           <label className="tech-label ml-1">Numar de inventar</label>
+                           <input name="inventoryNumber" placeholder="cel din registrul de mijloace fixe"
+                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors"
+                             value={editForm.inventoryNumber || ''} onChange={handleEditChange} />
+                        </div>
+                        <div className="space-y-1">
                            <label className="tech-label ml-1">Categorie</label>
                            <div className="relative">
                               <select name="category" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none appearance-none focus:border-blue-500 transition-colors" value={editForm.category} onChange={handleEditChange}>
@@ -602,6 +610,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    ) : (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 xl:gap-x-12 gap-y-4 sm:gap-y-6">
                         <InfoRow label="Numar serie" value={device.serialNumber} badge />
+                        <InfoRow label="Numar de inventar" value={device.inventoryNumber || '—'} badge={!!device.inventoryNumber} />
                         <InfoRow label="Model" value={device.model} />
                         <InfoRow label="Departament" value={device.department} />
                         <InfoRow label="Categorie" value={device.category} />

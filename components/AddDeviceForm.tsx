@@ -31,6 +31,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     manufacturer: '',
     model: '',
     serialNumber: '',
+    inventoryNumber: '',
     department: HOSPITAL_DEPARTMENTS[0] as string,
     customDepartment: '',
     purchaseDate: new Date().toISOString().split('T')[0],
@@ -115,12 +116,25 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     return devices.find(d => (d.serialNumber || '').trim().toLowerCase() === s) || null;
   }, [devices, formData.serialNumber]);
 
+  /**
+   * Acelasi lucru pentru numarul de inventar.
+   *
+   * El e cheia din registrul spitalului si e unic prin definitie, deci o
+   * potrivire aici inseamna sigur acelasi aparat — spre deosebire de serie,
+   * care mai lipseste sau mai e tastata gresit.
+   */
+  const inventarulLuat = useMemo(() => {
+    const s = (formData.inventoryNumber || '').trim().toLowerCase();
+    if (!s) return null;
+    return devices.find(d => (d.inventoryNumber || '').trim().toLowerCase() === s) || null;
+  }, [devices, formData.inventoryNumber]);
+
   /** Aparatul care asteapta confirmarea, cand seria e deja luata. */
   const [intrebSeria, setIntrebSeria] = useState<MedicalDevice | null>(null);
 
   const handleSingleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (seriaLuata && !intrebSeria) { setIntrebSeria(seriaLuata); return; }
+    if ((seriaLuata || inventarulLuat) && !intrebSeria) { setIntrebSeria(seriaLuata || inventarulLuat); return; }
     setIntrebSeria(null);
     setIsSubmitting(true);
     const finalDept = (formData.department || 'Nealocat').trim();
@@ -133,6 +147,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       manufacturer: formData.manufacturer,
       model: formData.model,
       serialNumber: formData.serialNumber,
+      inventoryNumber: formData.inventoryNumber.trim() || undefined,
       department: finalDept,
       purchaseDate: formData.purchaseDate,
       nextMaintenanceDate: calculateNextMaintenanceDate(formData.purchaseDate, formData.category),
@@ -152,7 +167,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     
     await onSave(newDevice);
     setIsSubmitting(false);
-  }, [formData, onSave, seriaLuata, intrebSeria]);
+  }, [formData, onSave, seriaLuata, inventarulLuat, intrebSeria]);
 
   const handleGenerateBatch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -279,6 +294,12 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
                     ? `Seria asta e deja pe "${seriaLuata.name}" (${seriaLuata.department || 'fara sectie'}). Doua fise pentru acelasi aparat ii rup istoricul in doua.`
                     : ''} />
               )}
+              {activeTab === 'single' && (
+                <FormField label="Numar de inventar" name="inventoryNumber" value={formData.inventoryNumber} onChange={handleChange}
+                  avertisment={inventarulLuat
+                    ? `Numarul asta de inventar e deja pe "${inventarulLuat.name}" (${inventarulLuat.department || 'fara sectie'}). Numarul de inventar e unic in registru — foarte probabil e acelasi aparat.`
+                    : ''} />
+              )}
               <div className="space-y-2">
                 <DepartmentPicker
                   value={formData.department}
@@ -300,10 +321,11 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       <ConfirmDialog
         open={!!intrebSeria}
         tone="neutral"
-        title="Seria exista deja"
+        title={inventarulLuat && !seriaLuata ? 'Numarul de inventar exista deja' : 'Seria exista deja'}
         icon={<AlertTriangle className="w-8 h-8" />}
         body={<>
-          Seria <span className="font-black text-slate-900">{formData.serialNumber}</span> e trecuta pe{' '}
+          {inventarulLuat && !seriaLuata ? 'Numarul de inventar ' : 'Seria '}
+          <span className="font-black text-slate-900">{inventarulLuat && !seriaLuata ? formData.inventoryNumber : formData.serialNumber}</span> e trecut(a) pe{' '}
           <span className="font-black text-slate-900">{intrebSeria?.name}</span>
           {intrebSeria?.department ? `, ${intrebSeria.department}` : ''}.
           Doua fise pentru acelasi aparat ii rup istoricul in doua si incurca potrivirea facturilor,

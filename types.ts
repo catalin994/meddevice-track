@@ -472,6 +472,14 @@ export interface MedicalDevice {
   manufacturer: string;
   model: string;
   serialNumber: string;
+  /**
+   * Numarul de inventar din registrul de mijloace fixe.
+   *
+   * E cheia dupa care se leaga toata evidenta spitalului: Anexa 6, registrul
+   * contabil, listele de casare. Il are fiecare aparat si e unic, spre deosebire
+   * de serie, care lipseste de pe aproape o treime din ele.
+   */
+  inventoryNumber?: string;
   department: string;
   purchaseDate: string;
   warrantyExpiration?: string;

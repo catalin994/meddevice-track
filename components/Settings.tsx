@@ -279,6 +279,7 @@ CREATE TABLE IF NOT EXISTS public.devices (
     manufacturer TEXT,
     model TEXT,
     "serialNumber" TEXT,
+    "inventoryNumber" TEXT,
     department TEXT,
     "purchaseDate" TEXT,
     "warrantyExpiration" TEXT,
@@ -470,6 +471,11 @@ END $$;
 
 -- ── 3. COMPLETEAZA coloanele lipsa (pentru instalari partiale) ───────────────
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "serialNumber" TEXT;
+-- Numarul de inventar din registrul de mijloace fixe: cheia dupa care se leaga
+-- Anexa 6, evidenta contabila si listele de casare. Il are fiecare aparat si e
+-- unic, spre deosebire de serie, care lipseste de pe aproape o treime din ele.
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "inventoryNumber" TEXT;
+CREATE INDEX IF NOT EXISTS devices_inventar_idx ON public.devices ("inventoryNumber");
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "purchaseDate" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "warrantyExpiration" TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "nextMaintenanceDate" TEXT;
