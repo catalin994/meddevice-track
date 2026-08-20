@@ -1107,6 +1107,31 @@ const App: React.FC = () => {
       handleUpsertInvoice, handleUpsertReferat, handleUpsertFoundationDoc, handleUpsertComanda]);
 
   /**
+   * Muta aparatele si tichetele de la niste nume de sectie la unul singur.
+   *
+   * Scrie prin caile obisnuite de salvare, deci trece si prin jurnal, si prin
+   * sincronizare. Se face intr-o singura salvare pentru aparate si una pentru
+   * tichete: cateva sute de randuri salvate unul cate unul ar fi insemnat
+   * cateva sute de cereri.
+   */
+  const handleUnesteSectii = useCallback(async (dela: string[], la: string) => {
+    const vechi = new Set(dela.map(s => String(s || '').trim()).filter(Boolean));
+    const nou = String(la || '').trim();
+    if (!nou || vechi.size === 0) return;
+
+    const aparate = devices.filter(d => vechi.has(String(d.department || '').trim()));
+    const tichete = tasks.filter(t => vechi.has(String(t.department || '').trim()));
+    if (aparate.length === 0 && tichete.length === 0) return;
+
+    if (aparate.length) await handleUpsertDevices(aparate.map(d => ({ ...d, department: nou })));
+    if (tichete.length) await handleUpsertTasks(tichete.map(t => ({ ...t, department: nou })));
+
+    logAudit('update', 'device', 'sectii', `${[...vechi].join(', ')} -> ${nou}`,
+      `${aparate.length} aparate, ${tichete.length} tichete`);
+    notify(`${aparate.length + tichete.length} inregistrari mutate pe "${nou}"`, 'success');
+  }, [devices, tasks, handleUpsertDevices, handleUpsertTasks, logAudit]);
+
+  /**
    * Moves documents that are still inline base64 into Storage.
    *
    * Every one of them is downloaded by every phone on every sync while it sits
@@ -1511,6 +1536,8 @@ const App: React.FC = () => {
                     deletions={deletions}
                     onRestore={handleRestoreDeletion}
                     canDelete={canDelete}
+                    onUnesteSectii={handleUnesteSectii}
+                    canEdit={canEdit}
                   />
                 )}
               </Suspense>

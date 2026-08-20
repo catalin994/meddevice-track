@@ -1,6 +1,7 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
+import UnesteSectii from './UnesteSectii';
 import { notify } from '../services/notices';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice, MedicalTask, Referat, FoundationDoc, Comanda, Deletion, sePoatePuneLaLoc, NUME_ENTITATE, ZILE_IN_COS } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
@@ -47,12 +48,15 @@ interface SettingsProps {
   deletions?: Deletion[];
   onRestore?: (d: Deletion) => void | Promise<void>;
   canDelete?: boolean;
+  /** Aduce la un singur nume sectiile scrise in mai multe feluri. */
+  onUnesteSectii?: (dela: string[], la: string) => Promise<void> | void;
+  canEdit?: boolean;
 }
 
 const Settings: React.FC<SettingsProps> = ({
   devices, invoices = [], tasks = [], referate = [], foundationDocs = [], comenzi = [],
   onImport, auditLog = [], currentUser = null, onMigrateFiles,
-  deletions = [], onRestore, canDelete = false,
+  deletions = [], onRestore, canDelete = false, onUnesteSectii, canEdit = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState(getSupabaseConfig());
@@ -888,6 +892,11 @@ NOTIFY pgrst, 'reload schema';
           );
         })()}
       </div>
+
+      {/* ── SECTII CARE SE REPETA ── */}
+      {onUnesteSectii && (
+        <UnesteSectii devices={devices} tasks={tasks} onUneste={onUnesteSectii} canEdit={canEdit} />
+      )}
 
       {/* ── COSUL DE STERGERI ── */}
       {onRestore && (() => {
