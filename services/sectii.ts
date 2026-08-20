@@ -14,16 +14,30 @@ import { MedicalDevice, MedicalTask } from '../types';
  * cuvintele de umplutura, ramane acelasi text.
  */
 
-/** Cuvinte care nu deosebesc o sectie de alta. */
+/**
+ * Cuvinte care nu deosebesc o sectie de alta.
+ *
+ * "Cabinet" nu e printre ele, si nici "laborator". Cabinetul de cardiologie din
+ * ambulatoriu si sectia de cardiologie sunt doua locuri diferite, cu alte
+ * aparate si cu alt om care raspunde de ele; unite, aparatele unuia ar aparea
+ * la celalalt. Cuvantul ramane in cheie, dar scris la fel de fiecare data.
+ */
 const UMPLUTURA = new Set([
   'sectia', 'sectie', 'sec', 'compartimentul', 'compartiment', 'comp',
-  'cabinetul', 'cabinet', 'cab', 'laboratorul', 'laborator', 'lab',
   'serviciul', 'serviciu', 'serv', 'unitatea', 'unitate', 'clinica', 'clinic',
   'de', 'si', 'a', 'al', 'ale', 'cu', 'din', 'pentru', 'la',
 ]);
 
 /** Prescurtari care inseamna acelasi lucru cu forma intreaga. */
 const SINONIME: Record<string, string> = {
+  // Cabinetul si laboratorul raman in cheie, dar scrise la fel: "Cab. ORL",
+  // "CABINETUL ORL" si "Cabinet O.R.L." sunt acelasi cabinet.
+  cab: 'cabinet',
+  cabinetul: 'cabinet',
+  cabinete: 'cabinet',
+  lab: 'laborator',
+  laboratorul: 'laborator',
+  laboratoare: 'laborator',
   ati: 'anestezie terapie intensiva',
   ti: 'terapie intensiva',
   upu: 'unitate primiri urgente',
