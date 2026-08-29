@@ -53,7 +53,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
   };
 
   return (
-    <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+    <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
       <div className="flex items-center gap-3 sm:gap-5 mb-6">
         <div className="p-3 sm:p-5 bg-indigo-100 text-indigo-600 rounded-2xl sm:rounded-3xl shrink-0">
           <Building2 className="w-7 h-7 sm:w-10 sm:h-10" />

@@ -215,17 +215,14 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
-      {/* Header & Global Controls */}
-      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-6 sm:gap-8">
-        <div className="flex-1">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center gap-4 tracking-tight">
-            <div className="p-3 sm:p-4 shrink-0 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
-              <CalendarDays className="w-6 h-6 sm:w-8 sm:h-8" />
-            </div>
-            Planificator Mentenanta
-          </h2>
-          <p className="text-slate-500 mt-2 font-medium max-w-xl text-sm">
-            Programeaza manual interventiile de service si protocoalele de mentenanta pentru echipamente.
+      {/*
+        Fara titlul repetat: in antetul aplicatiei scrie deja "MENTENANTA", chiar
+        deasupra. Ramane o linie care spune la ce foloseste ecranul, si uneltele.
+      */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">
+            Programeaza interventiile de service si protocoalele de mentenanta
           </p>
         </div>
 
@@ -244,7 +241,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
             <input 
               type="text"
-              placeholder="Cauta dupa nume, model, serie sau departament..."
+              placeholder="Cauta aparat, model sau serie..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold shadow-inner"
@@ -260,10 +257,12 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
             <button 
               onClick={commitAllSchedules}
               disabled={modifiedCount === 0}
-              className={`px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-2xl active:scale-95 whitespace-nowrap ${
-                modifiedCount > 0 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-slate-100 text-slate-500 cursor-not-allowed'
+              /* Umbra grea doar cand butonul chiar face ceva: gol, arata la fel
+                 de apasat ca unul activ, si se apasa degeaba. */
+              className={`px-5 sm:px-8 py-3.5 sm:py-4 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 sm:gap-3 active:scale-95 whitespace-nowrap ${
+                modifiedCount > 0
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
+                  : 'bg-slate-50 text-slate-400 border-2 border-slate-200 cursor-not-allowed'
               }`}
             >
               <Save className="w-5 h-5" /> Aplica Tot ({modifiedCount})
@@ -374,7 +373,7 @@ const MaintenanceCard = React.memo(({
 
   return (
     <div 
-      className={`bg-white p-6 rounded-[2.5rem] border-2 transition-all relative overflow-hidden group flex flex-col ${
+      className={`bg-white p-6 rounded-[2rem] border-2 transition-all relative overflow-hidden group flex flex-col ${
         draft.isModified 
           ? 'border-blue-400 shadow-2xl shadow-blue-500/10 bg-blue-50/10' 
           : 'border-slate-100 shadow-sm hover:border-slate-200'

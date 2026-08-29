@@ -79,7 +79,7 @@ const MaintenanceCalendar: React.FC<MaintenanceCalendarProps> = ({ devices, onRe
   const selectedDevices = selectedDay ? (byDate.get(selectedDay) || []) : [];
 
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
       {/* Calendar header */}
       <div className="p-6 sm:p-8 flex items-center justify-between border-b border-slate-100">
         <div className="flex items-center gap-3">

@@ -69,7 +69,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="confirm-title"
-          className="hardware-card p-6 sm:p-10 max-w-lg w-full text-center rounded-3xl sm:rounded-[2.5rem] shadow-2xl animate-slide-up"
+          className="hardware-card p-6 sm:p-10 max-w-lg w-full text-center rounded-3xl shadow-2xl animate-slide-up"
         >
           <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-7 ${
             danger ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-600'

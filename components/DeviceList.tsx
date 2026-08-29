@@ -1169,7 +1169,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       {editingDevice && (
         <Portal>
         <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
-          <div className="hardware-card p-5 sm:p-10 w-full max-w-xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl animate-slide-up modal-shell overflow-y-auto overscroll-contain custom-scrollbar">
+          <div className="hardware-card p-5 sm:p-10 w-full max-w-xl rounded-3xl shadow-2xl animate-slide-up modal-shell overflow-y-auto overscroll-contain custom-scrollbar">
              <div className="flex justify-between items-center mb-8">
                 <div>
                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Editare rapida</h3>
@@ -1447,7 +1447,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           )}
 
           {filteredDevices.length === 0 && (
-            <div className="hardware-card py-32 text-center rounded-[2.5rem]">
+            <div className="hardware-card py-32 text-center rounded-[2rem]">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
                 <Box className="w-10 h-10 text-slate-200" />
               </div>

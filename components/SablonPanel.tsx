@@ -95,7 +95,7 @@ const SablonPanel: React.FC<{ fel: FelSablon; titlu: string }> = ({ fel, titlu }
       {deschis && (
         <Portal>
           <div className="fixed inset-0 z-[620] scrim flex items-center justify-center p-0 sm:p-6">
-            <div className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
+            <div className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
               <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 shrink-0">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Sablon Word</h3>

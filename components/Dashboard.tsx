@@ -130,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
         doar la mentenanta; restul ceasurilor ticaiau nevazute.
       */}
       {termene.length > 0 && (
-        <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
+        <div className="hardware-card p-5 sm:p-10 rounded-3xl">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
             <div>
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Termene care expira</h3>
@@ -178,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
+        <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
             <div>
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea dispozitivelor medicale</h3>
@@ -194,7 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
           </Suspense>
         </div>
 
-        <div className="lg:col-span-5 hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
+        <div className="lg:col-span-5 hardware-card p-5 sm:p-10 rounded-3xl">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
             <div>
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Interventii Prioritare</h3>
@@ -212,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
           </div>
           <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
             {dispatchTasks.map(task => (
-              <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-all duration-300">
+              <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-sm hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-all duration-300">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">{task.title}</p>
@@ -238,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
         </div>
       </div>
 
-      <div className="hardware-card p-5 sm:p-10 rounded-3xl sm:rounded-[2.5rem]">
+      <div className="hardware-card p-5 sm:p-10 rounded-3xl">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
           <div>
             <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Monitor Mentenante</h3>
@@ -251,7 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
         
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
           {upcomingMaintenance.map(device => (
-            <div key={device.id} className="p-4 sm:p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center gap-3 sm:gap-4 group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
+            <div key={device.id} className="p-4 sm:p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center gap-3 sm:gap-4 group hover:bg-white hover:shadow-sm hover:shadow-slate-200/50 transition-all duration-300">
               <div className={`p-3 shrink-0 rounded-2xl transition-transform group-hover:scale-110 ${device.daysRemaining < 0 ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : device.daysRemaining < 7 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
                 <Clock className="w-5 h-5" />
               </div>
@@ -268,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
             </div>
           ))}
           {upcomingMaintenance.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+            <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
               <p className="text-sm font-semibold text-slate-500">Totul operational. Nicio mentenanta programata.</p>
             </div>

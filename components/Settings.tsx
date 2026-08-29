@@ -597,7 +597,7 @@ NOTIFY pgrst, 'reload schema';
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
       
       {/* CLOUD CONNECTION PANEL */}
-      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
         {/*
           Iconita se micsoreaza pe telefon si subtitlul nu mai e scris cu spatii
           intre litere acolo: "INFRASTRUCTURA GLOBALA DE DATE" cadea pe trei
@@ -675,7 +675,7 @@ NOTIFY pgrst, 'reload schema';
       </div>
 
       {/* SQL SCHEMA FIX */}
-      <div className="bg-slate-900 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-white/10 shadow-xl relative overflow-hidden">
+      <div className="bg-slate-900 p-5 sm:p-8 rounded-3xl border border-white/10 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Terminal className="w-40 h-40 text-blue-400" />
         </div>
@@ -777,7 +777,7 @@ NOTIFY pgrst, 'reload schema';
 
 
       {/* CAT LOC MAI E PENTRU FISIERE */}
-      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-5 min-w-0">
             <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl"><HardDrive className="w-10 h-10" /></div>
@@ -911,7 +911,7 @@ NOTIFY pgrst, 'reload schema';
           .filter(d => sePoatePuneLaLoc(d, acum))
           .sort((a, b) => (b.deletedAt || '').localeCompare(a.deletedAt || ''));
         return (
-          <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+          <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
             <div className="flex items-center gap-5 mb-6">
               <div className="p-5 bg-amber-100 text-amber-600 rounded-3xl">
                 <Trash2 className="w-10 h-10" />
@@ -973,7 +973,7 @@ NOTIFY pgrst, 'reload schema';
 
       {/* FILE STORAGE MIGRATION */}
       {onMigrateFiles && (
-        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
           <div className="flex items-center gap-5 mb-6">
             <div className="p-5 bg-emerald-100 text-emerald-600 rounded-3xl">
               <HardDrive className="w-10 h-10" />
@@ -1034,7 +1034,7 @@ NOTIFY pgrst, 'reload schema';
       )}
 
       {/* SCAN QUALITY */}
-      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-5 mb-6">
           <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl">
             <Camera className="w-10 h-10" />
@@ -1078,7 +1078,7 @@ NOTIFY pgrst, 'reload schema';
 
       {/* USER MANAGEMENT — admin only */}
       {canManageUsers && (
-        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
           <div className="flex items-center gap-5 mb-8">
             <div className="p-5 bg-indigo-100 text-indigo-600 rounded-3xl">
               <Users className="w-10 h-10" />
@@ -1158,7 +1158,7 @@ NOTIFY pgrst, 'reload schema';
       )}
 
       {/* AUDIT LOG */}
-      <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-5 mb-8">
           <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl">
             <Clock className="w-10 h-10" />
@@ -1193,7 +1193,7 @@ NOTIFY pgrst, 'reload schema';
 
       {/* RECOVERY HUB */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-blue-900 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
+        <div className="bg-blue-900 p-5 sm:p-8 rounded-3xl border border-blue-800 shadow-2xl relative overflow-hidden flex flex-col justify-between h-full">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
             <Wand2 className="w-40 h-40 text-white" />
           </div>
@@ -1220,7 +1220,7 @@ NOTIFY pgrst, 'reload schema';
           </div>
         </div>
 
-        <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-full">
+        <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between h-full">
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">

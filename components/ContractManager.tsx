@@ -329,7 +329,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <button onClick={() => setDeschis(null)}
@@ -385,7 +385,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
         </div>
 
         {/* ── cat s-a facturat, cat a ramas ── */}
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -448,7 +448,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── aparatele ── */}
-          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
               Aparate care fac obiectul contractului ({acoperite.length})
             </h3>
@@ -476,7 +476,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
           </div>
 
           {/* ── facturile ── */}
-          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
               Facturi pe acest contract ({aleLui.length})
             </h3>
@@ -520,7 +520,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
@@ -545,7 +545,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             role="button" tabIndex={0}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDeschis(contract.contractNumber); } }}
             aria-label={`Deschide contractul ${contract.contractNumber}`}
-            className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer text-left">
+            className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-sm transition-all group relative overflow-hidden cursor-pointer text-left">
             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                <ShieldCheck className="w-32 h-32 text-indigo-900" />
             </div>
@@ -808,7 +808,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                   </div>
 
                   <div className="lg:col-span-5 space-y-6">
-                     <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-slate-100 h-full flex flex-col">
+                     <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl border border-slate-100 h-full flex flex-col">
                         <div className="mb-6">
                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                               <Plus className="w-5 h-5 text-indigo-600" /> Asociaza Dispozitive

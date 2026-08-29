@@ -811,16 +811,20 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header + tabs */}
-      <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+      {/*
+        Titlul paginii scrie deja "FINANCIAR" in antetul aplicatiei, chiar
+        deasupra. Repetat aici, cu iconita si subtitlu, manca o suta de pixeli
+        din care nu se afla nimic nou. Ramane doar randul de treaba: butoanele
+        si sectiunile.
+      */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+            <div className="hidden">
               <Wallet className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl sm:text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Financiar</h2>
-              <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Dosarul achizitiei, de la referat la factura</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Dosarul achizitiei, de la referat la factura</p>
             </div>
           </div>
           <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' || tab === 'COMENZI' || tab === 'DOSARE' ? 'hidden' : 'flex'}`}>
@@ -847,7 +851,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-8">
+        <div className="flex flex-wrap gap-2 mt-4">
           {([
             ['OVERVIEW', 'Sumar', TrendingUp, 'Sumar'],
             ['DOSARE', 'Dosare achizitie', FolderTree, 'Dosare'],
@@ -878,7 +882,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             <KpiCard icon={<Landmark className="w-5 h-5" />} label="Contracte / an" value={`${fmt(totals.contractsAnnual)}`} tone="indigo" />
           </div>
 
-          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Cheltuieli lunare</h3>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Ultimele 12 luni · {dominantCurrency}</span>
@@ -890,7 +894,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Expiring contracts */}
-            <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <CalendarClock className="w-4 h-4 text-amber-500" /> Contracte care expira (90 zile)
               </h3>
@@ -915,7 +919,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             </div>
 
             {/* Top devices by cost */}
-            <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-500" /> Top dispozitive dupa cost
               </h3>
@@ -972,7 +976,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           <div ref={topRef} className="scroll-mt-4" />
 
           {filteredInvoices.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+            <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
               <Receipt className="w-16 h-16 text-slate-100 mb-4" />
               <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Nicio factura inregistrata</p>
               <button onClick={openNew} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">+ Adauga prima factura</button>
@@ -1121,7 +1125,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       {bulkDrafts && (
         <Portal>
         <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div className="min-w-0">
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Facturile din folder</h3>
@@ -1461,7 +1465,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
       {isEditing && (
         <Portal>
         <div className="fixed inset-0 z-[500] scrim flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl modal-shell overflow-hidden flex flex-col animate-fade-in">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl modal-shell overflow-hidden flex flex-col animate-fade-in">
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">{editingId ? 'Editeaza Factura' : 'Factura Noua'}</h3>

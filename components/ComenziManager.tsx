@@ -246,7 +246,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
   const formularul = editez && (
     <Portal>
       <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-0 sm:p-6">
-        <div className="bg-white w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
+        <div className="bg-white w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
           <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 shrink-0">
             <div>
               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
@@ -449,7 +449,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <button onClick={() => setDeschis(null)}
@@ -512,7 +512,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
         </div>
 
         {/* ── ce se intampla cu comanda ── */}
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Valoarea comenzii</p>
@@ -560,7 +560,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── pozitiile ── */}
-          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
               Ce s-a comandat ({items.length})
             </h3>
@@ -598,7 +598,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
           </div>
 
           {/* ── facturile ── */}
-          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
               Facturi pe aceasta comanda ({facturi.length})
             </h3>
@@ -659,7 +659,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
       <div ref={topRef} className="scroll-mt-4" />
       {filtrate.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+        <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <ShoppingCart className="w-16 h-16 text-slate-100 mb-4" />
           <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
             {comenzi.length === 0 ? 'Nicio comanda inregistrata' : 'Nicio comanda gasita'}
@@ -675,7 +675,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
             return (
               <button key={c.id} onClick={() => setDeschis(c.id)}
                 aria-label={`Deschide comanda ${c.number}`}
-                className="w-full text-left bg-white p-4 sm:p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition flex flex-col sm:flex-row sm:items-center gap-4">
+                className="w-full text-left bg-white p-4 sm:p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-sm transition flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="p-3 bg-slate-50 text-slate-600 rounded-2xl shrink-0">
                   <Package className="w-6 h-6" />
                 </div>

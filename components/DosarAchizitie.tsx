@@ -103,7 +103,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
 
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-slate-100">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
           <button onClick={() => setDeschis(null)}
             className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
             ← Inapoi la dosare
@@ -147,7 +147,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
         </div>
 
         {/* ── banii ── */}
-        <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { et: 'Cerut prin referat', v: cerut, ton: 'bg-slate-50 text-slate-900' },
@@ -228,7 +228,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
 
       <div ref={topRef} className="scroll-mt-4" />
       {filtrate.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+        <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <FolderOpen className="w-16 h-16 text-slate-100 mb-4" />
           <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
             {referate.length === 0 ? 'Niciun referat inregistrat' : 'Niciun dosar gasit'}
@@ -243,7 +243,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
             return (
               <button key={r.id} onClick={() => setDeschis(r.id)}
                 aria-label={`Deschide dosarul referatului ${r.number}`}
-                className="w-full text-left bg-white p-4 sm:p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition flex flex-col sm:flex-row sm:items-center gap-4">
+                className="w-full text-left bg-white p-4 sm:p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-sm transition flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="p-3 bg-slate-50 text-slate-600 rounded-2xl shrink-0">
                   <FileSignature className="w-6 h-6" />
                 </div>
@@ -284,7 +284,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
 const Sectiune: React.FC<{ titlu: string; gol: string; children: React.ReactNode }> = ({ titlu, gol, children }) => {
   const are = React.Children.count(children) > 0;
   return (
-    <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] shadow-sm border border-slate-100">
+    <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
       <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">{titlu}</h3>
       {are ? <div className="space-y-2">{children}</div> : (
         <p className="text-[13px] font-bold text-slate-500 leading-relaxed flex items-start gap-2">

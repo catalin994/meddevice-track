@@ -178,7 +178,7 @@ const BugetPanel: React.FC<Props> = ({ docs, invoices, moneda }) => {
       )}
 
       {vizibile.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+        <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <Landmark className="w-16 h-16 text-slate-100 mb-4" />
           <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
             {randuri.length === 0 ? `Nimic inregistrat pe ${an === 'TOT' ? 'niciun an' : an}` : 'Niciun articol gasit'}

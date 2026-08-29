@@ -556,7 +556,7 @@ const FoundationDocManager: React.FC<Props> = ({
       </div>
 
       {filtrate.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-[2.5rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
+        <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <FolderOpen className="w-16 h-16 text-slate-100 mb-4" />
           <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
             {docs.length === 0 ? 'Niciun document de fundamentare' : 'Niciun document gasit'}
@@ -664,7 +664,7 @@ const FoundationDocManager: React.FC<Props> = ({
           */}
           <div className="fixed inset-0 z-[600] scrim flex items-center justify-center p-0 sm:p-6">
             <form onSubmit={salveaza}
-              className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-[2.5rem] shadow-2xl animate-slide-up">
+              className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
               <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
