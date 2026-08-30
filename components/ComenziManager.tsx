@@ -249,10 +249,10 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
         <div className="bg-white w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
           <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 shrink-0">
             <div>
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
                 {idEditat ? 'Modifica comanda' : 'Comanda noua'}
               </h3>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">
                 {idEditat ? `Nr. com. ${form.number}` : 'Catre furnizor'}
               </p>
             </div>
@@ -266,7 +266,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
             <div className="bg-slate-900 p-5 rounded-2xl text-white">
               <div className="flex items-center gap-3 mb-2">
                 <FileText className="w-5 h-5 text-blue-400" />
-                <h4 className="text-sm font-black uppercase tracking-widest">Comanda in PDF</h4>
+                <h4 className="text-sm font-black tracking-tight">Comanda in PDF</h4>
               </div>
               <p className="text-[12px] font-semibold text-slate-300 leading-relaxed mb-4">
                 Se ataseaza si se citesc din ea numarul, data, furnizorul, referatul, gestiunea,
@@ -275,7 +275,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
               <input ref={pdfRef} type="file" accept="application/pdf" onChange={incarcaPdf} className="hidden" />
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" onClick={() => pdfRef.current?.click()} disabled={citeste}
-                  className="px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
+                  className="px-5 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
                   {citeste ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                   {citeste ? 'Se citeste...' : form.fileName ? 'Alege alt PDF' : 'Incarca PDF-ul comenzii'}
                 </button>
@@ -285,7 +285,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
               {randuriCitite.length > 0 && (
                 <div className="mt-3">
                   <button type="button" onClick={() => setAratRanduri(v => !v)}
-                    className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition">
+                    className="text-[11px] font-black text-slate-400 uppercase tracking-wide hover:text-white transition">
                     {aratRanduri ? 'Ascunde' : 'Vezi'} textul citit ({randuriCitite.length} randuri)
                   </button>
                   {aratRanduri && (
@@ -356,13 +356,13 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
             {/* ── pozitiile, cu ce a venit din fiecare ── */}
             <div className="p-4 sm:p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">
                   Pozitiile comenzii ({form.items.length})
                 </p>
                 <button type="button"
                   onClick={() => setForm(p => ({ ...p, items: [...p.items,
                     { id: `P-${Date.now()}`, name: '', unit: 'BUC', quantity: 1, unitPrice: 0 }] }))}
-                  className="px-4 py-2 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-blue-200 hover:text-blue-600 transition">
+                  className="px-4 py-2 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wide hover:border-blue-200 hover:text-blue-600 transition">
                   + Adauga pozitie
                 </button>
               </div>
@@ -419,9 +419,9 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button type="button" onClick={() => setEditez(false)}
-                className="px-6 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Renunta</button>
+                className="px-6 py-4 text-slate-500 font-bold text-[13px] tracking-normal">Renunta</button>
               <button type="submit"
-                className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
                 <CheckCircle className="w-4 h-4" />
                 {idEditat ? 'Salveaza modificarile' : 'Inregistreaza comanda'}
               </button>
@@ -453,18 +453,18 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <button onClick={() => setDeschis(null)}
-                className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
+                className="text-[11px] font-black text-slate-500 uppercase tracking-wide hover:text-slate-900 transition mb-3">
                 ← Inapoi la comenzi
               </button>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight break-words">
                   {c.supplier || 'Comanda'}
                 </h2>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl shrink-0">
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nr. com.</span>
+                  <span className="text-[10px] font-black uppercase tracking-wide opacity-70">Nr. com.</span>
                   <span className="text-[15px] font-black font-mono">{c.number}</span>
                 </span>
-                <span className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border ${STATUS_STYLES[normaliseComandaStatus(c.status)]}`}>
+                <span className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wide border ${STATUS_STYLES[normaliseComandaStatus(c.status)]}`}>
                   {COMANDA_STATUS_RO[normaliseComandaStatus(c.status)]}
                 </span>
               </div>
@@ -476,7 +476,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
               </p>
             </div>
             <button onClick={() => deschideEditarea(c)}
-              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition flex items-center gap-2">
+              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-black transition flex items-center gap-2">
               <Pencil className="w-4 h-4" /> Modifica
             </button>
           </div>
@@ -515,21 +515,21 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
         <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Valoarea comenzii</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Valoarea comenzii</p>
               <p className="text-xl font-black text-slate-900 tabular-nums mt-1">{lei(valoare)} lei</p>
               <p className="text-[11px] font-bold text-slate-500 mt-0.5">
                 fara TVA{c.totalWithVat ? ` · ${lei(c.totalWithVat)} cu TVA` : ''}
               </p>
             </div>
             <div className="p-4 bg-amber-50 rounded-2xl">
-              <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Primit</p>
+              <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide">Primit</p>
               <p className="text-xl font-black text-amber-700 tabular-nums mt-1">{lei(primit)} lei</p>
               <p className="text-[11px] font-bold text-amber-600/80 mt-0.5">
                 {items.filter(it => (it.received ?? 0) >= (it.quantity || 0) && (it.quantity || 0) > 0).length} din {items.length} pozitii complete
               </p>
             </div>
             <div className="p-4 bg-blue-50 rounded-2xl">
-              <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Facturat</p>
+              <p className="text-[10px] font-black text-blue-700 uppercase tracking-wide">Facturat</p>
               <p className="text-xl font-black text-blue-700 tabular-nums mt-1">{lei(facturat)} lei</p>
               <p className="text-[11px] font-bold text-blue-600/80 mt-0.5">
                 {facturi.length} factur{facturi.length === 1 ? 'a' : 'i'}
@@ -539,7 +539,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
           <div className="space-y-3">
             <div>
-              <div className="flex justify-between text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">
+              <div className="flex justify-between text-[11px] font-black text-slate-500 uppercase tracking-wide mb-1">
                 <span>Livrat</span><span>{Math.round(procLivrat)}%</span>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -547,7 +547,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
               </div>
             </div>
             <div>
-              <div className="flex justify-between text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">
+              <div className="flex justify-between text-[11px] font-black text-slate-500 uppercase tracking-wide mb-1">
                 <span>Facturat{c.totalWithVat ? ' (fata de valoarea cu TVA)' : ''}</span>
                 <span>{Math.round(procFacturat)}%</span>
               </div>
@@ -561,7 +561,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── pozitiile ── */}
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight mb-4">
               Ce s-a comandat ({items.length})
             </h3>
             {items.length === 0 ? (
@@ -599,7 +599,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
 
           {/* ── facturile ── */}
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight mb-4">
               Facturi pe aceasta comanda ({facturi.length})
             </h3>
             {facturi.length === 0 ? (
@@ -641,15 +641,15 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
               className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[15px] font-semibold outline-none" />
           </div>
           <button onClick={deschideNou}
-            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl font-bold text-[13px] tracking-normal hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
             <Plus className="w-4 h-4" /> Comanda noua
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
           {(['ALL', ...Object.values(ComandaStatus)] as ('ALL' | ComandaStatus)[]).map(st => (
             <button key={st} onClick={() => setFiltruStatus(st)}
-              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
-                filtruStatus === st ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition ${
+ filtruStatus === st ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'
               }`}>
               {st === 'ALL' ? 'Toate' : COMANDA_STATUS_RO[st]}
             </button>
@@ -661,7 +661,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
       {filtrate.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <ShoppingCart className="w-16 h-16 text-slate-100 mb-4" />
-          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+          <p className="text-slate-500 font-bold text-sm tracking-tight">
             {comenzi.length === 0 ? 'Nicio comanda inregistrata' : 'Nicio comanda gasita'}
           </p>
         </div>
@@ -706,7 +706,7 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[16px] font-black text-slate-900 tabular-nums">{lei(valoare)}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">fara TVA</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">fara TVA</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span onClick={e => { e.stopPropagation(); deschideEditarea(c); }}

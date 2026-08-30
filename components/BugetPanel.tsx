@@ -161,7 +161,7 @@ const BugetPanel: React.FC<Props> = ({ docs, invoices, moneda }) => {
             className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[15px] font-semibold outline-none" />
         </div>
         <select value={an} onChange={e => setAn(e.target.value)} aria-label="Anul"
-          className="px-5 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest outline-none">
+          className="px-5 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-[13px] font-bold tracking-normal outline-none">
           {aniDisponibili.map(a => <option key={a} value={a}>{a}</option>)}
           <option value="TOT">Toti anii</option>
         </select>
@@ -180,7 +180,7 @@ const BugetPanel: React.FC<Props> = ({ docs, invoices, moneda }) => {
       {vizibile.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <Landmark className="w-16 h-16 text-slate-100 mb-4" />
-          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+          <p className="text-slate-500 font-bold text-sm tracking-tight">
             {randuri.length === 0 ? `Nimic inregistrat pe ${an === 'TOT' ? 'niciun an' : an}` : 'Niciun articol gasit'}
           </p>
         </div>
@@ -211,15 +211,15 @@ const BugetPanel: React.FC<Props> = ({ docs, invoices, moneda }) => {
                   </div>
                   <div className="grid grid-cols-3 gap-4 sm:gap-6 shrink-0 text-right">
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Angajat</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Angajat</p>
                       <p className="text-[15px] font-black text-slate-900 tabular-nums">{fmt(r.angajat)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Facturat</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Facturat</p>
                       <p className="text-[15px] font-black text-slate-900 tabular-nums">{fmt(r.facturat)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Diferenta</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Diferenta</p>
                       <p className={`text-[15px] font-black tabular-nums ${rest < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
                         {fmt(rest)}
                       </p>
@@ -250,20 +250,20 @@ const BugetPanel: React.FC<Props> = ({ docs, invoices, moneda }) => {
           })}
 
           <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-[2rem] flex flex-col sm:flex-row sm:items-center gap-4">
-            <p className="text-xs font-black uppercase tracking-widest flex-1">
+            <p className="text-xs font-black uppercase tracking-wide flex-1">
               Total {an === 'TOT' ? 'pe toti anii' : an}
             </p>
             <div className="grid grid-cols-3 gap-4 sm:gap-8 text-right">
               <div>
-                <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Angajat</p>
+                <p className="text-[10px] font-black text-white/50 uppercase tracking-wide">Angajat</p>
                 <p className="text-[17px] font-black tabular-nums">{fmt(total.angajat)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Facturat</p>
+                <p className="text-[10px] font-black text-white/50 uppercase tracking-wide">Facturat</p>
                 <p className="text-[17px] font-black tabular-nums">{fmt(total.facturat)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Diferenta</p>
+                <p className="text-[10px] font-black text-white/50 uppercase tracking-wide">Diferenta</p>
                 <p className="text-[17px] font-black tabular-nums">{fmt(total.angajat - total.facturat)}</p>
               </div>
             </div>

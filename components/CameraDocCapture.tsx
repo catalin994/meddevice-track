@@ -284,8 +284,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-xl"><ScanLine className="w-5 h-5 text-white" /></div>
           <div>
-            <p className="text-white font-black text-sm uppercase tracking-widest">{title}</p>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Paginile se combina intr-un singur PDF</p>
+            <p className="text-white font-black text-sm tracking-tight">{title}</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-wide">Paginile se combina intr-un singur PDF</p>
           </div>
         </div>
         <button onClick={() => { stopCamera(); onClose(); }} className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">
@@ -298,7 +298,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
           <div className="flex flex-col items-center justify-center h-full p-8 space-y-4">
             <AlertCircle className="w-12 h-12 text-amber-400" />
             <p className="text-white/60 text-sm text-center max-w-xs">{cameraError}</p>
-            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">Inchide</button>
+            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm tracking-tight">Inchide</button>
           </div>
         ) : (
           <>
@@ -308,11 +308,11 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
             <div className="absolute top-3 left-0 right-0 flex flex-col items-center gap-2 px-3 z-10">
               <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
                 <button onClick={() => setAutoMode(true)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${autoMode ? 'bg-emerald-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${autoMode ? 'bg-emerald-600 text-white' : 'text-white/50 hover:text-white'}`}>
                   <Sparkles className="w-4 h-4" /> Auto
                 </button>
                 <button onClick={() => setAutoMode(false)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${!autoMode ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${!autoMode ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
                   <Hand className="w-4 h-4" /> Manual
                 </button>
               </div>
@@ -320,7 +320,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                 <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
                   {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
                     <button key={val} onClick={() => setOrientation(val)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
                       <Icon className="w-4 h-4" /> {label}
                     </button>
                   ))}
@@ -350,11 +350,11 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="px-5 py-3 bg-black/60 rounded-2xl">
-                      <p className="text-white/70 text-xs font-bold tracking-widest uppercase">Cauta documentul...</p>
+                      <p className="text-white/70 text-xs font-bold tracking-wide uppercase">Cauta documentul...</p>
                     </div>
                   </div>
                 )}
-                <p className="absolute bottom-40 left-0 right-0 text-center text-white/80 text-xs font-bold tracking-widest uppercase px-6">
+                <p className="absolute bottom-40 left-0 right-0 text-center text-white/80 text-[13px] font-bold tracking-normal px-6">
                   {detected
                     ? (isBlurry ? 'Imagine neclara — tine telefonul nemiscat'
                        : holdProgress > 0 ? 'Tine telefonul nemiscat...' : 'Document detectat')
@@ -375,7 +375,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                   <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                  <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">
+                  <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-wide uppercase whitespace-nowrap">
                     {pages.length === 0 ? 'Aliniaza documentul in cadru' : `Pagina ${pages.length + 1} — sau finalizeaza`}
                   </p>
                 </div>
@@ -389,8 +389,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
             {pendingPage && (
               <div className="absolute inset-0 bg-slate-950/95 flex flex-col z-20 animate-fade-in">
                 <div className="shrink-0 px-5 pt-5 pb-3 text-center">
-                  <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Pagina {pages.length + 1} scanata</p>
-                  <p className="text-white font-black text-base uppercase tracking-tight mt-1">Pastrezi aceasta pagina?</p>
+                  <p className="text-emerald-400 text-[10px] font-black uppercase tracking-wide">Pagina {pages.length + 1} scanata</p>
+                  <p className="text-white font-black text-base tracking-tight mt-1">Pastrezi aceasta pagina?</p>
                 </div>
 
                 <div className="flex-1 min-h-0 px-5 flex items-center justify-center">
@@ -400,15 +400,15 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                 <div className="shrink-0 p-5 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={retakePendingPage}
-                      className="flex items-center justify-center gap-2 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95">
+                      className="flex items-center justify-center gap-2 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95">
                       <RotateCcw className="w-5 h-5" /> Refa
                     </button>
                     <button onClick={keepPendingPage}
-                      className="flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95 shadow-xl shadow-emerald-600/20">
+                      className="flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95 shadow-xl shadow-emerald-600/20">
                       <Check className="w-5 h-5" /> Pastreaza
                     </button>
                   </div>
-                  <p className="text-center text-white/40 text-[10px] font-bold uppercase tracking-widest">
+                  <p className="text-center text-white/40 text-[10px] font-bold uppercase tracking-wide">
                     Dupa confirmare poti scana pagina urmatoare
                   </p>
                 </div>
@@ -443,7 +443,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
               </button>
               {pages.length > 0 && (
                 <button onClick={finish} disabled={isFinishing}
-                  className="px-5 sm:px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl active:scale-95 transition flex items-center gap-2 disabled:opacity-60">
+                  className="px-5 sm:px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[13px] font-bold tracking-normal shadow-2xl active:scale-95 transition flex items-center gap-2 disabled:opacity-60">
                   {isFinishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                   {isFinishing ? 'Se salveaza...' : `Salveaza (${pages.length} pag.)`}
                 </button>

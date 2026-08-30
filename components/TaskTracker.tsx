@@ -6,7 +6,7 @@ import IncidentReport from './IncidentReport';
 
 import Portal from './Portal';
 import useEscape from './useEscape';
-import Pager, { usePagination, PageSizePicker } from './Pager';
+import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
@@ -234,7 +234,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
-      <div className="bg-white p-4 sm:p-6 rounded-[2rem] shadow-lg border border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+      <div className="bg-white p-3 sm:p-4 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
           {/*
             Se strangea pana la un patrat cu o lupa in el, cand restul barei
@@ -253,16 +253,15 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           </div>
           <select 
             aria-label="Filtreaza tichetele dupa status"
-            className="bg-slate-50 border-none px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+            className="bg-slate-50 border-none px-4 py-3 rounded-xl text-[13px] font-bold tracking-normal text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
           >
             <option value="ALL">Toate statusurile</option>
-            {Object.values(TaskStatus).map(s => <option key={s} value={s}>{TASK_STATUS_RO[s].toUpperCase()}</option>)}
+            {Object.values(TaskStatus).map(s => <option key={s} value={s}>{TASK_STATUS_RO[s]}</option>)}
           </select>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {viewMode !== 'KANBAN' && <PageSizePicker value={pageSize} onChange={setPageSize} />}
           <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
             {([
               ['CARDS', 'Carduri', LayoutGrid],
@@ -271,7 +270,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             ] as [TaskViewMode, string, any][]).map(([mode, label, Icon]) => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 title={label}
-                className={`flex items-center gap-2 px-4 py-3.5 rounded-lg text-[11px] font-bold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow' : 'text-slate-600 hover:text-slate-900'}`}>
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition ${viewMode === mode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
                 <Icon className="w-4 h-4" />
                 <span className="hidden lg:inline">{label}</span>
               </button>
@@ -286,15 +285,15 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           */}
           <button
             onClick={() => setIsReportingIncident(true)}
-            className="px-6 py-3.5 bg-red-50 text-red-700 border-2 border-red-200 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-red-100 transition flex items-center gap-2 active:scale-95"
+            className="px-4 py-3 bg-red-50 text-red-700 border border-red-200 rounded-xl font-bold text-[13px] hover:bg-red-100 transition flex items-center gap-2 active:scale-95"
           >
-            <Siren className="w-4 h-4" /> Raporteaza Incident
+            <Siren className="w-4 h-4" /> Raporteaza incident
           </button>
           <button
             onClick={() => { resetForm(); setIsAdding(true); }}
-            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
+            className="px-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-[13px] shadow-sm shadow-blue-600/20 hover:bg-blue-700 transition flex items-center gap-2 active:scale-95"
           >
-            <Plus className="w-4 h-4" /> Tichet Nou
+            <Plus className="w-4 h-4" /> Tichet nou
           </button>
         </div>
       </div>
@@ -306,7 +305,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           <div className="p-6 bg-slate-50 w-fit rounded-full mx-auto mb-6">
             <CheckSquare className="w-16 h-16 text-slate-200" />
           </div>
-          <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm">Nu exista tichete active</p>
+          <p className="text-slate-500 font-black tracking-[0.2em] text-sm">Nu exista tichete active</p>
           <p className="text-xs text-slate-500 mt-2 font-bold uppercase">Toate solicitarile au fost rezolvate</p>
         </div>
       ) : viewMode === 'CARDS' ? (
@@ -322,7 +321,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             />
           ))}
           <Pager page={page} pageCount={pageCount} pageSize={pageSize}
-            total={sortedTasks.length} onGoTo={goToPage} />
+            total={sortedTasks.length} onGoTo={goToPage} onPageSize={setPageSize} />
         </div>
       ) : viewMode === 'TABLE' ? (
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -357,12 +356,12 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                       <p className="text-xs font-black text-slate-900 truncate" title={task.title}>{task.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {task.notes && (
-                          <p className="text-[11px] text-amber-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                          <p className="text-[11px] text-amber-600 font-bold uppercase tracking-wide flex items-center gap-1">
                             <StickyNote className="w-2.5 h-2.5" /> Note tehnice
                           </p>
                         )}
                         {(task.attachments || []).length > 0 && (
-                          <p className="text-[11px] text-blue-600 font-bold uppercase tracking-widest flex items-center gap-1" title={`${task.attachments!.length} atasamente`}>
+                          <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wide flex items-center gap-1" title={`${task.attachments!.length} atasamente`}>
                             <Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length}
                           </p>
                         )}
@@ -377,11 +376,11 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                       <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <button onClick={() => toggleStatus(task)}
-                        className={`px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-widest border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
+                        className={`px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
                         title="Click pentru a schimba statusul" aria-label="Click pentru a schimba statusul">
                         {getStatusIcon(task.status)}
                         {TASK_STATUS_RO[task.status]}
@@ -413,7 +412,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
           </div>
           <div className="p-4 border-t border-slate-100">
             <Pager page={page} pageCount={pageCount} pageSize={pageSize}
-              total={sortedTasks.length} onGoTo={goToPage} />
+              total={sortedTasks.length} onGoTo={goToPage} onPageSize={setPageSize} />
           </div>
         </div>
       ) : (
@@ -430,7 +429,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               <div className="flex items-center justify-between px-2 pb-4">
                 <div className="flex items-center gap-2">
                   {getStatusIcon(col.status)}
-                  <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest">{TASK_STATUS_RO[col.status]}</p>
+                  <p className="text-[11px] font-black text-slate-600 uppercase tracking-wide">{TASK_STATUS_RO[col.status]}</p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black ${col.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : col.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
                   {col.tasks.length}
@@ -445,7 +444,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition group"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
                         <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-500 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
                         <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-500 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
@@ -469,7 +468,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   </div>
                 ))}
                 {col.tasks.length === 0 && (
-                  <p className="py-10 text-center text-[11px] font-black text-slate-500 uppercase tracking-widest">Trage un tichet aici</p>
+                  <p className="py-10 text-center text-[11px] font-black text-slate-500 uppercase tracking-wide">Trage un tichet aici</p>
                 )}
               </div>
             </div>
@@ -552,7 +551,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
 
               {/* ADDITIONAL DATA FIELD */}
               <div className="space-y-2 p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
-                <label className="text-[11px] font-black text-blue-600 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <label className="text-[11px] font-black text-blue-600 uppercase tracking-wide ml-1 flex items-center gap-2">
                   <StickyNote className="w-4 h-4" /> Note Tehnice
                 </label>
                 <textarea 
@@ -561,12 +560,12 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
                   placeholder="Adauga rezultate diagnostic, piese necesare sau progres tehnic..."
                 />
-                <p className="text-[11px] text-blue-400 font-bold uppercase tracking-widest text-right mt-1 italic">Aceste date sunt vizibile doar echipei tehnice</p>
+                <p className="text-[11px] text-blue-400 font-bold uppercase tracking-wide text-right mt-1 italic">Aceste date sunt vizibile doar echipei tehnice</p>
               </div>
 
               <div className="pt-4 flex gap-4">
-                <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition">Renunta</button>
-                <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
+                <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-slate-200 transition">Renunta</button>
+                <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide shadow-2xl hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-5 h-5" /> {editingTask ? 'Salveaza Modificarile' : 'Creeaza Tichet'}
                 </button>
               </div>
@@ -708,12 +707,19 @@ const TaskCard = React.memo(({
   return (
     <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex items-stretch group">
       <div className={`w-2 ${getPriorityColor(task.priority)} transition-all group-hover:w-3`} />
-      <div className="p-6 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
-              <Building className="w-3 h-3" /> {task.department}
+          {/*
+            Intai ce s-a intamplat, apoi unde si la ce aparat.
+            Randul cu prioritatea, sectia si aparatul statea deasupra titlului,
+            asa ca ochiul citea "RIDICATA · RADIOLOGIE · Ecograf..." si abia pe
+            randul urmator afla ca sonda nu porneste. Titlul vine primul.
+          */}
+          <h4 className="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">{task.title}</h4>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
+            <span className="text-[13px] font-semibold text-slate-600 flex items-center gap-1">
+              <Building className="w-3 h-3 text-slate-400" /> {task.department}
             </span>
             {/*
               Era scris cu majuscule, albastru, pe fundal albastru, cu inca o
@@ -722,7 +728,7 @@ const TaskCard = React.memo(({
               acelasi lucru, spus mai incet.
             */}
             {task.deviceName && (
-              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5 min-w-0">
+              <span className="text-[13px] font-medium text-slate-600 flex items-center gap-1.5 min-w-0">
                 <Info className="w-3 h-3 text-slate-400 shrink-0" />
                 <span className="truncate">{task.deviceName}</span>
                 {device?.serialNumber && (
@@ -736,8 +742,7 @@ const TaskCard = React.memo(({
               </span>
             )}
           </div>
-          <h4 className="text-[17px] font-black text-slate-900 leading-tight break-words">{task.title}</h4>
-          <p className="text-sm text-slate-500 mt-1 line-clamp-2 max-w-3xl font-medium">{task.description}</p>
+          <p className="text-[13px] text-slate-500 mt-1.5 line-clamp-2 max-w-3xl font-medium">{task.description}</p>
           {task.notes && (
             <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
@@ -770,14 +775,14 @@ const TaskCard = React.memo(({
 
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right hidden xl:block">
-            <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Creat la</p>
-            <p className="text-xs font-bold text-slate-600">{task.createdAt}</p>
+            <p className="text-[13px] font-medium text-slate-500 whitespace-nowrap">Creat {task.createdAt}</p>
           </div>
           
           <div className="flex items-center gap-2">
             <button 
               onClick={() => onToggleStatus(task)}
-              className={`px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest border transition-all flex items-center gap-2 shadow-sm active:scale-95 ${getStatusStyles(task.status)}`}
+              title="Apasa ca sa schimbi statusul"
+              className={`px-3.5 py-2 rounded-xl font-bold text-[13px] border transition-all flex items-center gap-2 active:scale-95 ${getStatusStyles(task.status)}`}
             >
               {getStatusIcon(task.status)}
               {TASK_STATUS_RO[task.status]}

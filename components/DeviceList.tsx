@@ -5,7 +5,7 @@ import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw,
 
 import Portal from './Portal';
 import useEscape from './useEscape';
-import Pager, { PAGE_SIZES, PageSizePicker } from './Pager';
+import Pager, { PAGE_SIZES } from './Pager';
 import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
@@ -26,12 +26,12 @@ const FilterSelect = React.memo(({ label, value, onChange, options, labelFor }: 
     <label className="tech-label ml-1">{label}</label>
     <select
       aria-label={label}
-      className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
+      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-semibold text-slate-700 outline-none"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="ALL">Toate</option>
-      {options.map(o => <option key={o} value={o}>{(labelFor ? labelFor(o) : o).toUpperCase()}</option>)}
+      {options.map(o => <option key={o} value={o}>{labelFor ? labelFor(o) : o}</option>)}
     </select>
   </div>
 ));
@@ -791,26 +791,23 @@ const DeviceCard = React.memo(({
   // jump around as they mount.
   return (
     <div
-      className={`hardware-card group relative flex flex-col md:flex-row items-center gap-6 p-6 transition-[transform,box-shadow,border-color,background-color] duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-0.5 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/30' : 'border-l-transparent hover:border-l-blue-400'}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 160px' } as React.CSSProperties}
+      className={`group relative flex items-start gap-3 p-3 sm:p-4 transition-colors duration-150 border-l-4 ${isSelected ? 'border-l-blue-600 bg-blue-50/40' : 'border-l-transparent hover:bg-slate-50/70'}`}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' } as React.CSSProperties}
     >
-      {/* Selection checkbox, with the device's position in the list under it.
-          It used to float over the top-left corner, which was free only while
-          an empty photo box pushed the name out of the way. Now it is a row of
-          its own on a phone, and the column it always was from md up. */}
-      <div className="w-full md:w-auto flex items-center gap-1 md:flex-col md:gap-1.5 shrink-0">
-        {/* The box stays 20px — a bigger one would look like a button — but the
-            label around it gives the thumb a 44px target. */}
-        <label className="p-3 -m-1 cursor-pointer flex items-center" aria-label={`Selecteaza ${device.name}`}>
-          <input
-            type="checkbox"
-            className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all"
-            checked={isSelected}
-            onChange={() => onToggleSelection(device.id)}
-          />
-        </label>
-        <span className="font-mono text-xs font-bold text-slate-500 tabular-nums">{index}</span>
-      </div>
+      {/*
+        Bifa si numarul randului.
+        Stateau unul sub altul, intr-o coloana proprie care pe telefon ocupa un
+        rand intreg deasupra numelui. Un spital cu o mie de aparate deruleaza
+        mult; fiecare rand irosit se inmulteste cu o mie.
+      */}
+      <label className="p-2 -m-1 cursor-pointer flex items-center shrink-0" aria-label={`Selecteaza ${device.name}`}>
+        <input
+          type="checkbox"
+          className="w-[18px] h-[18px] rounded-md border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500 transition-all"
+          checked={isSelected}
+          onChange={() => onToggleSelection(device.id)}
+        />
+      </label>
 
       {/*
         The photo only takes room when there is a photo. Most devices have
@@ -820,99 +817,92 @@ const DeviceCard = React.memo(({
       */}
       {device.image ? (
         <div
-          className="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center relative shadow-sm group-hover:scale-105 transition-transform shrink-0 cursor-pointer"
+          className="w-12 h-12 rounded-xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center relative shrink-0 cursor-pointer"
           onClick={() => onSelect(device)}
         >
           <img src={device.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt={device.name} />
-          {device.isCNCAN && (
-            <div className="absolute top-0 right-0 p-1.5 bg-amber-500 rounded-bl-xl shadow-sm">
-              <ShieldAlert className="w-3.5 h-3.5 text-white" />
-            </div>
-          )}
-        </div>
-      ) : device.isCNCAN ? (
-        <div
-          className="w-11 h-11 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
-          onClick={() => onSelect(device)}
-          title="Sursa de radiatii — evidenta CNCAN"
-        >
-          <ShieldAlert className="w-5 h-5 text-white" />
         </div>
       ) : null}
 
       {/* Asset Info */}
-      <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onSelect(device)}>
-        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-          {/* No truncation — a long device name wraps and stays fully readable */}
-          {/* Era mai mare decat titlul paginii de deasupra lui. Un rand dintr-o
-              lista nu striga mai tare decat ecranul pe care sta. */}
-          <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl leading-tight break-words group-hover:text-blue-600 transition-colors md:min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(device)}>
+        {/*
+          Numele intai, si pe un singur rand cu starea si sectia.
+          Inainte numele era mai mare decat titlul paginii, iar sub el veneau
+          trei randuri: producator/model/serie cu etichete cu majuscule, apoi
+          categoria singura pe un rand, apoi butoanele. Un aparat ocupa cat un
+          sfert de ecran de telefon. Datele sunt aceleasi — doar ca acum se
+          citesc dintr-o privire, nu prin derulare.
+        */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-slate-900 text-[15px] sm:text-base leading-snug break-words group-hover:text-blue-600 transition-colors min-w-0">
             {device.name || 'Dispozitiv fara nume'}
+            {device.isCNCAN && (
+              <ShieldAlert
+                className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500"
+                aria-label="Sursa de radiatii — evidenta CNCAN"
+              />
+            )}
           </h3>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
-            <span className="px-2.5 py-1.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 border border-slate-200 whitespace-nowrap">
-              {device.department || 'N/A'}
-            </span>
-          </div>
+          <span className="shrink-0 font-mono text-[11px] font-bold text-slate-400 tabular-nums mt-0.5">{index}</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Producator</span>
-            <span className="text-[15px] font-bold text-slate-800">{device.manufacturer || 'Necunoscut'}</span>
-          </div>
-          <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Model</span>
-            <span className="text-[15px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">{device.model || 'N/A'}</span>
-          </div>
-          <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Serie</span>
-            <span className="text-[15px] font-mono font-bold text-slate-900">{device.serialNumber || 'N/A'}</span>
-          </div>
-          {device.inventoryNumber && (
-            <>
-              <div className="w-1 h-1 bg-slate-200 rounded-full hidden md:block" />
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Inventar</span>
-                <span className="text-[15px] font-mono font-bold text-slate-900">{device.inventoryNumber}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-            <Layers className="w-3.5 h-3.5" /> {device.category || 'Altele'}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
+          <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
+          <span className="text-[13px] font-semibold text-slate-600 truncate max-w-[14rem]">
+            {device.department || '—'}
           </span>
-          {(device.tags || []).slice(0, 4).map(tag => (
-            <span key={tag} className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full border border-blue-100">
+          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+          <span className="text-[13px] font-medium text-slate-500 truncate max-w-[12rem]">
+            {device.category || 'Altele'}
+          </span>
+        </div>
+
+        {/* Cifrele dupa care se cauta un aparat pe teren: serie si inventar. */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[13px]">
+          <span className="font-medium text-slate-600 truncate max-w-[16rem]">
+            {[device.manufacturer, device.model].filter(Boolean).join(' ') || 'Producator necunoscut'}
+          </span>
+          {device.serialNumber && (
+            <span className="font-mono text-slate-500 truncate max-w-[14rem]">
+              <span className="text-slate-400">SN</span> {device.serialNumber}
+            </span>
+          )}
+          {device.inventoryNumber && (
+            <span className="font-mono text-slate-500">
+              <span className="text-slate-400">Inv.</span> {device.inventoryNumber}
+            </span>
+          )}
+          {(device.tags || []).slice(0, 2).map(tag => (
+            <span key={tag} className="flex items-center gap-1 text-[11px] font-semibold text-blue-600">
               <Tag className="w-3 h-3" /> {tag}
             </span>
           ))}
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex md:flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 w-full md:w-auto justify-center z-[100]">
-        <button 
-          className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+      {/*
+        Actiunile nu mai stau intr-o coloana proprie despartita cu o linie.
+        Doua iconite langa rand, discrete pana cand mouse-ul trece peste — pe
+        telefon raman mereu vizibile, ca nu exista "trecut peste".
+      */}
+      <div className="flex items-center gap-0.5 shrink-0 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+        <button
+          className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition active:scale-90"
           onClick={(e) => onQuickEdit(e, device)}
           title="Editare rapida"
+          aria-label={`Editeaza ${device.name}`}
         >
           <Edit2 className="w-4 h-4" />
-          <span className="md:hidden tech-label text-[10px]">Editeaza</span>
         </button>
         {canDelete && (
-          <button 
-            className="flex-1 md:flex-none p-3.5 bg-white text-slate-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 shadow-sm border-2 border-slate-200 rounded-2xl transition-all active:scale-90 flex items-center justify-center gap-2"
+          <button
+            className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition active:scale-90"
             onClick={(e) => onDelete(e, device.id)}
             title="Sterge dispozitiv"
+            aria-label={`Sterge ${device.name}`}
           >
             <Trash2 className="w-4 h-4" />
-            <span className="md:hidden tech-label text-[10px]">Sterge</span>
           </button>
         )}
       </div>
@@ -929,7 +919,7 @@ const ToolButton: React.FC<{
     disabled={disabled}
     title={hint}
     aria-label={hint}
-    className="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-400 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+    className="flex items-center justify-center gap-2 px-4 sm:px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:border-slate-400 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
   >
     {icon}
     {label}
@@ -1172,7 +1162,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           <div className="hardware-card p-5 sm:p-10 w-full max-w-xl rounded-3xl shadow-2xl animate-slide-up modal-shell overflow-y-auto overscroll-contain custom-scrollbar">
              <div className="flex justify-between items-center mb-8">
                 <div>
-                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Editare rapida</h3>
+                   <h3 className="text-xl font-black tracking-tight text-slate-900">Editare rapida</h3>
                    <p className="tech-label mt-1">ID: {editingDevice.id}</p>
                 </div>
                 <button onClick={() => setEditingDevice(null)} className="p-3 hover:bg-slate-100 rounded-2xl transition text-slate-500"><X className="w-6 h-6" /></button>
@@ -1198,15 +1188,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                   <div className="space-y-1">
                     <label className="tech-label ml-1">Status</label>
                     <select name="status" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" value={quickEditForm.status} onChange={handleQuickEditChange}>
-                        {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s].toUpperCase()}</option>)}
+                        {Object.values(DeviceStatus).map(s => <option key={s} value={s}>{DEVICE_STATUS_RO[s]}</option>)}
                     </select>
                   </div>
                 </div>
              </div>
 
              <div className="flex gap-4">
-                <button onClick={() => setEditingDevice(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition">Anuleaza</button>
-                <button onClick={handleSaveQuickEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition active:scale-95 flex items-center justify-center gap-3">
+                <button onClick={() => setEditingDevice(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold text-[13px] tracking-normal hover:bg-slate-200 transition">Anuleaza</button>
+                <button onClick={handleSaveQuickEdit} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition active:scale-95 flex items-center justify-center gap-3">
                    <Save className="w-5 h-5" /> Salveaza
                 </button>
              </div>
@@ -1269,11 +1259,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <label className="tech-label ml-1">Metrologie</label>
             <select
               aria-label="Filtru metrologie"
-              className="w-full px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[10px] font-black text-slate-700 outline-none uppercase tracking-wide shadow-inner"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-semibold text-slate-700 outline-none"
               value={filterMetrologie}
               onChange={e => setFilterMetrologie(e.target.value as FiltruMetrologie)}
             >
-              {FILTRE_METROLOGIE.map(f => <option key={f.id} value={f.id}>{f.text.toUpperCase()}</option>)}
+              {FILTRE_METROLOGIE.map(f => <option key={f.id} value={f.id}>{f.text}</option>)}
             </select>
           </div>
           {allTags.length > 0 && (
@@ -1285,26 +1275,31 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       <div className="space-y-4">
         <div ref={listTopRef} className="scroll-mt-4" />
         <div className="flex items-center justify-between px-2 sm:px-4 py-1 flex-wrap gap-2 sm:gap-3">
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-            <div className="bg-slate-900 px-3 py-1 rounded-lg text-white font-mono text-xs font-black">
-              {filteredDevices.length}
-            </div>
-            <span className="tech-label">Dispozitive gasite</span>
-            <PageSizePicker value={pageSize} onChange={changePageSize} />
-            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 border-2 border-slate-200 rounded-2xl">
+          {/*
+            Cate aparate s-au gasit, spus ca un om.
+            Era o pastila neagra cu cifra, si langa ea "DISPOZITIVE GASITE" cu
+            majuscule si litere departate — doua elemente si trei randuri pe
+            telefon pentru un singur numar.
+          */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[13px] font-semibold text-slate-600">
+              <span className="font-bold text-slate-900 tabular-nums">{filteredDevices.length}</span>
+              {filteredDevices.length === 1 ? ' dispozitiv' : ' dispozitive'}
+            </span>
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
               <button
                 onClick={() => changeViewMode('cards')}
-                className={`p-2 rounded-xl transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
+                className={`p-1.5 rounded-lg transition active:scale-95 ${viewMode === 'cards' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 title="Vizualizare carduri"
                aria-label="Vizualizare carduri">
-                <LayoutGrid className="w-5 h-5" />
+                <LayoutGrid className="w-[18px] h-[18px]" />
               </button>
               <button
                 onClick={() => changeViewMode('list')}
-                className={`p-2 rounded-xl transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 border border-slate-200 shadow-sm' : 'text-slate-500 border border-transparent hover:text-slate-700'}`}
+                className={`p-1.5 rounded-lg transition active:scale-95 ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 title="Vizualizare lista compacta"
                aria-label="Vizualizare lista compacta">
-                <Rows3 className="w-5 h-5" />
+                <Rows3 className="w-[18px] h-[18px]" />
               </button>
             </div>
           </div>
@@ -1326,7 +1321,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <button
               onClick={() => setShowTools(t => !t)}
               aria-expanded={showTools}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition active:scale-95 hover:border-slate-300"
+              className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[13px] font-semibold transition active:scale-95 hover:border-slate-300"
             >
               <FileSpreadsheet className="w-4 h-4 shrink-0" />
               Export / Import
@@ -1392,7 +1387,11 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {viewMode === 'cards' && pageDevices.map((device, i) => (
+          {/* Un singur bloc, cu linii intre aparate, in loc de o cartela
+              separata cu umbra pentru fiecare rand. Lista arata a lista. */}
+          {viewMode === 'cards' && pageDevices.length > 0 && (
+          <div className="hardware-card rounded-2xl sm:rounded-3xl overflow-hidden divide-y divide-slate-100">
+          {pageDevices.map((device, i) => (
             <DeviceCard
               key={device.id}
               device={device}
@@ -1405,6 +1404,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               canDelete={canDelete}
             />
           ))}
+          </div>
+          )}
 
           {viewMode === 'list' && pageDevices.length > 0 && (
             <div className="hardware-card rounded-2xl sm:rounded-3xl overflow-hidden">
@@ -1443,6 +1444,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               pageSize={pageSize}
               total={filteredDevices.length}
               onGoTo={goToPage}
+              onPageSize={changePageSize}
             />
           )}
 
@@ -1454,7 +1456,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               <p className="tech-label mb-8 text-slate-500">Niciun dispozitiv gasit in registru</p>
               <button
                 onClick={onAddDevice}
-                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
+                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-wide shadow-xl hover:bg-blue-600 transition flex items-center gap-3 mx-auto active:scale-95"
               >
                 <Plus className="w-5 h-5" /> Inregistreaza Dispozitiv
               </button>

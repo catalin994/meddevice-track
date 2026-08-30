@@ -24,8 +24,8 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       <div className="flex flex-col items-center gap-4">
         <LogoTile className="p-4 rounded-3xl shadow-2xl shadow-blue-600/30" markClassName="w-10 h-10" />
         <div className="text-center">
-          <h1 className="text-2xl font-black tracking-tight text-white uppercase">Biomedic</h1>
-          <p className="text-[11px] font-bold text-white/40 tracking-[0.2em] mt-1">Management echipamente medicale</p>
+          <h1 className="text-2xl font-black tracking-tight text-white">Biomedic</h1>
+          <p className="text-[13px] font-medium text-white/50 mt-1.5">Management echipamente medicale</p>
         </div>
       </div>
       {children}
@@ -35,7 +35,7 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const field =
   'w-full pl-11 pr-4 py-3.5 bg-white/5 border-2 border-white/10 rounded-2xl text-white text-[15px] font-semibold ' +
-  'placeholder:text-white/25 outline-none focus:border-blue-500 transition-colors';
+  'placeholder:text-white/40 outline-none focus:border-blue-500 transition-colors';
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null }) => {
   const [mode, setMode] = useState<Mode>(
@@ -179,7 +179,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
             <div className="flex gap-2.5">
               {[0, 1, 2, 3].map(i => (
                 <div key={i} className={`w-3.5 h-3.5 rounded-full transition ${
-                  error ? 'bg-red-500' : i < shown.length ? 'bg-blue-400' : 'bg-white/15'
+ error ? 'bg-red-500' : i < shown.length ? 'bg-blue-400' : 'bg-white/15'
                 }`} />
               ))}
             </div>
@@ -251,7 +251,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
           </button>
 
           <button type="button" onClick={() => { setMode('signin'); setError(''); setNotice(''); }}
-            className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
+            className="w-full flex items-center justify-center gap-2 text-white/70 hover:text-white text-[13px] font-semibold transition pt-1">
             <ArrowLeft className="w-3.5 h-3.5" /> Inapoi la autentificare
           </button>
         </form>
@@ -294,7 +294,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
           </button>
 
           <button type="button" onClick={() => { setMode('signin'); setError(''); setPassword(''); setConfirmPin(''); }}
-            className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
+            className="w-full flex items-center justify-center gap-2 text-white/70 hover:text-white text-[13px] font-semibold transition pt-1">
             <ArrowLeft className="w-3.5 h-3.5" /> Renunt
           </button>
         </form>
@@ -307,7 +307,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
   return (
     <Shell>
       <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
-        <p className="text-white/50 text-xs font-bold tracking-wide px-1">
+        <p className="text-white text-base font-bold px-1">
           {isSignUp ? 'Cont nou' : 'Autentificare'}
         </p>
 
@@ -351,26 +351,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, lockedUser = null })
         </button>
 
         <button type="button" onClick={() => { setMode(isSignUp ? 'signin' : 'signup'); setError(''); setNotice(''); }}
-          className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-bold transition pt-1">
+          className="w-full flex items-center justify-center gap-2 text-white/70 hover:text-white text-[13px] font-semibold transition pt-1">
           {isSignUp ? <><ArrowLeft className="w-3.5 h-3.5" /> Am deja cont</> : 'Nu ai cont? Inregistreaza-te'}
         </button>
 
         {!isSignUp && (
           <button type="button" onClick={() => { setMode('uitatParola'); setError(''); setNotice(''); }}
-            className="w-full text-white/40 hover:text-white/70 text-xs font-bold transition">
+            className="w-full text-white/70 hover:text-white text-[13px] font-semibold transition">
             Am uitat parola
           </button>
         )}
       </form>
 
       {!isSignUp && (
-        <p className="text-center text-[11px] text-white/25 font-semibold leading-relaxed px-4">
+        <p className="text-center text-[13px] text-white/45 font-medium leading-relaxed px-4">
           Conturile noi trebuie aprobate de un administrator inainte de a vedea datele.
         </p>
       )}
 
       <button type="button" onClick={() => setShowSetup(true)}
-        className="w-full flex items-center justify-center gap-2 text-white/25 hover:text-white/50 text-[11px] font-bold transition">
+        className="w-full flex items-center justify-center gap-2 text-white/45 hover:text-white/80 text-[13px] font-medium transition">
         <Terminal className="w-3.5 h-3.5" /> Prima instalare — script baza de date
       </button>
 

@@ -348,7 +348,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         <div className="fixed inset-0 z-[640] scrim flex items-center justify-center p-0 sm:p-6">
           <div className="bg-white w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[88dvh] flex flex-col rounded-none sm:rounded-[2rem] shadow-2xl overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 shrink-0">
-              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Si pe alte aparate</h3>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Si pe alte aparate</h3>
               <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
                 <span className="font-black text-slate-700">{deLegat.name}</span> se va vedea pe fiecare
                 aparat bifat. Documentul se tine o singura data — bifarea nu ocupa loc in plus.
@@ -374,10 +374,10 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                     <button key={d.id} type="button"
                       onClick={() => setAleseIds(prev => bifat ? prev.filter(x => x !== d.id) : [...prev, d.id])}
                       className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition flex items-center gap-3 ${
-                        bifat ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+ bifat ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
                       }`}>
                       <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                        bifat ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+ bifat ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
                       }`}>{bifat && <Check className="w-3.5 h-3.5" />}</span>
                       <span className="min-w-0">
                         <span className="block text-[14px] font-bold text-slate-900 truncate">{d.name}</span>
@@ -390,14 +390,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 })}
             </div>
             <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-wide">
                 {aleseIds.length} bifate
               </span>
               <div className="flex gap-2">
                 <button onClick={() => setDeLegat(null)}
-                  className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">Renunta</button>
+                  className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-wide">Renunta</button>
                 <button onClick={salveazaLegarea} disabled={seLeaga}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition disabled:opacity-50 flex items-center gap-2">
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-indigo-700 transition disabled:opacity-50 flex items-center gap-2">
                   {seLeaga && <Loader2 className="w-4 h-4 animate-spin" />}
                   Salveaza
                 </button>
@@ -418,27 +418,36 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             {!isStandalone && (
               <button
                 onClick={onBack}
-                className="mb-3 sm:mb-4 inline-flex items-center gap-2 pl-3 pr-4 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[11px] uppercase tracking-widest transition active:scale-95 hover:bg-slate-900 hover:text-white group"
+                className="mb-2.5 inline-flex items-center gap-1.5 -ml-1 pl-2 pr-3 py-2 text-slate-500 rounded-lg font-semibold text-[13px] transition active:scale-95 hover:bg-slate-100 hover:text-slate-900 group"
               >
                 <ArrowLeft className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
                 Inapoi la inventar
               </button>
             )}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-               <h1 className="text-lg sm:text-4xl font-black text-slate-900 tracking-tight sm:tracking-tighter uppercase leading-tight break-words min-w-0">{device.name}</h1>
+            {/*
+              Numele aparatului, scris ca un nume.
+              Era cu majuscule si de patru ori mai mare decat textul din jur:
+              "ECOGRAF GENERAL ELECTRIC VERSANA ACTIVE" umplea doua randuri si
+              se citea literă cu literă. Sub el, seria statea intr-o pastila
+              neagra, iar modelul si categoria in "MOD:" si "CAT:" — prescurtari
+              care nu se folosesc nicaieri in spital.
+            */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+               <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight break-words min-w-0">{device.name}</h1>
                {/* On phones the status lives here, since the dot column is hidden */}
-               <span className={`md:hidden px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                 device.status === DeviceStatus.ACTIVE ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'
+               <span className={`md:hidden px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide border ${
+ device.status === DeviceStatus.ACTIVE ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'
                }`}>{DEVICE_STATUS_RO[device.status] || device.status}</span>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-               <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-900 text-white rounded-lg tech-label text-[10px] max-w-full">
-                 <Cpu className="w-3 h-3 shrink-0" /> <span className="truncate">{device.serialNumber}</span>
-               </div>
-            </div>
-            <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1">
-              <span className="tech-label text-slate-500 truncate">MOD: <span className="text-slate-600">{device.model}</span></span>
-              <span className="tech-label text-slate-500 truncate">CAT: <span className="text-slate-600">{device.category}</span></span>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px]">
+              <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-700 min-w-0">
+                <Cpu className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                <span className="truncate">{device.serialNumber}</span>
+              </span>
+              {device.model && <span className="w-1 h-1 bg-slate-300 rounded-full" />}
+              {device.model && <span className="font-medium text-slate-600 truncate">{device.model}</span>}
+              {device.category && <span className="w-1 h-1 bg-slate-300 rounded-full" />}
+              {device.category && <span className="font-medium text-slate-500 truncate">{device.category}</span>}
             </div>
           </div>
         </div>
@@ -447,14 +456,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
              {!isStandalone && (
                isEditing ? (
                  <>
-                   <button onClick={handleSaveEdit} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-blue-600 text-white rounded-xl shadow-lg font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest active:scale-95 transition hover:bg-blue-700"><Save className="w-4 h-4 shrink-0" /> Salveaza</button>
-                   <button onClick={() => setIsEditing(false)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest active:scale-95 transition hover:bg-slate-200">Anuleaza</button>
+                   <button onClick={handleSaveEdit} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl shadow-sm shadow-blue-600/20 font-bold text-[13px] active:scale-95 transition hover:bg-blue-700"><Save className="w-4 h-4 shrink-0" /> Salveaza</button>
+                   <button onClick={() => setIsEditing(false)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-[13px] active:scale-95 transition hover:bg-slate-200">Anuleaza</button>
                  </>
                ) : (
+                 /* "Editeaza" era negru si plin, "Sterge" rosu si plin, la fel
+                    de mari — actiunea de zi cu zi si cea fara intoarcere aratau
+                    la fel de important. Acum una e drumul obisnuit, cealalta e
+                    la indemana dar linistita. */
                  <>
-                   <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl shadow-lg font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest active:scale-95 transition hover:bg-slate-800"><Edit2 className="w-4 h-4 shrink-0" /> Editeaza</button>
+                   <button onClick={() => setIsEditing(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl shadow-sm shadow-blue-600/20 font-bold text-[13px] active:scale-95 transition hover:bg-blue-700"><Edit2 className="w-4 h-4 shrink-0" /> Editeaza</button>
                    {canDelete && (
-                     <button onClick={() => setShowPurgeConfirm(true)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-3 sm:px-8 py-3.5 bg-red-50 text-red-700 border border-red-100 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest hover:bg-red-600 hover:text-white transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
+                     <button onClick={() => setShowPurgeConfirm(true)} className="shrink-0 flex items-center justify-center gap-2 px-4 py-3 text-slate-500 rounded-xl font-semibold text-[13px] hover:bg-red-50 hover:text-red-600 transition active:scale-95"><Trash2 className="w-4 h-4 shrink-0" /> Sterge</button>
                    )}
                  </>
                )
@@ -529,12 +542,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         {activeTab === 'overview' && (
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
               <div className="xl:col-span-8 space-y-5 sm:space-y-8 animate-slide-up">
-                <div className="hardware-card p-4 sm:p-10 rounded-3xl space-y-6 sm:space-y-8">
-                   <div className="flex items-center gap-3 sm:gap-4 mb-2">
-                      <div className="p-2.5 sm:p-3 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl shadow-sm shrink-0"><Info className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-                      <h3 className="text-base sm:text-xl font-black uppercase tracking-tight text-slate-900">Fisa Dispozitivului</h3>
+                <div className="hardware-card p-4 sm:p-7 rounded-3xl space-y-5 sm:space-y-6">
+                   {/* Titlul acestei cartele era "Fisa dispozitivului" — exact
+                       ce scria si in antetul paginii, cu doua randuri mai sus.
+                       Al doilea nu spunea nimic in plus. */}
+                   <div className="flex items-center gap-2.5">
+                      <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-slate-500">Date tehnice</h3>
                    </div>
-                   
+
                    {isEditing ? (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                         <div className="space-y-1">
@@ -585,7 +601,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                            <label className="tech-label ml-1">Etichete (Tags)</label>
                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                               {editForm.tags.map(tag => (
-                                <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wide">
                                   {tag}
                                   <button type="button" onClick={() => setEditForm(p => ({ ...p, tags: p.tags.filter(t => t !== tag) }))} className="hover:text-red-200 transition"><X className="w-3 h-3" /></button>
                                 </span>
@@ -608,7 +624,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         </div>
                      </div>
                    ) : (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 xl:gap-x-12 gap-y-4 sm:gap-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 xl:gap-x-12">
                         <InfoRow label="Numar serie" value={device.serialNumber} badge />
                         <InfoRow label="Numar de inventar" value={device.inventoryNumber || '—'} badge={!!device.inventoryNumber} />
                         <InfoRow label="Model" value={device.model} />
@@ -622,7 +638,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             <span className="tech-label">Etichete</span>
                             <div className="flex flex-wrap gap-2">
                               {(device.tags || []).map(tag => (
-                                <span key={tag} className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                                <span key={tag} className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center gap-1.5">
                                   <Tag className="w-3 h-3" />{tag}
                                 </span>
                               ))}
@@ -734,12 +750,21 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               </div>
 
               <div className="xl:col-span-4 space-y-5 sm:space-y-8">
-                {/* A full-width square eats a whole phone screen — keep it short on mobile */}
-                <div className="hardware-card p-4 sm:p-8 rounded-3xl overflow-hidden group">
-                   <div className="h-44 sm:h-auto sm:aspect-square bg-white rounded-2xl sm:rounded-3xl border border-slate-100 flex items-center justify-center overflow-hidden relative shadow-inner">
-                      {device.image ? <img src={device.image} alt="Visual" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" /> : <Box className="w-12 h-12 sm:w-16 sm:h-16 text-slate-200 opacity-50" />}
-                   </div>
-                </div>
+                {/*
+                  Poza aparatului, cand exista.
+                  Cand nu exista — si la aproape toate nu exista — statea in
+                  locul ei un patrat gol cu un cub gri desenat inauntru, cat un
+                  sfert de ecran pe laptop si un ecran intreg pe telefon. Un
+                  chenar gol nu spune "nu are poza", doar ia locul costurilor si
+                  al termenelor, care chiar au ce spune.
+                */}
+                {device.image && (
+                  <div className="hardware-card p-3 sm:p-4 rounded-3xl overflow-hidden group">
+                     <div className="h-44 sm:h-auto sm:aspect-square bg-white rounded-2xl border border-slate-100 flex items-center justify-center overflow-hidden relative">
+                        <img src={device.image} alt={device.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" referrerPolicy="no-referrer" />
+                     </div>
+                  </div>
+                )}
 
                 {/* Cost of ownership */}
                 <DeviceCostCard device={device} invoices={invoices} />
@@ -756,7 +781,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <BookOpen className="w-6 h-6 sm:w-8 sm:h-8" />
                    </div>
                    <div>
-                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Arhiva Tehnica</h3>
+                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Arhiva Tehnica</h3>
                       <p className="tech-label mt-1">Documentatie si manuale centralizate</p>
                    </div>
                 </div>
@@ -781,7 +806,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <button
                            onClick={() => fileInputRef.current?.click()}
                            disabled={isUploading}
-                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 whitespace-nowrap"
                         >
                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Upload className="w-4 h-4 shrink-0" />}
                            <span className="truncate">{isUploading ? "Se proceseaza" : "Incarca"}</span>
@@ -790,7 +815,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <button
                            onClick={() => setShowDocCapture(true)}
                            disabled={isUploading}
-                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-emerald-600 transition shadow-xl active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                           className="w-full sm:w-auto px-4 sm:px-8 py-3.5 bg-slate-900 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-[0.2em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-emerald-600 transition shadow-xl active:scale-95 disabled:opacity-50 whitespace-nowrap"
                            title="Scaneaza documentul cu camera — paginile se combina intr-un PDF"
                         >
                            <Camera className="w-4 h-4 shrink-0" />
@@ -940,7 +965,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <CheckSquare className="w-6 h-6 sm:w-8 sm:h-8" />
                    </div>
                    <div className="min-w-0">
-                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Urmarire Operatiuni</h3>
+                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Urmarire Operatiuni</h3>
                       <p className="tech-label mt-1">Sarcini active de mentenanta si operare</p>
                    </div>
                 </div>
@@ -959,7 +984,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      };
                      onAddTask(newTask);
                    }}
-                   className="w-full md:w-auto shrink-0 px-6 sm:px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                   className="w-full md:w-auto shrink-0 px-6 sm:px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-[13px] tracking-normal flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                 >
                    <Plus className="w-5 h-5" /> Adauga Sarcina
                 </button>
@@ -969,15 +994,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 {tasks.length > 0 ? tasks.map(task => (
                   <div key={task.id} className="hardware-card p-4 sm:p-6 rounded-3xl sm:rounded-[2rem] flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6 hover:shadow-xl transition-all group">
                      <div className={`w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
-                        task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-600' : 
+ task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 text-emerald-600' : 
                         task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
                      }`}>
                         {task.status === TaskStatus.COMPLETED ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
                      </div>
                      <div className="flex-1 min-w-0 text-left">
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
-                           <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border ${
-                              task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
+                           <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide border ${
+ task.status === TaskStatus.COMPLETED ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
                               task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'
                            }`}>
                               {TASK_STATUS_RO[task.status] || task.status}
@@ -989,8 +1014,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         <p className="text-sm text-slate-500 mt-1 line-clamp-1 font-medium">{task.description || 'Fara descriere.'}</p>
                      </div>
                       <div className="hidden md:flex items-center gap-4">
-                        <span className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border ${
-                          task.status === TaskStatus.PENDING ? 'border-slate-200 text-slate-500 bg-white' : 
+                        <span className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wide border ${
+ task.status === TaskStatus.PENDING ? 'border-slate-200 text-slate-500 bg-white' : 
                           task.status === TaskStatus.IN_PROGRESS ? 'border-blue-200 text-blue-600 bg-blue-50/50' : 
                           'border-green-200 text-green-600 bg-green-50/50'
                         }`}>
@@ -1016,7 +1041,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <Wrench className="w-6 h-6 sm:w-8 sm:h-8" />
                    </div>
                    <div className="min-w-0">
-                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Istoric Service</h3>
+                      <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Istoric Service</h3>
                       <p className="tech-label mt-1">Jurnal interventii tehnice</p>
                    </div>
                 </div>
@@ -1037,7 +1062,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      };
                      onUpdate(updatedDevice);
                    }}
-                   className="w-full md:w-auto shrink-0 px-6 sm:px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                   className="w-full md:w-auto shrink-0 px-6 sm:px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-[13px] tracking-normal flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                 >
                    <Plus className="w-5 h-5" /> Adauga Interventie
                 </button>
@@ -1052,8 +1077,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                               <Calendar className="w-5 h-5" />
                            </div>
                            <div className="min-w-0">
-                              <h4 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">{MAINTENANCE_TYPE_RO[record.type] || record.type}</h4>
-                              <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">EFECTUAT LA: {record.date} DE {record.technician}</p>
+                              <h4 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">{MAINTENANCE_TYPE_RO[record.type] || record.type}</h4>
+                              <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wide">EFECTUAT LA: {record.date} DE {record.technician}</p>
                            </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1082,7 +1107,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           <div className="max-w-xl mx-auto py-2 sm:py-12 animate-slide-up">
              <div className="hardware-card p-4 sm:p-12 rounded-3xl sm:rounded-[3rem] text-center space-y-6 sm:space-y-10">
                 <div className="space-y-2">
-                   <h3 className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Identitate Dispozitiv</h3>
+                   <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Identitate Dispozitiv</h3>
                    <p className="tech-label">Identificare unica QR</p>
                 </div>
                 
@@ -1118,13 +1143,13 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             link.click();
                           }
                         }}
-                        className="flex-1 py-4 sm:py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
+                        className="flex-1 py-4 sm:py-5 bg-slate-900 text-white rounded-2xl font-bold text-[13px] tracking-normal flex items-center justify-center gap-3 hover:bg-blue-600 transition shadow-xl active:scale-95"
                       >
                         <Download className="w-5 h-5" /> Descarca QR
                       </button>
                       <button 
                         onClick={() => window.print()}
-                        className="flex-1 py-4 sm:py-5 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-200 transition active:scale-95"
+                        className="flex-1 py-4 sm:py-5 bg-slate-100 text-slate-600 rounded-2xl font-bold text-[13px] tracking-normal flex items-center justify-center gap-3 hover:bg-slate-200 transition active:scale-95"
                       >
                         <Printer className="w-5 h-5" /> Printeaza Eticheta
                       </button>
@@ -1146,14 +1171,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
               <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <div className="p-2.5 sm:p-3 shrink-0 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl shadow-sm"><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
                 <div className="min-w-0">
-                  <h3 className="text-base sm:text-xl font-black uppercase tracking-tight text-slate-900">Istoric Modificari</h3>
+                  <h3 className="text-base sm:text-xl font-black tracking-tight text-slate-900">Istoric Modificari</h3>
                   <p className="tech-label mt-1">Cine a modificat acest dispozitiv si cand</p>
                 </div>
               </div>
               {(() => {
                 const deviceAudit = auditEntries.filter(e => e.entity === 'device' && e.entityId === device.id);
                 if (deviceAudit.length === 0) {
-                  return <p className="py-12 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Nicio modificare inregistrata pentru acest dispozitiv</p>;
+                  return <p className="py-12 text-center text-[13px] font-bold text-slate-500 tracking-normal">Nicio modificare inregistrata pentru acest dispozitiv</p>;
                 }
                 return (
                   <div className="space-y-3">
@@ -1209,14 +1234,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         <div className="p-6 sm:p-8 bg-slate-900 text-white flex flex-col items-center gap-4 text-center">
            <div className="flex items-center gap-3">
               <LogoTile className="p-2 rounded-lg" markClassName="w-5 h-5" />
-              <h1 className="text-lg font-black tracking-tight text-white uppercase">Biomedic</h1>
+              <h1 className="text-lg font-black tracking-tight text-white">Biomedic</h1>
            </div>
            <p className="text-xs text-slate-500 font-medium max-w-xs">
               Aceasta este o vizualizare individuala a dispozitivului. Pentru administrarea intregului parc de echipamente, accesati aplicatia principala.
            </p>
            <a 
               href={getAppBaseUrl()}
-              className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-white/10"
+              className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-wide transition-all border border-white/10"
            >
               Deschide Aplicatia Completa
            </a>
@@ -1246,7 +1271,7 @@ const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste }: {
     : 'bg-emerald-50 border-emerald-200 text-emerald-800';
   return (
     <div className={`px-4 py-3 rounded-2xl border ${ton}`}>
-      <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{eticheta}</p>
+      <p className="text-[10px] font-black uppercase tracking-wide opacity-70">{eticheta}</p>
       <p className="text-[14px] font-black mt-0.5">
         {data || gol}
         {zile !== null && (
@@ -1281,7 +1306,7 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
          </div>
          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 min-w-0">
-               <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700`}>
+               <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wide border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700`}>
                   {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
                </span>
                <span className="text-[10px] font-mono font-bold text-slate-500 truncate">{file.dateAdded}</span>
@@ -1325,7 +1350,7 @@ const ActiuneFisa = React.memo(({ icon, text, scurt, onClick }: {
   <button
     onClick={onClick}
     aria-label={text}
-    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:border-blue-300 hover:text-blue-700 transition active:scale-95"
+    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-[13px] font-semibold hover:border-blue-300 hover:text-blue-700 transition active:scale-95"
   >
     {icon}
     <span className="sm:hidden">{scurt}</span>
@@ -1336,25 +1361,32 @@ const ActiuneFisa = React.memo(({ icon, text, scurt, onClick }: {
 const TabButton = React.memo(({ active, onClick, icon, label, shortLabel }: any) => (
   <button
     onClick={onClick}
-    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2.5 px-1 sm:px-5 py-3 sm:py-5 text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-wide transition-all relative whitespace-nowrap ${
-      active ? 'text-blue-600 bg-blue-50/60 sm:bg-transparent' : 'text-slate-500 hover:text-slate-600'
+    className={`flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 px-1 sm:px-4 py-3 sm:py-4 text-[11px] sm:text-[13px] font-semibold transition-all relative whitespace-nowrap ${
+      active ? 'text-blue-600 bg-blue-50/60 sm:bg-transparent' : 'text-slate-500 hover:text-slate-700'
     }`}
   >
     {icon}
     <span className="sm:hidden truncate max-w-full">{shortLabel || label}</span>
     <span className="hidden sm:inline">{label}</span>
-    {active && <div className="absolute bottom-0 left-2 right-2 sm:left-5 sm:right-5 h-1 bg-blue-600 rounded-full shadow-[0_-2px_10px_rgba(37,99,235,0.3)]" />}
+    {active && <div className="absolute bottom-0 left-2 right-2 sm:left-4 sm:right-4 h-0.5 bg-blue-600 rounded-full" />}
   </button>
 ));
 
+/*
+ * Un camp din fisa aparatului.
+ *
+ * Fiecare valoare statea intr-o caseta plina — seria si numarul de inventar
+ * chiar in casete negre — asa ca o fisa care doar se citeste arata ca un
+ * formular gata de completat, si zece campuri faceau zece dreptunghiuri. Acum
+ * eticheta sta deasupra, valoarea sub ea, si intre campuri e o linie subtire:
+ * se citeste ca o fisa, nu ca un formular.
+ */
 const InfoRow = React.memo(({ label, value, badge }: any) => (
-  <div className="space-y-1.5 group">
-    <span className="tech-label ml-1 group-hover:text-blue-600 transition-colors">{label}</span>
-    <div className={`p-4 rounded-2xl font-bold text-sm transition-all ${
-      badge ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-700 border border-slate-100'
-    }`}>
+  <div className="py-2.5 border-b border-slate-100 last:border-b-0">
+    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{label}</span>
+    <p className={`mt-0.5 text-[15px] text-slate-900 break-words ${badge ? 'font-mono font-bold' : 'font-semibold'}`}>
       {value}
-    </div>
+    </p>
   </div>
 ));
 
@@ -1375,13 +1407,13 @@ const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice
     <div className="hardware-card p-5 sm:p-8 rounded-3xl">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Costuri Asociate</h3>
+        <h3 className="text-sm font-black tracking-tight text-slate-900">Costuri Asociate</h3>
       </div>
       <div className="space-y-3">
         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
           <div className="flex items-center gap-3">
             <Receipt className="w-4 h-4 text-slate-500" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Facturi ({deviceInvoices.length})</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Facturi ({deviceInvoices.length})</span>
           </div>
           <div className="text-right">
             {byCurrency.size === 0 ? (
@@ -1396,7 +1428,7 @@ const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice
         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-4 h-4 text-slate-500" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Contracte / an ({contracts.length})</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Contracte / an ({contracts.length})</span>
           </div>
           <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
         </div>

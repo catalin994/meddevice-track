@@ -128,7 +128,7 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ data, onFail }) => {
           className="p-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white rounded-xl transition active:scale-95" title="Pagina anterioara" aria-label="Pagina anterioara">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-white/70 text-[11px] font-black uppercase tracking-widest min-w-[80px] text-center">
+        <span className="text-white/70 text-[11px] font-black uppercase tracking-wide min-w-[80px] text-center">
           {numPages ? `${pageNum} / ${numPages}` : '—'}
         </span>
         <button onClick={() => setPageNum(p => Math.min(numPages, p + 1))} disabled={pageNum >= numPages}

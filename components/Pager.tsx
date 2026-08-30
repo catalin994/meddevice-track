@@ -66,11 +66,11 @@ export const usePagination = <T,>(items: T[], storageKey: string) => {
 /** The "N per page" control, for a toolbar. */
 export const PageSizePicker: React.FC<{ value: number; onChange: (n: number) => void }> = ({ value, onChange }) => (
   <label className="flex items-center gap-2">
-    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Pe pagina</span>
+    <span className="text-[13px] font-medium text-slate-500">Pe pagina</span>
     <select
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="px-3 py-2.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-bold text-slate-700 outline-none cursor-pointer"
+      className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-[13px] font-semibold text-slate-700 outline-none cursor-pointer"
       title="Cate randuri se afiseaza pe o pagina"
     >
       {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
@@ -78,23 +78,34 @@ export const PageSizePicker: React.FC<{ value: number; onChange: (n: number) => 
   </label>
 );
 
-const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
+const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo, onPageSize }: {
   page: number; pageCount: number; pageSize: number; total: number; onGoTo: (p: number) => void;
+  /** Cate randuri pe pagina. Statea sus, in bara de unelte, unde imbulzea
+      cautarea si butoanele; locul lui e langa numaratoare. */
+  onPageSize?: (n: number) => void;
 }) => {
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
+  /* Cu o singura pagina nu e nimic de rasfoit: raman doua cuvinte, nu o cartela
+     alba cat randul, goala pe trei sferturi. */
+  const singura = pageCount <= 1;
   return (
-    <div className="hardware-card rounded-3xl px-4 py-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <span className="text-[13px] font-semibold text-slate-500 text-center sm:text-left">
-        {from}–{to} din {total}{pageCount > 1 ? ` · pagina ${page} / ${pageCount}` : ''}
-      </span>
+    <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${
+      singura ? 'px-2 py-1' : 'hardware-card rounded-3xl px-4 py-3.5 sm:px-6'
+    }`}>
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] font-medium text-slate-500 text-center sm:text-left">
+          {from}–{to} din {total}{pageCount > 1 ? ` · pagina ${page} / ${pageCount}` : ''}
+        </span>
+        {onPageSize && total > 10 && <PageSizePicker value={pageSize} onChange={onPageSize} />}
+      </div>
       {pageCount > 1 && (
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => onGoTo(page - 1)}
             disabled={page === 1}
             aria-label="Pagina anterioara"
-            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
             title="Pagina anterioara"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -107,9 +118,9 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
                 key={n}
                 onClick={() => onGoTo(n)}
                 className={`min-w-[2.5rem] px-2 py-2.5 rounded-xl text-[13px] font-bold transition active:scale-90 ${
-                  n === page
-                    ? 'bg-blue-600 border-2 border-blue-600 text-white shadow-lg shadow-blue-600/20'
-                    : 'bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
+ n === page
+                    ? 'bg-blue-600 border border-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
                 }`}
               >
                 {n}
@@ -120,7 +131,7 @@ const Pager = React.memo(({ page, pageCount, pageSize, total, onGoTo }: {
             onClick={() => onGoTo(page + 1)}
             disabled={page === pageCount}
             aria-label="Pagina urmatoare"
-            className="p-3 bg-white border-2 border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-white hover:bg-slate-900 hover:border-slate-900 transition active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
             title="Pagina urmatoare"
           >
             <ChevronRight className="w-4 h-4" />

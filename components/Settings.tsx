@@ -609,25 +609,25 @@ NOTIFY pgrst, 'reload schema';
               <Cloud className="w-7 h-7 sm:w-10 sm:h-10" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Supabase Core</h2>
-              <p className="text-[12px] sm:text-sm text-slate-500 font-bold uppercase sm:tracking-widest mt-1">Infrastructura globala de date</p>
+              <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Supabase Core</h2>
+              <p className="text-[12px] sm:text-sm text-slate-500 font-bold sm:tracking-tight mt-1">Infrastructura globala de date</p>
             </div>
           </div>
           <button onClick={handleRunIntegrityTest} disabled={isTesting || !isSupabaseConfigured} className="p-4 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-2xl transition flex items-center gap-3 border border-slate-100 disabled:opacity-30">
              {isTesting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Verifica conexiunea</span>
+             <span className="text-[10px] font-black uppercase tracking-wide hidden sm:inline">Verifica conexiunea</span>
           </button>
         </div>
 
         {diagnosis && (
           <div className={`mb-8 p-5 sm:p-6 rounded-3xl border animate-fade-in ${
-            diagnosis.ok ? 'bg-green-50 border-green-200 text-green-700'
+ diagnosis.ok ? 'bg-green-50 border-green-200 text-green-700'
             : diagnosis.stage === 'schema' ? 'bg-amber-50 border-amber-200 text-amber-800'
             : 'bg-red-50 border-red-200 text-red-700'}`}>
             <div className="flex gap-4">
               {diagnosis.ok ? <CheckCircle className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
               <div className="min-w-0 space-y-2">
-                <p className="font-black text-xs uppercase tracking-widest">{diagnosis.title}</p>
+                <p className="font-black text-xs uppercase tracking-wide">{diagnosis.title}</p>
                 <p className="text-sm font-bold leading-relaxed break-words">{diagnosis.detail}</p>
                 {diagnosis.hint && (
                   <p className="text-[11px] font-medium leading-relaxed bg-black/5 p-3 rounded-xl">{diagnosis.hint}</p>
@@ -640,22 +640,22 @@ NOTIFY pgrst, 'reload schema';
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">URL Endpoint Proiect</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 block">URL Endpoint Proiect</label>
                 <input type="text" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} placeholder="https://abc.supabase.co"
                   /* Mai marunt pe telefon: adresa proiectului are peste patruzeci de
                      caractere si iesea din camp fara ca ceva sa arate ca mai continua. */
                   className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-[11px] sm:text-sm font-mono" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Cheie Anon/Secret</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 block">Cheie Anon/Secret</label>
                 <div className="relative">
                   <input type={showKey ? "text" : "password"} value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="eyJhbG..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-mono pr-24" />
-                  <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 rounded-lg">{showKey ? "Ascunde" : "Arata"}</button>
+                  <button onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wide bg-slate-50 rounded-lg">{showKey ? "Ascunde" : "Arata"}</button>
                 </div>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
+              <button onClick={() => saveSupabaseConfig(inputUrl, inputKey)} className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-bold tracking-normal shadow-2xl hover:bg-blue-700 transition active:scale-95">Conecteaza Instanta Cloud</button>
               {/*
                 Scris, nu doar o iconita. Pe telefon, unde butoanele stau unul
                 sub altul, iesea o banda rosie fara nicio vorba pe ea — exact
@@ -665,7 +665,7 @@ NOTIFY pgrst, 'reload schema';
               */}
               {isSupabaseConfigured && (
                 <button onClick={() => setShowDisconnect(true)}
-                  className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition hover:bg-red-100 flex items-center justify-center gap-2 shrink-0"
+                  className="px-8 py-5 bg-red-50 text-red-700 rounded-[1.5rem] font-bold tracking-normal text-[13px] transition hover:bg-red-100 flex items-center justify-center gap-2 shrink-0"
                   aria-label="Deconecteaza cloud-ul de pe acest aparat">
                   <LogOut className="w-5 h-5 shrink-0" /> Deconecteaza
                 </button>
@@ -685,8 +685,8 @@ NOTIFY pgrst, 'reload schema';
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Instalare Schema Baza de Date</h2>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Executa acest script in Supabase SQL Editor</p>
+              <h2 className="text-xl font-black text-white tracking-tight">Instalare Schema Baza de Date</h2>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wide">Executa acest script in Supabase SQL Editor</p>
             </div>
           </div>
 
@@ -697,7 +697,7 @@ NOTIFY pgrst, 'reload schema';
             </pre>
             <button 
               onClick={handleCopySql}
-              className="absolute top-4 right-4 px-3 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+              className="absolute top-4 right-4 px-3 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-wide"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copiat' : 'Copiaza SQL'}
@@ -709,7 +709,7 @@ NOTIFY pgrst, 'reload schema';
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Conturi si acces</h2>
+              <h2 className="text-xl font-black text-white tracking-tight">Conturi si acces</h2>
               <p className="text-[11px] text-emerald-300 font-bold">Ruleaza al doilea, dupa scriptul de schema</p>
             </div>
           </div>
@@ -746,7 +746,7 @@ NOTIFY pgrst, 'reload schema';
               <FileText className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Referate, fundamentare, comenzi si contracte</h2>
+              <h2 className="text-xl font-black text-white tracking-tight">Referate, fundamentare, comenzi si contracte</h2>
               <p className="text-[11px] text-indigo-300 font-bold">Ruleaza al treilea, dupa cel de conturi</p>
             </div>
           </div>
@@ -782,12 +782,12 @@ NOTIFY pgrst, 'reload schema';
           <div className="flex items-center gap-5 min-w-0">
             <div className="p-5 bg-blue-100 text-blue-600 rounded-3xl"><HardDrive className="w-10 h-10" /></div>
             <div className="min-w-0">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Spatiu pentru fisiere</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Spatiu pentru fisiere</h2>
               <p className="text-sm text-slate-500 font-semibold mt-1">Cat ocupa documentele si cat a mai ramas</p>
             </div>
           </div>
           <button onClick={masoaraSpatiul} disabled={seMasoara}
-            className="px-5 py-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition disabled:opacity-50 flex items-center gap-2">
+            className="px-5 py-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-100 transition disabled:opacity-50 flex items-center gap-2">
             {seMasoara ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Masoara din nou
           </button>
@@ -816,7 +816,7 @@ NOTIFY pgrst, 'reload schema';
             <div>
               <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
                 <div>
-                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">
                     In cloud · vazut de toti{exact ? ' · masurat exact' : ''}
                   </p>
                   <p className="text-2xl font-black text-slate-900 tabular-nums mt-0.5">
@@ -825,14 +825,14 @@ NOTIFY pgrst, 'reload schema';
                   </p>
                 </div>
                 <p className={`text-sm font-black tabular-nums ${
-                  folosit > limitaGB * 1024 ** 3 * 0.9 ? 'text-red-600' : 'text-emerald-700'
+ folosit > limitaGB * 1024 ** 3 * 0.9 ? 'text-red-600' : 'text-emerald-700'
                 }`}>
                   mai ai {marime(Math.max(0, limitaGB * 1024 ** 3 - folosit))}
                 </p>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${
-                  folosit > limitaGB * 1024 ** 3 * 0.9 ? 'bg-red-600'
+ folosit > limitaGB * 1024 ** 3 * 0.9 ? 'bg-red-600'
                   : folosit > limitaGB * 1024 ** 3 * 0.7 ? 'bg-amber-500' : 'bg-blue-600'
                 }`} style={{ width: `${Math.min(100, (folosit / (limitaGB * 1024 ** 3)) * 100)}%` }} />
               </div>
@@ -844,7 +844,7 @@ NOTIFY pgrst, 'reload schema';
 
             {/* Limita nu se poate afla din API: o stie doar abonamentul vostru. */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center gap-3">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Limita abonamentului</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-wide">Limita abonamentului</label>
               <input type="number" min="0.1" step="0.1" value={limitaGB}
                 onChange={e => { const v = parseFloat(e.target.value) || LIMITA_IMPLICITA_GB; setLimitaGB(v); void punLimitaGB(v); }}
                 aria-label="Limita de stocare, in gigaocteti"
@@ -860,7 +860,7 @@ NOTIFY pgrst, 'reload schema';
               <div>
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
                   <div>
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Pe aparatul acesta · copiile pentru offline</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">Pe aparatul acesta · copiile pentru offline</p>
                     <p className="text-lg font-black text-slate-900 tabular-nums mt-0.5">
                       {marime(spatiuLocal.octeti)}
                       <span className="text-sm font-bold text-slate-500"> din {marime(spatiuLocal.limita)}</span>
@@ -917,7 +917,7 @@ NOTIFY pgrst, 'reload schema';
                 <Trash2 className="w-10 h-10" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Cosul de stergeri</h2>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Cosul de stergeri</h2>
                 <p className="text-sm text-slate-500 font-semibold mt-1">
                   Ce s-a sters in ultimele {ZILE_IN_COS} de zile se poate pune la loc
                 </p>
@@ -940,7 +940,7 @@ NOTIFY pgrst, 'reload schema';
                     <div key={d.id} className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
                       <div className="min-w-0 flex-1">
                         <p className="text-[14px] font-black text-slate-900 truncate">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mr-2">
+                          <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 mr-2">
                             {NUME_ENTITATE[d.entity]}
                           </span>
                           {d.entityName || d.entityId}
@@ -958,7 +958,7 @@ NOTIFY pgrst, 'reload schema';
                         onClick={() => onRestore(d)}
                         disabled={!canDelete}
                         title={canDelete ? undefined : 'Doar un administrator poate pune la loc'}
-                        className="px-5 py-3 bg-emerald-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                        className="px-5 py-3 bg-emerald-600 text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
                       >
                         <RefreshCw className="w-4 h-4" /> Pune la loc
                       </button>
@@ -979,7 +979,7 @@ NOTIFY pgrst, 'reload schema';
               <HardDrive className="w-10 h-10" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Documente in Storage</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Documente in Storage</h2>
               <p className="text-sm text-slate-500 font-semibold mt-1">Scoate fisierele din interiorul randurilor</p>
             </div>
           </div>
@@ -1040,7 +1040,7 @@ NOTIFY pgrst, 'reload schema';
             <Camera className="w-10 h-10" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Calitatea scanarilor</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Calitatea scanarilor</h2>
             <p className="text-sm text-slate-500 font-semibold mt-1">Cat de mult se comprima paginile scanate</p>
           </div>
         </div>
@@ -1053,7 +1053,7 @@ NOTIFY pgrst, 'reload schema';
                 key={q.id}
                 onClick={() => chooseScanQuality(q.id)}
                 className={`text-left p-5 rounded-2xl border-2 transition ${
-                  active ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'
+ active ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-2">
@@ -1084,8 +1084,8 @@ NOTIFY pgrst, 'reload schema';
               <Users className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Utilizatori & Roluri</h2>
-              <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Controlul accesului in aplicatie</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Utilizatori & Roluri</h2>
+              <p className="text-sm text-slate-500 font-bold tracking-tight mt-1">Controlul accesului in aplicatie</p>
             </div>
           </div>
 
@@ -1129,7 +1129,7 @@ NOTIFY pgrst, 'reload schema';
                   onClick={() => handleToggleApproved(u)}
                   disabled={u.id === currentUser?.id}
                   className={`px-4 py-2.5 rounded-xl text-[13px] font-bold transition active:scale-95 disabled:opacity-50 whitespace-nowrap ${
-                    u.approved
+ u.approved
                       ? 'bg-white text-slate-500 border-2 border-slate-200 hover:text-red-600 hover:border-red-200'
                       : 'bg-emerald-600 text-white hover:bg-emerald-700'
                   }`}
@@ -1164,20 +1164,20 @@ NOTIFY pgrst, 'reload schema';
             <Clock className="w-10 h-10" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Jurnal Activitate</h2>
-            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mt-1">Cine a modificat ce si cand · ultimele {Math.min(auditLog.length, 50)} actiuni</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Jurnal Activitate</h2>
+            <p className="text-sm text-slate-500 font-bold tracking-tight mt-1">Cine a modificat ce si cand · ultimele {Math.min(auditLog.length, 50)} actiuni</p>
           </div>
         </div>
         {auditLog.length === 0 ? (
-          <p className="py-10 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Nicio actiune inregistrata inca</p>
+          <p className="py-10 text-center text-[13px] font-bold text-slate-500 tracking-normal">Nicio actiune inregistrata inca</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {auditLog.slice(0, 50).map(e => (
               <div key={e.id} className="flex items-center gap-3 p-3.5 bg-slate-50/70 rounded-xl border border-slate-100">
-                <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide ${e.action === 'delete' ? 'bg-red-50 text-red-500' : e.action === 'create' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                   {e.action === 'create' ? 'Creat' : e.action === 'delete' ? 'Sters' : 'Modif.'}
                 </span>
-                <span className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span className="shrink-0 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-wide text-slate-500">
                   {e.entity === 'device' ? 'Dispozitiv' : e.entity === 'task' ? 'Tichet' : 'Factura'}
                 </span>
                 <p className="flex-1 min-w-0 text-xs font-bold text-slate-700 truncate">{e.entityName}</p>
@@ -1202,13 +1202,13 @@ NOTIFY pgrst, 'reload schema';
               <div className="p-3 bg-blue-500 text-white rounded-2xl shadow-lg">
                 <RefreshCw className={`w-5 h-5 ${isRepairing ? 'animate-spin' : ''}`} />
               </div>
-              <h2 className="text-lg font-black text-white uppercase tracking-tight">Scanare Date Vechi</h2>
+              <h2 className="text-lg font-black text-white tracking-tight">Scanare Date Vechi</h2>
             </div>
             <p className="text-xs text-blue-100 mb-8 leading-relaxed font-medium">
               Forteaza o scanare a datelor vechi din browser pentru a recupera dispozitive din versiuni anterioare ale aplicatiei.
             </p>
             <div className="space-y-4">
-              <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
+              <button onClick={handleRepairData} disabled={isRepairing} className="w-full py-4 bg-white text-blue-900 rounded-xl font-bold text-[13px] tracking-normal shadow-xl hover:bg-blue-50 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50">
                 {isRepairing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                 Ruleaza Recuperarea
               </button>
@@ -1226,7 +1226,7 @@ NOTIFY pgrst, 'reload schema';
               <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg">
                 <Activity className="w-5 h-5" />
               </div>
-              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Diagnosticare Sincronizare</h2>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">Diagnosticare Sincronizare</h2>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
@@ -1260,7 +1260,7 @@ NOTIFY pgrst, 'reload schema';
                     Apasa mai jos pentru a urca toate dispozitivele.
                   </p>
                   <button onClick={handlePushAll} disabled={isPushing}
-                    className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
+                    className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-amber-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
                     {isPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
                     {isPushing ? `Se urca ${pushProgress}...` : 'Urca toate dispozitivele in cloud'}
                   </button>
@@ -1273,7 +1273,7 @@ NOTIFY pgrst, 'reload schema';
               )}
 
               <button onClick={handleCompare} disabled={isComparing}
-                className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-800 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
                 {isComparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
                 {isComparing ? 'Se compara...' : 'Compara local cu cloud'}
               </button>
@@ -1286,7 +1286,7 @@ NOTIFY pgrst, 'reload schema';
                     <>
                       {diffResult.localOnly.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">
+                          <p className="text-[10px] font-black text-amber-600 uppercase tracking-wide mb-1">
                             Doar pe acest dispozitiv ({diffResult.localOnly.length})
                           </p>
                           <ul className="space-y-0.5 max-h-28 overflow-y-auto">
@@ -1299,7 +1299,7 @@ NOTIFY pgrst, 'reload schema';
                       )}
                       {diffResult.cloudOnly.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-wide mb-1">
                             Doar in cloud ({diffResult.cloudOnly.length})
                           </p>
                           <ul className="space-y-0.5 max-h-28 overflow-y-auto">
@@ -1325,11 +1325,11 @@ NOTIFY pgrst, 'reload schema';
           </div>
           <div className="mt-6 pt-4 border-t border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Versiune aplicatie</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Versiune aplicatie</span>
               <span className="text-[10px] font-mono font-bold text-slate-600">{BUILD_ID}</span>
             </div>
             <button onClick={handleHardReload}
-              className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition flex items-center justify-center gap-2">
+              className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center justify-center gap-2">
               <RefreshCw className="w-3.5 h-3.5" /> Forteaza reincarcarea aplicatiei
             </button>
           </div>

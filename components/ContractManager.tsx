@@ -333,15 +333,15 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <button onClick={() => setDeschis(null)}
-                className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
+                className="text-[11px] font-black text-slate-500 uppercase tracking-wide hover:text-slate-900 transition mb-3">
                 ← Inapoi la contracte
               </button>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight break-words">
                   {c.name || c.provider}
                 </h2>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl shrink-0">
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nr. ctr.</span>
+                  <span className="text-[10px] font-black uppercase tracking-wide opacity-70">Nr. ctr.</span>
                   <span className="text-[15px] font-black font-mono">{c.contractNumber}</span>
                 </span>
               </div>
@@ -352,12 +352,12 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             <div className="flex flex-wrap gap-2">
               {pdfulContractului(c) && (
                 <button onClick={() => setVadPdf(pdfulContractului(c))}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition flex items-center gap-2 shadow-lg shadow-blue-600/20">
+                  className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-blue-700 transition flex items-center gap-2 shadow-lg shadow-blue-600/20">
                   <Eye className="w-4 h-4" /> Vezi contractul
                 </button>
               )}
               <button onClick={() => deschideEditarea(c)}
-                className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-black transition flex items-center gap-2">
+                className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-black transition flex items-center gap-2">
                 <Pencil className="w-4 h-4" /> Modifica
               </button>
             </div>
@@ -388,7 +388,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
         <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
                 Valoarea contractului{cuTva ? ' (cu TVA)' : ' (fara TVA)'}
               </p>
               <p className="text-xl font-black text-slate-900 tabular-nums mt-1">{lei(plafon)} lei</p>
@@ -399,14 +399,14 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
               )}
             </div>
             <div className="p-4 bg-blue-50 rounded-2xl">
-              <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Facturat</p>
+              <p className="text-[10px] font-black text-blue-700 uppercase tracking-wide">Facturat</p>
               <p className="text-xl font-black text-blue-700 tabular-nums mt-1">{lei(facturat)} lei</p>
               <p className="text-[11px] font-bold text-blue-600/70 mt-0.5">
                 {aleLui.length} factur{aleLui.length === 1 ? 'a' : 'i'}
               </p>
             </div>
             <div className={`p-4 rounded-2xl ${depasit ? 'bg-red-50' : 'bg-emerald-50'}`}>
-              <p className={`text-[10px] font-black uppercase tracking-widest ${depasit ? 'text-red-700' : 'text-emerald-700'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-wide ${depasit ? 'text-red-700' : 'text-emerald-700'}`}>
                 {depasit ? 'Facturat peste contract' : 'Ramas de facturat'}
               </p>
               <p className={`text-xl font-black tabular-nums mt-1 ${depasit ? 'text-red-700' : 'text-emerald-700'}`}>
@@ -430,7 +430,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
           {/* ── cate o bara pe luna ── */}
           {luni.length > 0 && (
             <div className="pt-4 border-t border-slate-100">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Facturat pe luni</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-3">Facturat pe luni</p>
               <div className="space-y-2">
                 {luni.map(([luna, suma]) => (
                   <div key={luna} className="flex items-center gap-3">
@@ -449,7 +449,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── aparatele ── */}
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight mb-4">
               Aparate care fac obiectul contractului ({acoperite.length})
             </h3>
             {acoperite.length === 0 ? (
@@ -477,7 +477,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
           {/* ── facturile ── */}
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight mb-4">
               Facturi pe acest contract ({aleLui.length})
             </h3>
             {aleLui.length === 0 ? (
@@ -522,17 +522,17 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
               <ShieldCheck className="w-8 h-8" />
             </div>
             Registru Contracte
           </h2>
-          <p className="text-sm text-slate-500 font-bold uppercase mt-1 tracking-widest">Contracte de service</p>
+          <p className="text-sm text-slate-500 font-bold mt-1 tracking-tight">Contracte de service</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl active:scale-95 flex items-center gap-2"
+          className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-[13px] tracking-normal hover:bg-black transition shadow-xl active:scale-95 flex items-center gap-2"
         >
           <Plus className="w-5 h-5" /> Adauga Contract
         </button>
@@ -556,7 +556,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             */}
             <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Contract Valid</span>
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-wide">Contract Valid</span>
                 {/* Se vede din lista care contracte au hartia scanata si care nu. */}
                 {pdfulContractului(contract) && (
                   <button onClick={e => { e.stopPropagation(); setVadPdf(pdfulContractului(contract)); }}
@@ -592,7 +592,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             {/* "Ref:" nu spune nimic. Pe hartie scrie nr. ctr., asa se cauta. */}
             <p className="mt-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 text-white rounded-lg">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nr. ctr.</span>
+                <span className="text-[10px] font-black uppercase tracking-wide opacity-70">Nr. ctr.</span>
                 <span className="text-[13px] font-black font-mono">{contract.contractNumber}</span>
               </span>
             </p>
@@ -624,13 +624,13 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
               return (
                 <div className="mt-8 pt-6 border-t border-slate-50 relative z-10">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
                       Aparate acoperite ({acoperite.length})
                     </span>
                     {acoperite.length > 3 && (
                       <button
                         onClick={e => { e.stopPropagation(); setAratAparate(p => ({ ...p, [contract.contractNumber]: !desfasurat })); }}
-                        className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition">
+                        className="text-[10px] font-black text-indigo-600 uppercase tracking-wide hover:text-indigo-700 transition">
                         {desfasurat ? 'Arata mai putine' : `Vezi toate ${acoperite.length}`}
                       </button>
                     )}
@@ -669,7 +669,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
         {globalContracts.length === 0 && (
           <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
             <FileText className="w-16 h-16 text-slate-100 mb-4" />
-            <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Niciun contract activ</p>
+            <p className="text-slate-500 font-bold text-sm tracking-tight">Niciun contract activ</p>
           </div>
         )}
       </div>
@@ -680,10 +680,10 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl modal-shell overflow-hidden flex flex-col animate-fade-in border border-white">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div>
-                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                     {editez ? 'Modifica Contractul' : 'Adauga Contract'}
                   </h3>
-                  <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
+                  <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-wide">
                     {editez ? `Nr. ${editez}` : 'Asociaza contractul cu dispozitivele'}
                   </p>
                </div>
@@ -702,7 +702,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                         <div className="bg-slate-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
                            <div className="flex items-center gap-3 mb-3">
                               <FileText className="w-6 h-6 text-blue-400" />
-                              <h4 className="text-sm font-black uppercase tracking-widest">Contractul in PDF</h4>
+                              <h4 className="text-sm font-black tracking-tight">Contractul in PDF</h4>
                            </div>
                            <p className="text-[13px] font-semibold text-slate-300 leading-relaxed mb-5">
                               Se ataseaza la contract si se citesc din el denumirea, numarul, firma,
@@ -711,7 +711,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                            <input ref={pdfRef} type="file" accept="application/pdf" onChange={incarcaPdf} className="hidden" />
                            <div className="flex flex-wrap items-center gap-3">
                              <button type="button" onClick={() => pdfRef.current?.click()} disabled={citeste}
-                               className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
+                               className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2">
                                {citeste ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                                {citeste ? 'Se citeste...' : formData.fileName ? 'Alege alt PDF' : 'Incarca PDF-ul contractului'}
                              </button>
@@ -722,7 +722,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                                  </span>
                                  {/* Ce s-a atasat se poate citi pe loc, inainte de salvare. */}
                                  <button type="button" onClick={() => setVadPdf(pdfulContractului(formData))}
-                                   className="px-4 py-3 bg-white/10 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-white/20 transition flex items-center gap-2">
+                                   className="px-4 py-3 bg-white/10 text-white rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-white/20 transition flex items-center gap-2">
                                    <Eye className="w-4 h-4" /> Deschide
                                  </button>
                                </>
@@ -734,7 +734,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                            {randuriCitite.length > 0 && (
                              <div className="mt-3">
                                <button type="button" onClick={() => setAratRanduri(v => !v)}
-                                 className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition">
+                                 className="text-[11px] font-black text-slate-400 uppercase tracking-wide hover:text-white transition">
                                  {aratRanduri ? 'Ascunde' : 'Vezi'} textul citit din contract ({randuriCitite.length} randuri)
                                </button>
                                {aratRanduri && (
@@ -749,7 +749,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                         <div className="bg-violet-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
                            <div className="flex items-center gap-3 mb-6">
                               <Wand2 className="w-6 h-6 text-violet-400" />
-                              <h4 className="text-sm font-black uppercase tracking-widest">Extragere Inteligenta AI</h4>
+                              <h4 className="text-sm font-black tracking-tight">Extragere Inteligenta AI</h4>
                            </div>
                            <textarea 
                               className="w-full bg-white/10 border border-white/20 rounded-2xl p-6 text-sm font-medium outline-none focus:bg-white/20 transition-all placeholder:text-violet-300/50 min-h-[120px]" 
@@ -760,7 +760,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                            <button 
                               onClick={handleAiExtract}
                               disabled={isAnalyzing || !aiText}
-                              className="mt-6 w-full py-4 bg-white text-violet-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-violet-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                              className="mt-6 w-full py-4 bg-white text-violet-900 rounded-xl font-bold text-[13px] tracking-normal hover:bg-violet-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
                            >
                               {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Extrage Datele Contractului"}
                            </button>
@@ -778,7 +778,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                            <FormInput label="Valoare cu TVA (lei)" name="annualCostWithVat" type="number" value={formData.annualCostWithVat.toString()} onChange={handleInputChange} placeholder="0.00" />
                            {/* TVA-ul nu se tasteaza: e diferenta celor doua, si asa nu poate iesi altceva. */}
                            <div className="sm:col-span-2 px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-baseline justify-between gap-2">
-                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TVA</span>
+                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">TVA</span>
                              <span className="text-[15px] font-black text-slate-900 tabular-nums">
                                {formData.annualCostWithVat > formData.annualCost
                                  ? `${(formData.annualCostWithVat - formData.annualCost).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} lei`
@@ -792,7 +792,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                            */}
                            <FormInput label="Telefon Suport" name="contactPhone" type="tel" value={formData.contactPhone} onChange={handleInputChange} placeholder="optional" />
                            <div className="sm:col-span-2">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Obiectul contractului</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2 block">Obiectul contractului</label>
                               <textarea 
                                  name="coverageDetails"
                                  value={formData.coverageDetails}
@@ -810,7 +810,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                   <div className="lg:col-span-5 space-y-6">
                      <div className="bg-slate-50 p-5 sm:p-8 rounded-3xl border border-slate-100 h-full flex flex-col">
                         <div className="mb-6">
-                           <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                           <h4 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
                               <Plus className="w-5 h-5 text-indigo-600" /> Asociaza Dispozitive
                            </h4>
                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Selectate: {selectedDevices.length}</p>
@@ -833,7 +833,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                                  key={device.id}
                                  onClick={() => toggleDevice(device.id)}
                                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 ${
-                                    selectedDevices.includes(device.id) 
+ selectedDevices.includes(device.id) 
                                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' 
                                     : 'bg-white border-slate-100 hover:border-indigo-200'
                                  }`}
@@ -854,10 +854,10 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
             </div>
 
             <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
-               <button onClick={() => setIsAdding(false)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Renunta</button>
+               <button onClick={() => setIsAdding(false)} className="px-8 py-4 text-slate-500 font-bold text-[13px] tracking-normal">Renunta</button>
                <button 
                   onClick={() => document.getElementById('main-submit-btn')?.click()}
-                  className="px-12 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-indigo-700 transition active:scale-95 flex items-center gap-3"
+                  className="px-12 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-bold text-[13px] tracking-normal shadow-2xl hover:bg-indigo-700 transition active:scale-95 flex items-center gap-3"
                >
                   <ShieldCheck className="w-5 h-5" /> {editez ? 'Salveaza modificarile' : 'Salveaza Contract'}
                </button>
@@ -874,7 +874,7 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
 
 const FormInput = ({ label, name, value, onChange, placeholder, type = "text", required = false }: any) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</label>
+    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide">{label}</label>
     <input 
       required={required}
       name={name} 

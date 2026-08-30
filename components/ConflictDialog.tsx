@@ -53,11 +53,11 @@ const ConflictDialog: React.FC<{
             ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-3 pb-1">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Camp</span>
-                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Camp</span>
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-wide flex items-center gap-1">
                     <User className="w-3 h-3" /> Ce am scris eu
                   </span>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide flex items-center gap-1">
                     <Cloud className="w-3 h-3" /> Ce e in cloud
                   </span>
                 </div>
@@ -74,11 +74,11 @@ const ConflictDialog: React.FC<{
 
           <div className="p-6 sm:p-8 border-t border-slate-100 flex flex-col sm:flex-row gap-3 shrink-0">
             <button onClick={() => onAlege('lui')}
-              className="flex-1 px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition">
+              className="flex-1 px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-slate-200 transition">
               Renunt, tin varianta din cloud
             </button>
             <button onClick={() => onAlege('meu')}
-              className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">
+              className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">
               Salvez ce am scris eu
             </button>
           </div>

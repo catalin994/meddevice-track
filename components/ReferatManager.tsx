@@ -272,7 +272,7 @@ const ReferatManager: React.FC<Props> = ({
           </div>
           <button
             onClick={deschideNou}
-            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 shrink-0"
+            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold tracking-normal shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 shrink-0"
           >
             <Plus className="w-4 h-4" /> Referat nou
           </button>
@@ -283,7 +283,7 @@ const ReferatManager: React.FC<Props> = ({
               key={s}
               onClick={() => setFiltruStatus(s as 'ALL' | ReferatStatus)}
               className={`px-4 py-2.5 rounded-xl text-[11px] font-bold transition ${
-                filtruStatus === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+ filtruStatus === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
               }`}
             >
               {s === 'ALL' ? 'Toate' : REFERAT_STATUS_RO[s as ReferatStatus]}
@@ -300,11 +300,11 @@ const ReferatManager: React.FC<Props> = ({
       {filtrate.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <FileSignature className="w-16 h-16 text-slate-100 mb-4" />
-          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+          <p className="text-slate-500 font-bold text-sm tracking-tight">
             {referate.length === 0 ? 'Niciun referat inregistrat' : 'Niciun referat gasit'}
           </p>
           {referate.length === 0 && (
-            <button onClick={deschideNou} className="mt-6 px-8 py-3.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+            <button onClick={deschideNou} className="mt-6 px-8 py-3.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold tracking-normal">
               + Adauga primul referat
             </button>
           )}
@@ -359,7 +359,7 @@ const ReferatManager: React.FC<Props> = ({
                       {fmt(r.items?.length ? referatTotal(r.items) : (r.estimatedValue || 0))}{' '}
                       <span className="text-xs text-slate-500">{r.currency}</span>
                     </p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">estimat, fara TVA</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">estimat, fara TVA</p>
                   </div>
                   <button onClick={() => descarcaWord(r)}
                     className="p-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition"
@@ -403,10 +403,10 @@ const ReferatManager: React.FC<Props> = ({
               className="bg-white w-full max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
               <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">
                     {idEditat ? 'Editeaza referatul' : 'Referat de necesitate'}
                   </h3>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">
                     Cererea care deschide achizitia
                   </p>
                 </div>
@@ -461,7 +461,7 @@ const ReferatManager: React.FC<Props> = ({
                       Pozitii{pozitii.length > 1 && <span className="text-blue-600"> · {pozitii.length}</span>}
                     </label>
                     <button type="button" onClick={() => setPozitii(p => [...p, pozitieNoua()])}
-                      className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-200 transition flex items-center gap-2">
+                      className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center gap-2">
                       <Plus className="w-3.5 h-3.5" /> Adauga pozitie
                     </button>
                   </div>
@@ -519,7 +519,7 @@ const ReferatManager: React.FC<Props> = ({
                   </div>
 
                   <div className="flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-2xl">
-                    <span className="text-[11px] font-black uppercase tracking-widest">Total estimat, fara TVA</span>
+                    <span className="text-[11px] font-black uppercase tracking-wide">Total estimat, fara TVA</span>
                     <span className="text-xl font-black tabular-nums">
                       {fmt(referatTotal(pozitii))} <span className="text-xs text-white/60">{form.currency}</span>
                     </span>
@@ -563,7 +563,7 @@ const ReferatManager: React.FC<Props> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
                     <div className="min-w-0">
-                      <p className="text-xs font-black uppercase tracking-widest">Referatul scanat</p>
+                      <p className="text-xs font-black uppercase tracking-wide">Referatul scanat</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
                         {form.fileName || 'Ataseaza PDF-ul semnat'}
                       </p>
@@ -642,9 +642,9 @@ const ReferatManager: React.FC<Props> = ({
 
               <div className="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-white shrink-0">
                 <button type="button" onClick={() => setEditez(false)}
-                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
+                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-bold text-[13px] tracking-normal hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
                 <button type="submit" disabled={seSalveaza}
-                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
+                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
                   {seSalveaza && <Loader2 className="w-4 h-4 animate-spin" />}
                   {idEditat ? 'Salveaza modificarile' : 'Inregistreaza referatul'}
                 </button>

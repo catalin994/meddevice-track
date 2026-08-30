@@ -147,16 +147,16 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
                 onClick={() => t.deviceId && onSelectDevice?.(t.deviceId)}
                 disabled={!t.deviceId}
                 className={`text-left p-4 sm:p-5 rounded-3xl border flex items-center gap-3 sm:gap-4 transition-all ${
-                  t.zile < 0 ? 'bg-red-50 border-red-200' : t.zile <= 14 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'
+ t.zile < 0 ? 'bg-red-50 border-red-200' : t.zile <= 14 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'
                 } ${t.deviceId ? 'hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer' : 'cursor-default'}`}
               >
                 <div className={`p-3 shrink-0 rounded-2xl text-white shadow-lg ${
-                  t.zile < 0 ? 'bg-red-600 shadow-red-600/20' : t.zile <= 14 ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-400 shadow-slate-400/20'
+ t.zile < 0 ? 'bg-red-600 shadow-red-600/20' : t.zile <= 14 ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-400 shadow-slate-400/20'
                 }`}>
                   {t.fel === 'metrologie' ? <ShieldCheck className="w-5 h-5" /> : <CalendarClock className="w-5 h-5" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t.eticheta}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{t.eticheta}</p>
                   <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words">{t.subiect}</p>
                   {t.detaliu && <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate">{t.detaliu}</p>}
                 </div>
@@ -203,7 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
             {/* A count, not a slogan: the black "Prioritate maxima" pill sat
                 here even when the list under it was empty. */}
             <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
-              dispatchTasks.length === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white'
+ dispatchTasks.length === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white'
             }`}>
               {dispatchTasks.length === 0
                 ? 'Nimic urgent'

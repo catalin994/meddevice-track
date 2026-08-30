@@ -42,8 +42,12 @@
     background-size: 24px 24px;
   }
 
+  /* Eticheta mica de deasupra unui camp. Ramane cu majuscule — pe unsprezece
+     pixeli ajuta ochiul sa o deosebeasca de valoare — dar fara litere
+     imprastiate la 0.15em, care pe un cuvant romanesc lung faceau din
+     "URMATOAREA MENTENANTA" un rand cat jumatate de card. */
   .tech-label {
-    @apply font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-slate-600;
+    @apply font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-slate-600;
   }
 
   .tech-value {

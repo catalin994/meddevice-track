@@ -222,7 +222,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
                   onMouseEnter={() => setActive(i)}
                   onClick={() => commit(opt)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition ${
-                    i === active ? 'bg-blue-50' : 'hover:bg-slate-50'
+ i === active ? 'bg-blue-50' : 'hover:bg-slate-50'
                   }`}
                 >
                   <span className={`flex-1 min-w-0 truncate text-[15px] font-semibold ${opt === value ? 'text-blue-700' : 'text-slate-800'}`}>
@@ -244,7 +244,7 @@ const DepartmentPicker: React.FC<DepartmentPickerProps> = ({
                   onMouseEnter={() => setActive(matches.length)}
                   onClick={() => commit(trimmed)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left border-t border-slate-100 transition ${
-                    active === matches.length ? 'bg-emerald-50' : 'hover:bg-slate-50'
+ active === matches.length ? 'bg-emerald-50' : 'hover:bg-slate-50'
                   }`}
                 >
                   <Plus className="w-4 h-4 text-emerald-600 shrink-0" />

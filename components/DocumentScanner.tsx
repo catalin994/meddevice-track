@@ -422,11 +422,11 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
   const DeviceFields = () => (
     <div className="space-y-3">
       <div>
-        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Nume Fisier</label>
+        <label className="text-white/50 text-[10px] font-black uppercase tracking-wide block mb-1.5">Nume Fisier</label>
         <input value={docName} onChange={e => setDocName(e.target.value)} className="w-full bg-white/10 text-white rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10" />
       </div>
       <div>
-        <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Tip Document</label>
+        <label className="text-white/50 text-[10px] font-black uppercase tracking-wide block mb-1.5">Tip Document</label>
         <select value={docType} onChange={e => setDocType(e.target.value as DeviceFile['type'])} className="w-full bg-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10">
           <option value="service" className="bg-slate-900">Document Service</option>
           <option value="achizitie" className="bg-slate-900">Document Achizitie</option>
@@ -456,8 +456,8 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-xl"><ScanLine className="w-5 h-5 text-white" /></div>
           <div>
-            <p className="text-white font-black text-sm uppercase tracking-widest">Scanner Documente</p>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Biomedic · Recunoastere text</p>
+            <p className="text-white font-black text-sm tracking-tight">Scanner Documente</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-wide">Biomedic · Recunoastere text</p>
           </div>
         </div>
         <button onClick={() => { stopCamera(); onClose(); }} className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">
@@ -483,7 +483,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                   <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl overflow-x-auto no-scrollbar max-w-full">
                     {([['service', 'Service'], ['achizitie', 'Achizitie'], ['report', 'Raport'], ['other', 'Altele']] as [DeviceFile['type'], string][]).map(([val, label]) => (
                       <button key={val} onClick={() => setDocType(val)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition ${docType === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide whitespace-nowrap transition ${docType === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
                         {label}
                       </button>
                     ))}
@@ -491,7 +491,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                   <div className="flex gap-1.5 p-1.5 bg-black/60 backdrop-blur-sm rounded-2xl">
                     {([['portrait', 'Portret', RectangleVertical], ['landscape', 'Peisaj', RectangleHorizontal]] as [Orientation, string, any][]).map(([val, label, Icon]) => (
                       <button key={val} onClick={() => setOrientation(val)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${orientation === val ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}>
                         <Icon className="w-4 h-4" /> {label}
                       </button>
                     ))}
@@ -508,7 +508,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
                     <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                    <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-widest uppercase whitespace-nowrap">
+                    <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/70 text-xs font-bold tracking-wide uppercase whitespace-nowrap">
                       {pages.length === 0 ? 'Aliniaza documentul in cadru' : `Pagina ${pages.length + 1} — sau finalizeaza`}
                     </p>
                   </div>
@@ -541,7 +541,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
                   </button>
                   {pages.length > 0 && (
                     <button onClick={finishScan}
-                      className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl active:scale-95 transition flex items-center gap-2">
+                      className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[13px] font-bold tracking-normal shadow-2xl active:scale-95 transition flex items-center gap-2">
                       <CheckCircle className="w-5 h-5" />
                       Finalizeaza & Salveaza ({pages.length} pag.)
                     </button>
@@ -552,7 +552,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <canvas ref={canvasRef} className="hidden" />
             <div className="absolute bottom-6 left-0 right-0 flex justify-center">
               <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" />
-              <button onClick={() => pdfInputRef.current?.click()} className="flex items-center gap-2.5 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest backdrop-blur-sm transition active:scale-95">
+              <button onClick={() => pdfInputRef.current?.click()} className="flex items-center gap-2.5 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal backdrop-blur-sm transition active:scale-95">
                 <Upload className="w-4 h-4" />Incarca PDF
               </button>
             </div>
@@ -569,13 +569,13 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             ) : capturedImage && <img src={capturedImage} alt="Captured" className="w-full max-w-sm rounded-xl object-contain max-h-48 opacity-60" />}
             <div className="w-full max-w-sm space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-white/70 text-xs font-bold uppercase tracking-widest">{inputMode === 'pdf' ? 'Se extrage textul...' : 'Procesare OCR...'}</p>
+                <p className="text-white/70 text-xs font-bold uppercase tracking-wide">{inputMode === 'pdf' ? 'Se extrage textul...' : 'Procesare OCR...'}</p>
                 <p className="text-blue-400 text-xs font-black">{ocrProgress}%</p>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${ocrProgress}%` }} />
               </div>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest capitalize">{ocrStatusText}</p>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wide capitalize">{ocrStatusText}</p>
             </div>
           </div>
         )}
@@ -587,7 +587,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-emerald-400 font-black text-sm uppercase tracking-tight">
+                <p className="text-emerald-400 font-black text-sm tracking-tight">
                   {matchedDevices.length === 1 ? 'Dispozitiv Identificat' : `${matchedDevices.length} Dispozitive Gasite`}
                 </p>
                 <p className="text-white/50 text-xs mt-1">
@@ -624,7 +624,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
 
             {/* Device list with page counts */}
             <div className="space-y-2">
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-wide">
                 {matchedDevices.length === 1 ? 'Dispozitiv Identificat' : `Dispozitive Identificate (${selectedDeviceIds.size} selectate)`}
               </p>
               {matchedDevices.map(d => {
@@ -655,10 +655,10 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <button onClick={handleRetry} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition">
                 <RotateCcw className="w-5 h-5" />
               </button>
-              <button onClick={() => setStatus('manual')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+              <button onClick={() => setStatus('manual')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[13px] font-bold tracking-normal transition">
                 Adauga Altele
               </button>
-              <button onClick={handleSave} disabled={selectedDeviceIds.size === 0} className={`flex-1 py-3 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 ${saveMode === 'split' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+              <button onClick={handleSave} disabled={selectedDeviceIds.size === 0} className={`flex-1 py-3 disabled:opacity-40 text-white rounded-xl text-[13px] font-bold tracking-normal transition flex items-center justify-center gap-2 ${saveMode === 'split' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
                 {saveMode === 'split' ? <Scissors className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {saveMode === 'split' ? 'Imparte & Salveaza' : `Salveaza la ${selectedDeviceIds.size > 1 ? `${selectedDeviceIds.size} Dispozitive` : 'Dispozitiv'}`}
               </button>
@@ -678,14 +678,14 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-amber-400 font-black text-sm uppercase tracking-tight">Niciun Dispozitiv Detectat</p>
+                  <p className="text-amber-400 font-black text-sm tracking-tight">Niciun Dispozitiv Detectat</p>
                   <p className="text-white/60 text-xs mt-1">Nu au fost gasite numere de serie. Cauta manual.</p>
                 </div>
               </div>
             )}
             <div className="space-y-3">
               <div>
-                <label className="text-white/50 text-[10px] font-black uppercase tracking-widest block mb-1.5">Cauta Dispozitiv</label>
+                <label className="text-white/50 text-[10px] font-black uppercase tracking-wide block mb-1.5">Cauta Dispozitiv</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Numar de serie, nume sau model..."
@@ -709,7 +709,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               )}
               {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Selectate</p>
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-wide">Selectate</p>
                   {matchedDevices.filter(d => selectedDeviceIds.has(d.id)).map(d => (
                     <div key={d.id} className="flex items-center gap-2 p-2.5 bg-blue-600/10 border border-blue-500/20 rounded-xl">
                       <CheckCircle className="w-4 h-4 text-blue-400 shrink-0" />
@@ -724,10 +724,10 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
             <div className="flex gap-3">
               <button onClick={handleRetry} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition"><RotateCcw className="w-5 h-5" /></button>
               {matchedDevices.length > 0 && (
-                <button onClick={() => setStatus('review')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Inapoi</button>
+                <button onClick={() => setStatus('review')} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[13px] font-bold tracking-normal transition">Inapoi</button>
               )}
               <button onClick={handleSave} disabled={matchedDevices.filter(d => selectedDeviceIds.has(d.id)).length === 0}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl text-[13px] font-bold tracking-normal transition">
                 Salveaza Fisierul
               </button>
             </div>
@@ -737,7 +737,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
         {status === 'saving' && (
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
             <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
-            <p className="text-white/60 text-sm font-bold uppercase tracking-widest">
+            <p className="text-white/60 text-sm font-bold tracking-tight">
               {saveMode === 'split' ? 'Se imparte si se salveaza PDF-ul...' : 'Se salveaza documentul...'}
             </p>
           </div>
@@ -749,7 +749,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               <CheckCircle className="w-16 h-16 text-emerald-400" />
             </div>
             <div className="text-center space-y-1">
-              <p className="text-white font-black text-xl uppercase tracking-tight">
+              <p className="text-white font-black text-xl tracking-tight">
                 {instantSaved ? 'Salvat Instant!' : saveMode === 'split' ? 'PDF Impartit & Salvat!' : 'Fisier Salvat!'}
               </p>
               <p className="text-white/50 text-sm">{docName}</p>
@@ -771,16 +771,16 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
               </div>
             )}
             <div className="flex gap-3 w-full max-w-xs">
-              <button onClick={handleDownload} className="flex-1 py-3 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+              <button onClick={handleDownload} className="flex-1 py-3 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[13px] font-bold tracking-normal transition">
                 <Download className="w-4 h-4" />Descarca
               </button>
-              <button onClick={handleEmail} className="flex-1 py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">
+              <button onClick={handleEmail} className="flex-1 py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold tracking-normal transition">
                 <Mail className="w-4 h-4" />Email
               </button>
             </div>
             <div className="flex gap-3 w-full max-w-xs">
-              <button onClick={handleRetry} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Scaneaza Altul</button>
-              <button onClick={() => { stopCamera(); onClose(); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition">Inchide</button>
+              <button onClick={handleRetry} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[13px] font-bold tracking-normal transition">Scaneaza Altul</button>
+              <button onClick={() => { stopCamera(); onClose(); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-[13px] font-bold tracking-normal transition">Inchide</button>
             </div>
           </div>
         )}
@@ -789,7 +789,7 @@ const DocumentScanner: React.FC<DocumentScannerProps> = ({ devices, onSave, onCl
           <div className="flex flex-col items-center justify-center min-h-[400px] p-8 space-y-6">
             <div className="p-6 bg-red-500/10 rounded-full"><AlertCircle className="w-16 h-16 text-red-400" /></div>
             <p className="text-white/60 text-sm max-w-xs text-center">{cameraError}</p>
-            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest">Inchide</button>
+            <button onClick={() => { stopCamera(); onClose(); }} className="px-8 py-3 bg-white text-black rounded-2xl font-black text-sm tracking-tight">Inchide</button>
           </div>
         )}
       </div>

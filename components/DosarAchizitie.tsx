@@ -105,15 +105,15 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
       <div className="space-y-6 animate-fade-in">
         <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
           <button onClick={() => setDeschis(null)}
-            className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition mb-3">
+            className="text-[11px] font-black text-slate-500 uppercase tracking-wide hover:text-slate-900 transition mb-3">
             ← Inapoi la dosare
           </button>
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight break-words">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight break-words">
               {r.subject || 'Achizitie'}
             </h2>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl shrink-0">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Referat</span>
+              <span className="text-[10px] font-black uppercase tracking-wide opacity-70">Referat</span>
               <span className="text-[15px] font-black font-mono">{r.number}</span>
             </span>
           </div>
@@ -129,7 +129,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
               return (
                 <React.Fragment key={e.cheie}>
                   <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border ${
-                    are ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+ are ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-400'
                   }`}>
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="text-[12px] font-black uppercase tracking-wide">{e.titlu}</span>
@@ -156,7 +156,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
               { et: 'Facturat', v: facturat, ton: 'bg-blue-50 text-blue-700' },
             ].map(x => (
               <div key={x.et} className={`p-4 rounded-2xl ${x.ton.split(' ')[0]}`}>
-                <p className={`text-[10px] font-black uppercase tracking-widest ${x.ton.split(' ')[1]} opacity-70`}>{x.et}</p>
+                <p className={`text-[10px] font-black uppercase tracking-wide ${x.ton.split(' ')[1]} opacity-70`}>{x.et}</p>
                 <p className={`text-xl font-black tabular-nums mt-1 ${x.ton.split(' ')[1]}`}>{lei(x.v)}</p>
               </div>
             ))}
@@ -230,7 +230,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
       {filtrate.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <FolderOpen className="w-16 h-16 text-slate-100 mb-4" />
-          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+          <p className="text-slate-500 font-bold text-sm tracking-tight">
             {referate.length === 0 ? 'Niciun referat inregistrat' : 'Niciun dosar gasit'}
           </p>
         </div>
@@ -262,7 +262,7 @@ const DosarAchizitie: React.FC<Props> = ({ referate, foundationDocs, comenzi, in
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cerut / facturat</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Cerut / facturat</p>
                   <p className="text-[15px] font-black text-slate-900 tabular-nums">
                     {lei(cerut)} / {lei(facturat)}
                   </p>
@@ -285,7 +285,7 @@ const Sectiune: React.FC<{ titlu: string; gol: string; children: React.ReactNode
   const are = React.Children.count(children) > 0;
   return (
     <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">{titlu}</h3>
+      <h3 className="text-sm font-black text-slate-900 tracking-tight mb-4">{titlu}</h3>
       {are ? <div className="space-y-2">{children}</div> : (
         <p className="text-[13px] font-bold text-slate-500 leading-relaxed flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-slate-300 shrink-0 mt-0.5" /> {gol}

@@ -74,8 +74,16 @@ const VIEW_LABELS: Record<string, string> = {
 };
 
 /** Forms that fit the header of a phone without being cut mid-word. */
-/** Unde bara de actiuni de teren n-are ce cauta. */
-const ECRANE_FARA_ACTIUNI = new Set(['SETTINGS', 'FINANCE', 'ADD_DEVICE', 'PLANNER']);
+/*
+ * Unde isi are rostul bara de actiuni de teren.
+ *
+ * Era mai usor de spus unde nu se vede, si tot timpul lipsea cate un ecran din
+ * lista: pe fisa unui aparat, deschisa deja, "Dispozitiv nou" si "Scaneaza QR"
+ * statea sub titlu ca si cum ar fi fost actiunile aparatului. Acum se spune pe
+ * fata unde apare — pe Panou, in Inventar si pe tichete, acolo unde omul chiar
+ * inregistreaza sau cauta un aparat.
+ */
+const ECRANE_CU_ACTIUNI = new Set(['DASHBOARD', 'INVENTORY', 'TASKS']);
 
 const VIEW_LABELS_SHORT: Record<string, string> = {
   DEVICE_DETAIL: 'Dispozitiv',
@@ -101,16 +109,23 @@ const PrimaryAction: React.FC<{
   variant: 'blue' | 'dark' | 'green';
   onClick: () => void;
 }> = ({ icon, label, shortLabel, hint, variant, onClick }) => {
+  /*
+   * O singura actiune principala pe ecran.
+   *
+   * Cand "Dispozitiv nou" si "Scaneaza QR" erau amandoua butoane pline —
+   * albastru si negru, una langa alta — ochiul nu mai stia care e drumul
+   * obisnuit. Ramane una plina; a doua e la fel de aproape, dar nu mai striga.
+   */
   const styles = {
-    blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20',
-    dark: 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20',
-    green: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20',
+    blue: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20',
+    dark: 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 hover:text-slate-900',
+    green: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20',
   }[variant];
   return (
     <button
       onClick={onClick}
       title={hint}
-      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-6 py-3.5 text-white rounded-xl shadow-lg font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition active:scale-95`}
+      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-[13px] tracking-normal transition active:scale-95`}
     >
       {icon}
       <span className="sm:hidden">{shortLabel}</span>
@@ -1329,33 +1344,36 @@ const App: React.FC = () => {
 
       <main className={`flex-1 flex flex-col overflow-hidden relative ${isStandalone ? 'bg-white' : ''}`}>
         {!isStandalone && (
-          <header className="h-16 sm:h-24 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
+          <header className="h-16 sm:h-[72px] bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                <button
                  onClick={() => setSidebarOpen(true)}
                  aria-label="Deschide meniul"
                  title="Deschide meniul"
-                 className="lg:hidden shrink-0 flex items-center gap-2 pl-3 pr-3.5 py-3 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-900/20 hover:bg-blue-600 active:scale-95 transition-all"
+                 className="lg:hidden shrink-0 p-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl hover:border-slate-300 active:scale-95 transition-all"
                >
-                 <Menu className="w-6 h-6 shrink-0" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Meniu</span>
+                 <Menu className="w-5 h-5 shrink-0" />
                </button>
                <div className="min-w-0">
                  {/* On a phone the menu button and three icons leave about
                      140px here, so the full label came out as "FISA DISP…".
-                     The short form fits; the long one returns from sm up. */}
-                 <h2 className="text-base sm:text-xl font-black text-slate-900 uppercase tracking-tight leading-none truncate">
+                     The short form fits; the long one returns from sm up.
+
+                     Sub titlu statea, pe fiecare pagina, acelasi rand:
+                     "Sistem de management echipamente". Il vedea si pe Panou,
+                     si in Inventar, si pe fisa unui aparat — nu spunea nimic
+                     despre unde esti, si lua un rand din antet peste tot. */}
+                 <h2 className="text-base sm:text-2xl font-black text-slate-900 tracking-tight leading-none truncate">
                    <span className="sm:hidden">{VIEW_LABELS_SHORT[view] || VIEW_LABELS[view] || view.replace('_', ' ')}</span>
                    <span className="hidden sm:inline">{VIEW_LABELS[view] || view.replace('_', ' ')}</span>
                  </h2>
-                 <p className="hidden sm:block text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mt-2">Sistem de Management Echipamente</p>
                </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
               {isSyncing && (
                 <div className="flex items-center gap-2.5 px-2.5 sm:px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                   <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                  <span className="hidden sm:inline text-[10px] font-black text-blue-600 uppercase tracking-widest">Se salveaza</span>
+                  <span className="hidden sm:inline text-[10px] font-black text-blue-600 uppercase tracking-wide">Se salveaza</span>
                 </div>
               )}
               <button
@@ -1364,7 +1382,7 @@ const App: React.FC = () => {
                 title="Cautare globala"
               >
                 <Search className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Cauta...</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide">Cauta...</span>
                 <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-black">Ctrl K</kbd>
               </button>
               {/* Mobile: compact search icon */}
@@ -1375,7 +1393,7 @@ const App: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="hidden md:block text-right">
                   <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
                 <button
                   onClick={toggleTheme}
@@ -1393,15 +1411,8 @@ const App: React.FC = () => {
           </header>
         )}
 
-        {/*
-          Nu pe orice ecran.
-          "Dispozitiv nou" si "Scaneaza QR" sunt actiunile de teren: isi au rostul
-          pe Panou, in Inventar, pe fisa unui aparat. Pe Configurare, in Financiar
-          sau in mijlocul unui formular de adaugare n-au ce cauta — si pe telefon
-          mananca din putinul de deasupra continutului.
-        */}
-        {!isStandalone && !ECRANE_FARA_ACTIUNI.has(view) && (
-          <div className="shrink-0 flex items-stretch gap-2 sm:gap-3 px-3 sm:px-6 lg:px-10 py-2.5 sm:py-3 bg-white border-b border-slate-200 z-40">
+        {!isStandalone && ECRANE_CU_ACTIUNI.has(view) && (
+          <div className="shrink-0 flex items-stretch gap-2 px-3 sm:px-6 lg:px-10 py-2 sm:py-2.5 bg-white border-b border-slate-200 z-40">
             {canEdit && (
               <PrimaryAction
                 icon={<Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
@@ -1432,7 +1443,7 @@ const App: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Biomedic</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Se initializeaza registrul...</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-2">Se initializeaza registrul...</p>
               </div>
             </div>
           ) : (
@@ -1440,7 +1451,7 @@ const App: React.FC = () => {
               <Suspense fallback={
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Se incarca modulul...</p>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Se incarca modulul...</p>
                 </div>
               }>
                 {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }} />}
@@ -1465,7 +1476,7 @@ const App: React.FC = () => {
                   <div className="py-24 flex flex-col items-center text-center gap-4 px-6">
                     <div className="p-5 bg-amber-50 rounded-full"><AlertCircle className="w-12 h-12 text-amber-500" /></div>
                     <div className="space-y-1">
-                      <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Dispozitivul nu a fost gasit</p>
+                      <p className="text-sm font-black text-slate-900 tracking-tight">Dispozitivul nu a fost gasit</p>
                       <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
                         Codul QR indica spre <span className="font-mono text-slate-700">{selectedDeviceId || '—'}</span>,
                         care nu exista in lista de pe acest dispozitiv. Sincronizeaza si incearca din nou.
@@ -1473,11 +1484,11 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap justify-center gap-3">
                       <button onClick={loadAndSync} disabled={isSyncingNow}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition disabled:opacity-50">
+                        className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-blue-700 transition disabled:opacity-50">
                         {isSyncingNow ? 'Se sincronizeaza...' : 'Re-sincronizare'}
                       </button>
                       <button onClick={goBack}
-                        className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition">
+                        className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition">
                         Inapoi la inventar
                       </button>
                     </div>
@@ -1517,7 +1528,7 @@ const App: React.FC = () => {
                 {view === 'FINANCE' && !canFinance && (
                   <div className="py-32 flex flex-col items-center text-center">
                     <ShieldCheck className="w-16 h-16 text-slate-200 mb-4" />
-                    <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Acces restrictionat</p>
+                    <p className="text-sm font-black text-slate-500 tracking-tight">Acces restrictionat</p>
                     <p className="text-xs text-slate-500 mt-2">Rolul tau nu are acces la modulul Financiar.</p>
                   </div>
                 )}
@@ -1644,7 +1655,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
       <div className="p-6 lg:p-8 flex items-center gap-4 border-b border-slate-100 bg-white">
         <LogoTile className="p-2.5 rounded-xl shrink-0" />
         <div className="min-w-0">
-          <h1 className="text-lg font-black tracking-tight text-slate-900 uppercase leading-none">Biomedic</h1>
+          <h1 className="text-lg font-black tracking-tight text-slate-900 leading-none">Biomedic</h1>
           {/* The close button takes this room on phones, and the subtitle
               wrapped to two lines rather than fitting beside it */}
           <p className="hidden lg:block text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em] leading-relaxed mt-1.5">Registru echipamente medicale</p>
@@ -1677,7 +1688,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
             return (
               <>
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sincronizare Cloud</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Sincronizare Cloud</p>
                   <div className={`w-2 h-2 rounded-full ${isSyncingNow ? 'bg-blue-500 animate-pulse' : info.dot}`} />
                 </div>
                 <div className="flex items-center gap-3">
@@ -1702,13 +1713,13 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
                 )}
                 {isFailure && (
                   <button onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }}
-                    className="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition">
+                    className="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-red-100 transition">
                     Vezi diagnosticul
                   </button>
                 )}
 
                 <button onClick={loadAndSync} disabled={isSyncingNow}
-                  className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-800 transition-colors active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
                   {isSyncingNow && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {isSyncingNow ? 'In curs...' : 'Re-sincronizare'}
                 </button>

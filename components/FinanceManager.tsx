@@ -824,7 +824,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <Wallet className="w-8 h-8" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Dosarul achizitiei, de la referat la factura</p>
+              <p className="text-[13px] text-slate-500 font-medium">Dosarul achizitiei, de la referat la factura</p>
             </div>
           </div>
           <div className={`flex-col sm:flex-row gap-3 ${tab === 'REFERATE' || tab === 'FUNDAMENTARE' || tab === 'COMENZI' || tab === 'DOSARE' ? 'hidden' : 'flex'}`}>
@@ -839,14 +839,14 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               onChange={handleBulkImport} className="hidden" />
             <button onClick={() => bulkInputRef.current?.click()} disabled={isBulkProcessing}
               title={stieFoldere ? 'Alege un folder cu facturi PDF' : 'Alege facturile PDF'}
-              className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition shadow-xl active:scale-95 flex items-center gap-2 disabled:opacity-50">
-              {isBulkProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <FolderOpen className="w-5 h-5" />}
+              className="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-[13px] hover:border-slate-300 hover:text-slate-900 transition active:scale-95 flex items-center gap-2 disabled:opacity-50">
+              {isBulkProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
               {isBulkProcessing
                 ? `Se citesc ${bulkProgress.done}/${bulkProgress.total}...`
                 : stieFoldere ? 'Alege un folder' : 'Alege facturi PDF'}
             </button>
-            <button onClick={openNew} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-2">
-              <Plus className="w-5 h-5" /> Adauga Factura
+            <button onClick={openNew} className="px-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-[13px] hover:bg-blue-700 transition shadow-sm shadow-blue-600/20 active:scale-95 flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Adauga factura
             </button>
           </div>
         </div>
@@ -854,16 +854,16 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
         <div className="flex flex-wrap gap-2 mt-4">
           {([
             ['OVERVIEW', 'Sumar', TrendingUp, 'Sumar'],
-            ['DOSARE', 'Dosare achizitie', FolderTree, 'Dosare'],
+            ['DOSARE', 'Dosare', FolderTree, 'Dosare'],
             ['INVOICES', 'Facturi', Receipt, 'Facturi'],
             ['BUDGET', 'Buget', Landmark, 'Buget'],
             ['REFERATE', 'Referate', FileSignature, 'Referate'],
-            ['FUNDAMENTARE', 'Documente de fundamentare', FolderOpen, 'Fundamentare'],
+            ['FUNDAMENTARE', 'Fundamentari', FolderOpen, 'Fundamentari'],
             ['COMENZI', 'Comenzi', ShoppingCart, 'Comenzi'],
             ['CONTRACTS', 'Contracte', ShieldCheck, 'Contracte'],
           ] as [FinanceTab, string, any, string][]).map(([key, label, Icon, scurt]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 sm:px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${tab === key ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'}`}>
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition ${tab === key ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
               <Icon className="w-4 h-4 shrink-0" />
               <span className="lg:hidden">{scurt || label}</span>
               <span className="hidden lg:inline">{label}</span>
@@ -884,7 +884,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
           <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Cheltuieli lunare</h3>
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">Cheltuieli lunare</h3>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Ultimele 12 luni · {dominantCurrency}</span>
             </div>
             <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>}>
@@ -895,11 +895,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Expiring contracts */}
             <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
                 <CalendarClock className="w-4 h-4 text-amber-500" /> Contracte care expira (90 zile)
               </h3>
               {expiringContracts.length === 0 ? (
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest py-8 text-center">Niciun contract nu expira curand</p>
+                <p className="text-[13px] text-slate-500 font-bold tracking-normal py-8 text-center">Niciun contract nu expira curand</p>
               ) : (
                 <div className="space-y-3">
                   {expiringContracts.map(c => (
@@ -920,11 +920,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
 
             {/* Top devices by cost */}
             <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-500" /> Top dispozitive dupa cost
               </h3>
               {topDevicesByCost.length === 0 ? (
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest py-8 text-center">Nicio factura asociata cu dispozitive</p>
+                <p className="text-[13px] text-slate-500 font-bold tracking-normal py-8 text-center">Nicio factura asociata cu dispozitive</p>
               ) : (
                 <div className="space-y-3">
                   {topDevicesByCost.map(({ device, total }, i) => (
@@ -978,8 +978,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           {filteredInvoices.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
               <Receipt className="w-16 h-16 text-slate-100 mb-4" />
-              <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Nicio factura inregistrata</p>
-              <button onClick={openNew} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">+ Adauga prima factura</button>
+              <p className="text-slate-500 font-bold text-sm tracking-tight">Nicio factura inregistrata</p>
+              <button onClick={openNew} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-xl text-[13px] font-bold tracking-normal">+ Adauga prima factura</button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1023,7 +1023,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                       <button
                         onClick={() => toggleUploaded(inv)}
                         className={`p-2.5 rounded-xl transition ${st === InvoiceStatus.UPLOADED
-                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+ ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                           : 'bg-slate-50 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50'}`}
                         title={st === InvoiceStatus.UPLOADED
                           ? 'Marcheaza ca neincarcata in ConectX'
@@ -1129,7 +1129,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div className="min-w-0">
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Facturile din folder</h3>
-                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">
+                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-wide">
                   {bulkDrafts.length} in folder · {numarate.aleMele} ale serviciului tehnic · {bifate} de pastrat
                   {bulkDrafts.some(d => d.isDuplicate) && <span className="text-amber-500"> · {bulkDrafts.filter(d => d.isDuplicate).length} exista deja</span>}
                   {bulkDrafts.some(d => d.eroare) && <span className="text-red-500"> · {bulkDrafts.filter(d => d.eroare).length} necitite</span>}
@@ -1150,8 +1150,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                 ['TOT', `Tot folderul (${bulkDrafts.length})`],
               ] as ['ALE_MELE' | 'FARA_RAPORT' | 'TOT', string][]).map(([id, text]) => (
                 <button key={id} onClick={() => setBulkVedere(id)}
-                  className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${
-                    bulkVedere === id ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'
+                  className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition ${
+ bulkVedere === id ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-600 hover:text-slate-900'
                   }`}>
                   {text}
                 </button>
@@ -1168,24 +1168,24 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
               </div>
               <button onClick={() => bifeazaToate(true)}
-                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition">
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-100 transition">
                 Bifeaza toate
               </button>
               <button onClick={() => bifeazaToate(false)}
-                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition">
+                className="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-100 transition">
                 Debifeaza toate
               </button>
               <button
                 onClick={() => { setCuvinteText(iaCuvintele().join('\n')); setCuvinteDeschis(true); }}
                 title="Cuvintele dupa care se recunosc facturile serviciului tehnic"
-                className="px-4 py-2.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-100 transition">
+                className="px-4 py-2.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-blue-100 transition">
                 Cuvintele mele
               </button>
               <button
                 onClick={() => stergeDinLista(bulkDrafts.filter(d => !d.include).map(d => d.key))}
                 disabled={bifate === bulkDrafts.length}
                 title="Scoate din lista facturile nebifate. Fisierele raman pe disc."
-                className="px-4 py-2.5 bg-red-50 border border-red-100 text-red-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-red-100 transition disabled:opacity-40">
+                className="px-4 py-2.5 bg-red-50 border border-red-100 text-red-600 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-red-100 transition disabled:opacity-40">
                 <Trash2 className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
                 Sterge nebifatele ({bulkDrafts.length - bifate})
               </button>
@@ -1195,13 +1195,13 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               {/* Column headers */}
               <div className="hidden lg:grid grid-cols-[24px_1fr_1.1fr_1.5fr_128px_112px_80px_104px_76px] gap-3 px-4 pb-1">
                 {['', 'Nr. factura', 'Furnizor', 'Denumire produs / serviciu', 'Data', 'Suma', 'Moneda', 'Asocieri', ''].map((h, i) => (
-                  <p key={i} className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{h}</p>
+                  <p key={i} className="text-[11px] font-black text-slate-500 uppercase tracking-wide">{h}</p>
                 ))}
               </div>
               {bulkVizibile.length === 0 && (
                 <div className="py-16 text-center">
                   <FolderOpen className="w-14 h-14 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">
+                  <p className="text-sm font-black text-slate-500 tracking-tight">
                     {bulkDrafts.length === 0 ? 'Ai scos toate facturile din lista' : 'Nicio factura cu textul cautat'}
                   </p>
                 </div>
@@ -1217,7 +1217,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                     <input value={d.invoiceNumber} onChange={e => updateBulkDraft(d.key, { invoiceNumber: e.target.value })}
                       aria-label="Numarul facturii"
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-blue-500/20" />
-                    {d.isDuplicate && <p className="text-[11px] font-black text-amber-600 uppercase tracking-widest mt-1">Duplicat — exista deja</p>}
+                    {d.isDuplicate && <p className="text-[11px] font-black text-amber-600 uppercase tracking-wide mt-1">Duplicat — exista deja</p>}
                     {d.eroare && <p className="text-[11px] font-black text-red-600 mt-1">{d.eroare}</p>}
                     <p className="text-[11px] text-slate-500 font-bold truncate mt-0.5" title={d.cale ? `${d.cale}/${d.fileName}` : d.fileName}>
                       {d.cale ? `${d.cale}/` : ''}{d.fileName}
@@ -1285,7 +1285,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                         : 'Alege aparatele de pe factura'}
                       aria-label={`Aparatele facturii ${d.invoiceNumber}`}
                       className={`px-2 py-1 rounded-lg text-[11px] font-bold text-center border transition hover:brightness-95 ${
-                        d.deviceIds.length > 0
+ d.deviceIds.length > 0
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : d.potriviri.length > 0
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
@@ -1323,15 +1323,15 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   : 'Facturile se salveaza ca neincarcate in ConectX — le bifezi dupa ce le urci'}
               </p>
               <div className="flex gap-3">
-                <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
+                <button onClick={() => setBulkDrafts(null)} className="px-8 py-4 text-slate-500 font-bold text-[13px] tracking-normal">Anuleaza</button>
                 <button onClick={descarcaPachetele} disabled={seFacePachet || bifate === 0}
                   title="Scoate fisierele rasfirate — factura si raportul ei, fiecare separat, gata de urcat unul cate unul"
-                  className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
+                  className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-bold text-[13px] tracking-normal hover:bg-slate-800 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
                   {seFacePachet ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   Scoate fisierele
                 </button>
                 <button onClick={handleBulkSave} disabled={isBulkSaving || bifate === 0}
-                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
+                  className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 flex items-center gap-2">
                   {isBulkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                   Salveaza {bifate} factur{bifate === 1 ? 'a' : 'i'}
                 </button>
@@ -1357,7 +1357,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               <div className="fixed inset-0 z-[560] scrim flex items-center justify-center p-0 sm:p-6">
                 <div className="bg-white w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[88dvh] flex flex-col rounded-none sm:rounded-[2rem] shadow-2xl overflow-hidden">
                   <div className="px-6 py-5 border-b border-slate-100 shrink-0">
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Aparatele de pe factura</h3>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">Aparatele de pe factura</h3>
                     <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
                       Factura <span className="font-black text-slate-700">{d.invoiceNumber}</span>
                       {d.description ? <> · {d.description}</> : null}
@@ -1381,10 +1381,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                       return (
                         <button key={x.id} type="button" onClick={() => comuta(x.id)}
                           className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition flex items-center gap-3 ${
-                            bifat ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
+ bifat ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
                           }`}>
                           <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                            bifat ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+ bifat ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
                           }`}>{bifat && <CheckCircle className="w-3.5 h-3.5" />}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-[14px] font-bold text-slate-900 truncate">{x.name}</span>
@@ -1401,11 +1401,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                     })}
                   </div>
                   <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
-                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wide">
                       {d.deviceIds.length} legate
                     </span>
                     <button onClick={() => setAparateLa(null)}
-                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-800 transition">
+                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-slate-800 transition">
                       Gata
                     </button>
                   </div>
@@ -1418,7 +1418,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             <div className="fixed inset-0 z-[560] scrim flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
                 <div className="px-6 py-5 border-b border-slate-100">
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Cuvintele mele</h3>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Cuvintele mele</h3>
                   <p className="text-[12px] font-semibold text-slate-500 mt-1 leading-relaxed">
                     O factura e a serviciului tehnic daca denumirea produsului sau serviciului contine
                     unul dintre cuvintele de mai jos. Cate unul pe rand, fara diacritice si fara
@@ -1431,12 +1431,12 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   className="m-6 p-4 h-64 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 rounded-2xl text-[13px] font-mono outline-none resize-none" />
                 <div className="px-6 pb-6 flex flex-wrap gap-3 justify-between">
                   <button onClick={() => setCuvinteText(CUVINTE_IMPLICITE.join('\n'))}
-                    className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">
+                    className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-wide">
                     Inapoi la lista initiala
                   </button>
                   <div className="flex gap-3">
                     <button onClick={() => setCuvinteDeschis(false)}
-                      className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-widest">Renunta</button>
+                      className="px-5 py-3 text-slate-500 font-black text-[11px] uppercase tracking-wide">Renunta</button>
                     <button
                       onClick={() => {
                         const noi = cuvinteText.split('\n').map(x => x.trim()).filter(Boolean);
@@ -1449,7 +1449,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                         setCuvinteDeschis(false);
                         notify(`${noi.length} cuvinte — lista s-a triat din nou`, 'success');
                       }}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition">
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-blue-700 transition">
                       Salveaza si triaza
                     </button>
                   </div>
@@ -1469,7 +1469,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <div>
                 <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">{editingId ? 'Editeaza Factura' : 'Factura Noua'}</h3>
-                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-widest">Asociaza cu contracte si dispozitive</p>
+                <p className="text-[11px] text-slate-500 font-black uppercase mt-1 tracking-wide">Asociaza cu contracte si dispozitive</p>
               </div>
               <button onClick={() => setIsEditing(false)} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition shadow-sm border border-slate-200"><X className="w-5 h-5" /></button>
             </div>
@@ -1482,7 +1482,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-blue-600 rounded-xl"><FileText className="w-5 h-5" /></div>
                     <div>
-                      <p className="text-xs font-black uppercase tracking-widest">Import PDF factura</p>
+                      <p className="text-xs font-black uppercase tracking-wide">Import PDF factura</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5">
                         {form.fileName || 'Detecteaza automat numarul, suma, dispozitivele si contractul'}
                       </p>
@@ -1580,7 +1580,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               {/* Device association */}
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Dispozitive asociate</p>
+                  <p className="text-xs font-black text-slate-900 uppercase tracking-wide">Dispozitive asociate</p>
                   <span className="text-[11px] font-black text-blue-600 uppercase">{selectedDeviceIds.length} selectate</span>
                 </div>
                 <div className="relative mb-4">
@@ -1604,8 +1604,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setIsEditing(false)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Anuleaza</button>
-                <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95">
+                <button type="button" onClick={() => setIsEditing(false)} className="px-8 py-4 text-slate-500 font-bold text-[13px] tracking-normal">Anuleaza</button>
+                <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95">
                   {editingId ? 'Salveaza modificarile' : 'Inregistreaza factura'}
                 </button>
               </div>

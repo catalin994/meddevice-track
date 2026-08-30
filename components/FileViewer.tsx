@@ -108,12 +108,12 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
             title="Inapoi la aplicatie"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline text-[11px] font-black uppercase tracking-widest">Inapoi</span>
+            <span className="hidden sm:inline text-[11px] font-black uppercase tracking-wide">Inapoi</span>
           </button>
 
           <div className="min-w-0 flex-1 text-center">
             <p className="text-white text-xs sm:text-sm font-black truncate">{file.name}</p>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">{file.dateAdded}</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-wide">{file.dateAdded}</p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -123,7 +123,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
               title="Descarca fisierul"
             >
               <Download className="w-5 h-5" />
-              <span className="hidden sm:inline text-[11px] font-black uppercase tracking-widest">Descarca</span>
+              <span className="hidden sm:inline text-[11px] font-black uppercase tracking-wide">Descarca</span>
             </button>
             <button
               onClick={onClose}
@@ -156,7 +156,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
                 {failed ? <AlertCircle className="w-14 h-14 text-amber-400" /> : <FileText className="w-14 h-14 text-white/40" />}
               </div>
               <div className="space-y-1">
-                <p className="text-white font-black text-sm uppercase tracking-widest">
+                <p className="text-white font-black text-sm tracking-tight">
                   {loadError ? 'Fisierul nu a putut fi descarcat'
                     : failed ? 'Previzualizare indisponibila'
                     : 'Acest tip de fisier nu poate fi afisat'}
@@ -166,12 +166,12 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <button onClick={() => onDownload(file)} className="flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95">
+                <button onClick={() => onDownload(file)} className="flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95">
                   <Download className="w-5 h-5" /> Descarca
                 </button>
                 {blobUrl && (
                   <a href={blobUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95">
+                    className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95">
                     <ExternalLink className="w-5 h-5" /> Deschide in tab nou
                   </a>
                 )}

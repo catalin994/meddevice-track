@@ -132,7 +132,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
 
         <div ref={listRef} className="palette-shell overflow-y-auto overscroll-contain p-2">
           {items.length === 0 && (
-            <p className="py-10 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">Niciun rezultat</p>
+            <p className="py-10 text-center text-[13px] font-bold text-slate-500 tracking-normal">Niciun rezultat</p>
           )}
           {items.map((item, idx) => {
             const showGroup = item.group !== lastGroup;
@@ -161,8 +161,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ devices, tasks, invoice
         </div>
 
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-4">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">↑↓ navigheaza</span>
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">↵ deschide</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">↑↓ navigheaza</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">↵ deschide</span>
         </div>
       </div>
     </div>

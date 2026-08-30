@@ -221,7 +221,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
       */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">
+          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wide">
             Programeaza interventiile de service si protocoalele de mentenanta
           </p>
         </div>
@@ -260,7 +260,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
               /* Umbra grea doar cand butonul chiar face ceva: gol, arata la fel
                  de apasat ca unul activ, si se apasa degeaba. */
               className={`px-5 sm:px-8 py-3.5 sm:py-4 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 sm:gap-3 active:scale-95 whitespace-nowrap ${
-                modifiedCount > 0
+ modifiedCount > 0
                   ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
                   : 'bg-slate-50 text-slate-400 border-2 border-slate-200 cursor-not-allowed'
               }`}
@@ -328,7 +328,7 @@ const MaintenancePlanner: React.FC<MaintenancePlannerProps> = ({ devices, onAppl
           <div className="w-px h-8 bg-white/10"></div>
           <button 
             onClick={commitAllSchedules}
-            className="px-6 py-2 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition active:scale-95 flex items-center gap-2"
+            className="px-6 py-2 bg-white text-slate-900 rounded-xl font-bold text-[13px] tracking-normal hover:bg-blue-50 transition active:scale-95 flex items-center gap-2"
           >
             Aplica Acum <ArrowRight className="w-4 h-4" />
           </button>
@@ -374,7 +374,7 @@ const MaintenanceCard = React.memo(({
   return (
     <div 
       className={`bg-white p-6 rounded-[2rem] border-2 transition-all relative overflow-hidden group flex flex-col ${
-        draft.isModified 
+ draft.isModified 
           ? 'border-blue-400 shadow-2xl shadow-blue-500/10 bg-blue-50/10' 
           : 'border-slate-100 shadow-sm hover:border-slate-200'
       }`}
@@ -383,7 +383,7 @@ const MaintenanceCard = React.memo(({
         <div className="flex-1">
           <h4 className="font-black text-slate-900 text-lg leading-tight break-words">{device.name}</h4>
           <div className="flex flex-col gap-1 mt-2">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-md uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-md uppercase tracking-wide">
               <Box className="w-3 h-3" /> Model: {device.model || 'N/A'}
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -461,7 +461,7 @@ const MaintenanceCard = React.memo(({
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Stare dispozitiv: Nominala</span>
         </div>
         {!draft.isModified && (
-          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest italic">Nemodificat</span>
+          <span className="text-[11px] font-black text-slate-500 uppercase tracking-wide italic">Nemodificat</span>
         )}
       </div>
     </div>

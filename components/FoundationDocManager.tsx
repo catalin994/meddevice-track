@@ -428,7 +428,7 @@ const FoundationDocManager: React.FC<Props> = ({
           </div>
           <button
             onClick={onClearFiltruReferat}
-            className="w-full sm:w-auto px-4 py-3 bg-white text-indigo-700 border border-indigo-200 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-100 transition shrink-0"
+            className="w-full sm:w-auto px-4 py-3 bg-white text-indigo-700 border border-indigo-200 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-indigo-100 transition shrink-0"
           >
             Vezi toate documentele
           </button>
@@ -442,11 +442,11 @@ const FoundationDocManager: React.FC<Props> = ({
       */}
       {serii.length > 0 && (
         <div className={`p-5 border-2 rounded-[2rem] space-y-3 ${
-          deFacut.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'
+ deFacut.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'
         }`}>
           <div className="flex items-center gap-3">
             <CalendarClock className={`w-5 h-5 shrink-0 ${deFacut.length > 0 ? 'text-amber-700' : 'text-slate-500'}`} />
-            <p className={`text-[13px] font-black uppercase tracking-wide ${deFacut.length > 0 ? 'text-amber-900' : 'text-slate-600'}`}>
+            <p className={`text-[13px] font-black tracking-wide ${deFacut.length > 0 ? 'text-amber-900' : 'text-slate-600'}`}>
               {restanteTotal === 0
                 ? `${serii.length} contract${serii.length === 1 ? '' : 'e'} lunar${serii.length === 1 ? '' : 'e'} — la zi`
                 : `${restanteTotal} document${restanteTotal === 1 ? '' : 'e'} lunar${restanteTotal === 1 ? '' : 'e'} de facut`}
@@ -476,13 +476,13 @@ const FoundationDocManager: React.FC<Props> = ({
                   {s.restante.length > 0 ? (
                     <button
                       onClick={() => faLunaUrmatoare(s, s.restante[0])}
-                      className="w-full sm:w-auto px-5 py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-700 transition active:scale-95 shrink-0 flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-5 py-3 bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-amber-700 transition active:scale-95 shrink-0 flex items-center justify-center gap-2"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Fa documentul pe {lunaRo(s.restante[0])}
                     </button>
                   ) : (
-                    <span className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-black uppercase tracking-widest shrink-0 text-center">
+                    <span className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-black uppercase tracking-wide shrink-0 text-center">
                       La zi
                     </span>
                   )}
@@ -506,7 +506,7 @@ const FoundationDocManager: React.FC<Props> = ({
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${
-                        procent >= 100 ? 'bg-red-600' : strans ? 'bg-amber-500' : 'bg-emerald-500'
+ procent >= 100 ? 'bg-red-600' : strans ? 'bg-amber-500' : 'bg-emerald-500'
                       }`} style={{ width: `${procent}%` }} />
                     </div>
                   </div>
@@ -531,7 +531,7 @@ const FoundationDocManager: React.FC<Props> = ({
           </div>
           <button
             onClick={deschideNou}
-            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 shrink-0"
+            className="px-6 py-3.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold tracking-normal shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 shrink-0"
           >
             <Plus className="w-4 h-4" /> Document nou
           </button>
@@ -542,7 +542,7 @@ const FoundationDocManager: React.FC<Props> = ({
               key={t}
               onClick={() => setFiltruTip(t as 'ALL' | FoundationDocType)}
               className={`px-4 py-2.5 rounded-xl text-[11px] font-bold transition ${
-                filtruTip === t ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+ filtruTip === t ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
               }`}
             >
               {t === 'ALL' ? 'Toate' : FOUNDATION_DOC_RO[t as FoundationDocType]}
@@ -558,10 +558,10 @@ const FoundationDocManager: React.FC<Props> = ({
       {filtrate.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-[2rem] border-4 border-dashed border-slate-50 flex flex-col items-center">
           <FolderOpen className="w-16 h-16 text-slate-100 mb-4" />
-          <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">
+          <p className="text-slate-500 font-bold text-sm tracking-tight">
             {docs.length === 0 ? 'Niciun document de fundamentare' : 'Niciun document gasit'}
           </p>
-          <button onClick={deschideNou} className="mt-6 px-8 py-3.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+          <button onClick={deschideNou} className="mt-6 px-8 py-3.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold tracking-normal">
             + Adauga document
           </button>
         </div>
@@ -667,10 +667,10 @@ const FoundationDocManager: React.FC<Props> = ({
               className="bg-white w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col rounded-none sm:rounded-3xl shadow-2xl animate-slide-up">
               <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-slate-100 bg-white shrink-0">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">
                     {idEditat ? 'Editeaza documentul' : 'Document de fundamentare'}
                   </h3>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">
                     Justifica valoarea estimata dintr-un referat
                   </p>
                 </div>
@@ -920,7 +920,7 @@ const FoundationDocManager: React.FC<Props> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
                     <div className="min-w-0">
-                      <p className="text-xs font-black uppercase tracking-widest">Documentul scanat</p>
+                      <p className="text-xs font-black uppercase tracking-wide">Documentul scanat</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
                         {form.fileName || 'Ataseaza PDF-ul sau poza'}
                       </p>
@@ -935,9 +935,9 @@ const FoundationDocManager: React.FC<Props> = ({
 
               <div className="px-6 sm:px-8 py-4 sm:py-5 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-white shrink-0">
                 <button type="button" onClick={() => setEditez(false)}
-                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
+                  className="w-full sm:w-auto px-8 py-4 text-slate-600 font-bold text-[13px] tracking-normal hover:bg-slate-50 rounded-2xl transition">Anuleaza</button>
                 <button type="submit" disabled={seSalveaza}
-                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
+                  className="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold text-[13px] tracking-normal shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60 whitespace-nowrap">
                   {seSalveaza && <Loader2 className="w-4 h-4 animate-spin" />}
                   {idEditat ? 'Salveaza modificarile' : 'Inregistreaza documentul'}
                 </button>

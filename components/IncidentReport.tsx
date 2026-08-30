@@ -189,8 +189,8 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
               <Siren className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Raporteaza Incident</h3>
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Se genereaza automat un tichet de service</p>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Raporteaza Incident</h3>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-wide mt-1">Se genereaza automat un tichet de service</p>
             </div>
           </div>
           <button onClick={onClose} className="p-3 bg-white text-slate-500 rounded-2xl hover:text-slate-900 transition border border-slate-200 shadow-sm"><X className="w-5 h-5" /></button>
@@ -199,7 +199,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
           {/* Device picker */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Aparatul cu probleme</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide ml-1">Aparatul cu probleme</label>
             {selectedDevice ? (
               <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
                 <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
@@ -233,7 +233,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                 )}
                 {deviceSearch.length < 2 && (
                   <div className="space-y-1">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest ml-1">Optional — daca nu stii aparatul, alege departamentul:</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide ml-1">Optional — daca nu stii aparatul, alege departamentul:</p>
                     <select value={department} onChange={e => setDepartment(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
                       {HOSPITAL_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -246,7 +246,7 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Problem quick-select */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ce problema are?</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide ml-1">Ce problema are?</label>
             <div className="flex flex-wrap gap-2">
               {COMMON_ISSUES.map(ci => (
                 <button key={ci} type="button" onClick={() => setIssue(issue === ci ? '' : ci)}
@@ -265,12 +265,12 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Severity */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Cat de grav este?</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide ml-1">Cat de grav este?</label>
             <div className="grid grid-cols-3 gap-2">
               {([TaskPriority.CRITICAL, TaskPriority.HIGH, TaskPriority.MEDIUM] as TaskPriority[]).map(p => (
                 <button key={p} type="button" onClick={() => setPriority(p)}
-                  className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition ${priority === p
-                    ? p === TaskPriority.CRITICAL ? 'bg-red-600 text-white border-red-600' : p === TaskPriority.HIGH ? 'bg-orange-500 text-white border-orange-500' : 'bg-blue-600 text-white border-blue-600'
+                  className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-wide border transition ${priority === p
+ ? p === TaskPriority.CRITICAL ? 'bg-red-600 text-white border-red-600' : p === TaskPriority.HIGH ? 'bg-orange-500 text-white border-orange-500' : 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white text-slate-500 border-slate-200'}`}>
                   {TASK_PRIORITY_RO[p]}
                 </button>
@@ -280,16 +280,16 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
 
           {/* Attachments */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Poze, video sau fisiere</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide ml-1">Poze, video sau fisiere</label>
             <div className="grid grid-cols-2 gap-3">
               <input ref={mediaInputRef} type="file" accept="image/*,video/*" capture="environment" multiple className="hidden" onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} />
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} />
               <button type="button" onClick={() => mediaInputRef.current?.click()} disabled={isProcessingFile}
-                className="flex items-center justify-center gap-2 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition active:scale-95 disabled:opacity-50">
+                className="flex items-center justify-center gap-2 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-800 transition active:scale-95 disabled:opacity-50">
                 <Camera className="w-4 h-4" /> Poza / Video
               </button>
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile}
-                className="flex items-center justify-center gap-2 py-4 bg-slate-100 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition active:scale-95 disabled:opacity-50">
+                className="flex items-center justify-center gap-2 py-4 bg-slate-100 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition active:scale-95 disabled:opacity-50">
                 <Paperclip className="w-4 h-4" /> Fisiere
               </button>
             </div>
@@ -326,14 +326,14 @@ const IncidentReport: React.FC<IncidentReportProps> = ({ devices, onSubmit, onCl
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Limite: poze {MAX_IMAGE_MB}MB · video {MAX_VIDEO_MB}MB · fisiere {MAX_FILE_MB}MB</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Limite: poze {MAX_IMAGE_MB}MB · video {MAX_VIDEO_MB}MB · fisiere {MAX_FILE_MB}MB</p>
           </div>
 
           {/* Submit */}
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition">Renunta</button>
+            <button type="button" onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-wide hover:bg-slate-200 transition">Renunta</button>
             <button type="submit" disabled={isSubmitting || (!issue.trim() && !description.trim())}
-              className="flex-[2] py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl shadow-red-600/20 hover:bg-red-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40">
+              className="flex-[2] py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-wide shadow-2xl shadow-red-600/20 hover:bg-red-700 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40">
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Siren className="w-5 h-5" />}
               Trimite Incidentul
             </button>

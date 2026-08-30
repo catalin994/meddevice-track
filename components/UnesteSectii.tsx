@@ -59,7 +59,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
           <Building2 className="w-7 h-7 sm:w-10 sm:h-10" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">Sectii care se repeta</h2>
+          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">Sectii care se repeta</h2>
           <p className="text-[12px] sm:text-sm text-slate-500 font-semibold mt-1">
             Aceeasi sectie scrisa in mai multe feluri, adusa la una singura
           </p>
@@ -100,7 +100,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
                         disabled={!canEdit}
                         title={eCelPastrat ? 'Numele care ramane' : 'Apasa ca sa pastrezi acest nume'}
                         className={`px-3.5 py-2.5 rounded-xl text-[12px] font-bold transition border-2 text-left disabled:cursor-not-allowed ${
-                          eCelPastrat
+ eCelPastrat
                             ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}
@@ -124,7 +124,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
                   <button
                     onClick={() => setDeUnit({ cheie: g.cheie, dela: deMutat.map(f => f.nume), la: pastrat, cate: cateSeMuta })}
                     disabled={!canEdit || cateSeMuta === 0}
-                    className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                    className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-black transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
                   >
                     <Merge className="w-4 h-4" /> Uneste
                   </button>
@@ -137,7 +137,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
 
       {/* ── unirea de mana ── */}
       <div className="mt-6 pt-6 border-t border-slate-100">
-        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">
+        <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide mb-3">
           Uneste doua sectii care nu seamana la nume
         </p>
         <p className="text-[12px] font-semibold text-slate-500 mb-3 leading-relaxed">
@@ -165,7 +165,7 @@ const UnesteSectii: React.FC<Props> = ({ devices, tasks, onUneste, canEdit }) =>
           <button
             onClick={() => setDeUnit({ cheie: 'manual', dela: [dela], la, cate: cate(dela) })}
             disabled={!canEdit || !dela || !la || dela === la}
-            className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
+            className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-black transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
           >
             <Merge className="w-4 h-4" /> Uneste
           </button>

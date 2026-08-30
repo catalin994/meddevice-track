@@ -240,7 +240,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       {(isProcessing || isSubmitting) && <div className="absolute inset-0 bg-slate-900/90 z-[200] flex items-center justify-center"><Activity className="w-12 h-12 text-blue-500 animate-spin" /></div>}
       
       <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-        <h2 className="text-2xl font-black text-slate-900 uppercase">Inregistrare Dispozitiv</h2>
+        <h2 className="text-2xl font-black text-slate-900">Inregistrare Dispozitiv</h2>
         <button onClick={onCancel} className="p-2 text-slate-500"><X className="w-6 h-6" /></button>
       </div>
 
@@ -274,7 +274,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
             <div className="max-h-60 overflow-y-auto bg-slate-50 p-4 rounded-xl space-y-2">
               {previewDevices.map((d, i) => <div key={i} className="text-xs bg-white p-2 rounded border">{d.name} ({d.serialNumber})</div>)}
             </div>
-            <button onClick={() => onBulkSave(previewDevices)} className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase">Salveaza in Registru</button>
+            <button onClick={() => onBulkSave(previewDevices)} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold">Salveaza in Registru</button>
           </div>
         ) : (
           <form onSubmit={activeTab === 'single' ? handleSingleSubmit : handleGenerateBatch} className="space-y-6">
@@ -311,8 +311,8 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
               </div>
             </div>
             <div className="flex justify-end gap-4 pt-6">
-              <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase">Anuleaza</button>
-              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-xl hover:bg-blue-700">Salveaza</button>
+              <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-[13px]">Anuleaza</button>
+              <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-bold text-[13px] shadow-xl hover:bg-blue-700">Salveaza</button>
             </div>
           </form>
         )}
@@ -341,7 +341,7 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
 };
 
 const TabButton = React.memo(({ active, onClick, label, icon }: any) => (
-  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500'}`}>{icon}{label}</button>
+  <button onClick={onClick} className={`px-8 py-4 text-[10px] font-black uppercase tracking-wide border-b-2 transition-all flex items-center gap-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500'}`}>{icon}{label}</button>
 ));
 
 const FormField = React.memo(({ label, name, value, onChange, type = "text", required = false, avertisment = '' }: any) => (
@@ -349,7 +349,7 @@ const FormField = React.memo(({ label, name, value, onChange, type = "text", req
     <label className="text-[10px] font-black uppercase text-slate-500">{label}</label>
     <input required={required} name={name} type={type} value={value} onChange={onChange}
       className={`w-full p-4 bg-slate-50 border rounded-2xl text-sm font-bold outline-none ${
-        avertisment ? 'border-amber-400 bg-amber-50/50' : 'border-slate-200'
+ avertisment ? 'border-amber-400 bg-amber-50/50' : 'border-slate-200'
       }`} />
     {avertisment && (
       <p className="text-[11px] font-bold text-amber-700 leading-relaxed px-1">{avertisment}</p>

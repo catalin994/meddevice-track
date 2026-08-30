@@ -72,12 +72,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           className="hardware-card p-6 sm:p-10 max-w-lg w-full text-center rounded-3xl shadow-2xl animate-slide-up"
         >
           <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-7 ${
-            danger ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-600'
+ danger ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-600'
           }`}>
             {icon || <AlertTriangle className="w-8 h-8 sm:w-10 sm:h-10" />}
           </div>
 
-          <h3 id="confirm-title" className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight mb-3">
+          <h3 id="confirm-title" className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight mb-3">
             {title}
           </h3>
           <p className="text-sm sm:text-[15px] text-slate-600 font-medium mb-7 sm:mb-9 leading-relaxed">
@@ -89,14 +89,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               ref={takeFocus}
               disabled={busy}
               onClick={onCancel}
-              className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition disabled:opacity-50"
+              className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-[13px] tracking-normal hover:bg-slate-200 transition disabled:opacity-50"
             >
               {cancelLabel}
             </button>
             <button
               disabled={busy}
               onClick={onConfirm}
-              className={`sm:flex-[1.6] py-4 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition shadow-xl flex items-center justify-center gap-2.5 disabled:opacity-60 ${
+              className={`sm:flex-[1.6] py-4 text-white rounded-2xl font-bold text-[13px] tracking-normal transition shadow-xl flex items-center justify-center gap-2.5 disabled:opacity-60 ${
                 danger
                   ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
                   : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
