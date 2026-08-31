@@ -104,17 +104,21 @@ const VIEW_LABELS_SHORT: Record<string, string> = {
 const PrimaryAction: React.FC<{
   icon: React.ReactNode;
   label: string;
-  shortLabel: string;
   hint: string;
   variant: 'blue' | 'dark' | 'green';
   onClick: () => void;
-}> = ({ icon, label, shortLabel, hint, variant, onClick }) => {
+}> = ({ icon, label, hint, variant, onClick }) => {
   /*
    * O singura actiune principala pe ecran.
    *
    * Cand "Dispozitiv nou" si "Scaneaza QR" erau amandoua butoane pline —
    * albastru si negru, una langa alta — ochiul nu mai stia care e drumul
    * obisnuit. Ramane una plina; a doua e la fel de aproape, dar nu mai striga.
+   *
+   * In antet, langa titlu, textul incape doar de la lg in sus: pe telefon
+   * randul e deja impartit intre meniu, numele paginii si trei iconite. Sub
+   * lg ramane iconita, cu numele actiunii in title si aria-label, ca sa se
+   * stie ce face si la atingere lunga, si la citirea cu voce.
    */
   const styles = {
     blue: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20',
@@ -125,11 +129,11 @@ const PrimaryAction: React.FC<{
     <button
       onClick={onClick}
       title={hint}
-      className={`${styles} flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-[13px] tracking-normal transition active:scale-95`}
+      aria-label={label}
+      className={`${styles} shrink-0 flex items-center justify-center gap-2 p-2.5 lg:px-4 lg:py-2.5 rounded-xl font-bold text-[13px] tracking-normal transition active:scale-95`}
     >
       {icon}
-      <span className="sm:hidden">{shortLabel}</span>
-      <span className="hidden sm:inline">{label}</span>
+      <span className="hidden lg:inline whitespace-nowrap">{label}</span>
     </button>
   );
 };
@@ -1374,6 +1378,34 @@ const App: React.FC = () => {
                    <span className="hidden sm:inline">{VIEW_LABELS[view] || view.replace('_', ' ')}</span>
                  </h2>
                </div>
+
+               {/*
+                 Actiunile de teren, langa titlu.
+                 Stateau intr-o banda proprie sub antet, care lua inca un rand
+                 din inaltimea ecranului pe fiecare pagina unde apareau — pe
+                 telefon, unde randurile se numara, aproape cincizeci de pixeli
+                 pentru doua butoane. Incap in antet, langa numele paginii.
+               */}
+               {ECRANE_CU_ACTIUNI.has(view) && (
+                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 sm:ml-2">
+                   {canEdit && (
+                     <PrimaryAction
+                       icon={<Plus className="w-4 h-4 shrink-0" />}
+                       label="Dispozitiv nou"
+                       hint="Inregistreaza un dispozitiv nou in inventar"
+                       variant="blue"
+                       onClick={() => navigate('ADD_DEVICE')}
+                     />
+                   )}
+                   <PrimaryAction
+                     icon={<QrCode className="w-4 h-4 shrink-0" />}
+                     label="Scaneaza cod QR"
+                     hint="Scaneaza eticheta QR a unui dispozitiv ca sa-i deschizi fisa"
+                     variant="dark"
+                     onClick={() => setShowScanner(true)}
+                   />
+                 </div>
+               )}
             </div>
             <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
               {isSyncing && (
@@ -1415,29 +1447,6 @@ const App: React.FC = () => {
               </div>
             </div>
           </header>
-        )}
-
-        {!isStandalone && ECRANE_CU_ACTIUNI.has(view) && (
-          <div className="shrink-0 flex items-stretch gap-2 px-3 sm:px-6 lg:px-10 py-2 sm:py-2.5 bg-white border-b border-slate-200 z-40">
-            {canEdit && (
-              <PrimaryAction
-                icon={<Plus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
-                label="Dispozitiv nou"
-                shortLabel="Dispozitiv nou"
-                hint="Inregistreaza un dispozitiv nou in inventar"
-                variant="blue"
-                onClick={() => navigate('ADD_DEVICE')}
-              />
-            )}
-            <PrimaryAction
-              icon={<QrCode className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />}
-              label="Scaneaza cod QR"
-              shortLabel="Scaneaza QR"
-              hint="Scaneaza eticheta QR a unui dispozitiv ca sa-i deschizi fisa"
-              variant="dark"
-              onClick={() => setShowScanner(true)}
-            />
-          </div>
         )}
 
         <div className={`flex-1 overflow-y-auto overscroll-y-contain relative custom-scrollbar ${isStandalone ? 'p-0' : 'p-3 pb-12 sm:p-6 sm:pb-10 lg:p-10'}`}>
