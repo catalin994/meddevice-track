@@ -810,6 +810,18 @@ const DeviceCard = React.memo(({
       </label>
 
       {/*
+        Numaratoarea, la inceputul randului.
+        Statea la capatul din dreapta, langa nume — dar un numar de ordine se
+        citeste pe verticala, ca sa stii al catelea aparat esti din lista, si
+        cu numele lung al aparatului intre ele cifrele nu mai stateau una sub
+        alta. Latimea e fixa si cifrele monospatiate, ca sa se alinieze si la
+        numarul o mie.
+      */}
+      <span className="shrink-0 min-w-[1.75rem] pt-0.5 font-mono text-[11px] font-bold text-slate-400 tabular-nums text-right">
+        {index}
+      </span>
+
+      {/*
         The photo only takes room when there is a photo. Most devices have
         none, and an empty grey square with a cube in it was costing a hundred
         pixels a card on a phone — pure scrolling for nothing. The radiation
@@ -844,7 +856,6 @@ const DeviceCard = React.memo(({
               />
             )}
           </h3>
-          <span className="shrink-0 font-mono text-[11px] font-bold text-slate-400 tabular-nums mt-0.5">{index}</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
@@ -852,9 +863,13 @@ const DeviceCard = React.memo(({
           <span className="text-[13px] font-semibold text-slate-600 truncate max-w-[14rem]">
             {device.department || '—'}
           </span>
-          <span className="w-1 h-1 bg-slate-300 rounded-full" />
-          <span className="text-[13px] font-medium text-slate-500 truncate max-w-[12rem]">
-            {device.category || 'Altele'}
+          {/* Punctul merge cu textul de dupa el: pe telefon, cand randul se
+              rupe, altfel ramanea agatat la capat si arata a greseala. */}
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="w-1 h-1 bg-slate-300 rounded-full shrink-0" />
+            <span className="text-[13px] font-medium text-slate-500 truncate max-w-[12rem]">
+              {device.category || 'Altele'}
+            </span>
           </span>
         </div>
 
