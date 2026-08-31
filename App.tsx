@@ -115,10 +115,11 @@ const PrimaryAction: React.FC<{
    * albastru si negru, una langa alta — ochiul nu mai stia care e drumul
    * obisnuit. Ramane una plina; a doua e la fel de aproape, dar nu mai striga.
    *
-   * In antet, langa titlu, textul incape doar de la lg in sus: pe telefon
-   * randul e deja impartit intre meniu, numele paginii si trei iconite. Sub
-   * lg ramane iconita, cu numele actiunii in title si aria-label, ca sa se
-   * stie ce face si la atingere lunga, si la citirea cu voce.
+   * In antet, langa titlu, textul incape doar pe ecranele late. Sub ele
+   * randul se imparte intre meniu, numele paginii, cautare si butoanele din
+   * dreapta, iar doua etichete l-ar strange pe cea de cautare pana la
+   * "Caut...". Ramane iconita, cu numele actiunii in title si aria-label, ca
+   * sa se stie ce face si la atingere lunga, si la citirea cu voce.
    */
   const styles = {
     blue: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20',
@@ -130,10 +131,10 @@ const PrimaryAction: React.FC<{
       onClick={onClick}
       title={hint}
       aria-label={label}
-      className={`${styles} shrink-0 flex items-center justify-center gap-2 p-2.5 lg:px-4 lg:py-2.5 rounded-xl font-bold text-[13px] tracking-normal transition active:scale-95`}
+      className={`${styles} shrink-0 flex items-center justify-center gap-2 p-2.5 2xl:px-4 2xl:py-2.5 rounded-xl font-bold text-[13px] tracking-normal transition active:scale-95`}
     >
       {icon}
-      <span className="hidden lg:inline whitespace-nowrap">{label}</span>
+      <span className="hidden 2xl:inline whitespace-nowrap">{label}</span>
     </button>
   );
 };
@@ -1355,7 +1356,7 @@ const App: React.FC = () => {
       <main className={`flex-1 flex flex-col overflow-hidden relative ${isStandalone ? 'bg-white' : ''}`}>
         {!isStandalone && (
           <header className="h-16 sm:h-[72px] bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-10 shrink-0 z-50 gap-2">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
                <button
                  onClick={() => setSidebarOpen(true)}
                  aria-label="Deschide meniul"
@@ -1407,42 +1408,54 @@ const App: React.FC = () => {
                  </div>
                )}
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+            <div className="flex flex-1 min-w-0 items-center justify-end gap-1.5 sm:gap-3">
               {isSyncing && (
                 <div className="flex items-center gap-2.5 px-2.5 sm:px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                   <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
                   <span className="hidden sm:inline text-[10px] font-black text-blue-600 uppercase tracking-wide">Se salveaza</span>
                 </div>
               )}
+              {/*
+                Cautarea, scrisa ca un camp de cautare.
+                Era un buton stramt cu "CAUTA..." in zece pixeli si majuscule,
+                si nu se intelegea ce se cauta din el. Acum e lat cat un camp
+                adevarat, spune ce cauta, iar scurtatura sta la capatul din
+                dreapta, unde o pun toate aplicatiile.
+              */}
               <button
                 onClick={() => setShowPalette(true)}
-                className="hidden md:flex items-center gap-3 px-4 py-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:border-blue-300 hover:text-slate-700 transition-colors"
+                className="hidden lg:flex flex-1 min-w-0 max-w-[20rem] items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl hover:border-blue-300 hover:text-slate-700 transition-colors"
                 title="Cautare globala"
               >
-                <Search className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-wide">Cauta...</span>
-                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-black">Ctrl K</kbd>
+                <Search className="w-[18px] h-[18px] shrink-0" />
+                <span className="flex-1 min-w-0 text-left text-[14px] font-medium truncate">Cauta dispozitiv, tichet...</span>
+                <kbd className="shrink-0 px-1.5 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold">Ctrl K</kbd>
               </button>
               {/* Mobile: compact search icon */}
-              <button onClick={() => setShowPalette(true)} className="md:hidden p-3 bg-slate-50 border-2 border-slate-200 text-slate-600 rounded-xl" title="Cautare" aria-label="Cauta in aplicatie">
-                <Search className="w-4 h-4" />
+              <button onClick={() => setShowPalette(true)} className="lg:hidden p-3.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl" title="Cautare" aria-label="Cauta in aplicatie">
+                <Search className="w-5 h-5" />
               </button>
               <div className="hidden sm:block h-8 w-px bg-slate-200" />
-              <div className="flex items-center gap-3">
-                <div className="hidden md:block text-right">
-                  <p className="text-xs font-black text-slate-900 leading-none">{currentUser?.name}</p>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
+              <div className="flex items-center gap-2.5 shrink-0">
+                {/* Numele si rolul se citeau cu greu: doisprezece pixeli pentru
+                    nume si zece, cu majuscule, pentru rol. */}
+                <div className="hidden xl:block text-right shrink-0">
+                  <p className="text-sm font-bold text-slate-900 leading-none">{currentUser?.name}</p>
+                  <p className="text-[13px] font-medium text-slate-500 mt-1">{currentUser ? ROLE_LABELS[currentUser.role] : ''}</p>
                 </div>
+                {/* Doua iconite de saisprezece pixeli intr-un buton de patruzeci
+                    — greu de nimerit cu degetul, si greu de deosebit una de
+                    alta dintr-o privire. */}
                 <button
                   onClick={toggleTheme}
-                  className="p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-300 transition-colors"
+                  className="p-3.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl hover:text-blue-600 hover:border-blue-300 transition-colors"
                   title={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
                   aria-label={theme === 'dark' ? 'Comuta pe mod zi' : 'Comuta pe mod noapte'}
                 >
-                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
-                <button onClick={handleLogout} className="p-3 bg-slate-50 border-2 border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare" aria-label="Delogare">
-                  <LogOut className="w-4 h-4" />
+                <button onClick={handleLogout} className="p-3.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl hover:text-red-600 hover:border-red-300 transition-colors" title="Delogare" aria-label="Delogare">
+                  <LogOut className="w-5 h-5" />
                 </button>
               </div>
             </div>
