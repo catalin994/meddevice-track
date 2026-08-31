@@ -1,7 +1,7 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, normaliseDeviceStatus } from '../types';
-import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock } from 'lucide-react';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, referatTotal, normaliseDeviceStatus } from '../types';
+import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature } from 'lucide-react';
 import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, Termen, FelTermen } from '../services/termene';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
@@ -9,10 +9,28 @@ const DashboardCharts = lazy(() => import('./DashboardCharts'));
 interface DashboardProps {
   devices: MedicalDevice[];
   tasks: MedicalTask[];
+  /** Referatele de necesitate, pentru starea lor pe Panou. */
+  referate?: Referat[];
+  /** Contractele din registrul propriu; cele de pe aparate se adauga la ele. */
+  contracteRegistru?: Contract[];
+  /** Fara drept pe Financiar, cele doua sectiuni nu au ce cauta pe Panou. */
+  canFinance?: boolean;
   onSelectDevice?: (id: string) => void;
   /** Ducerea la lista intreaga de tichete, cand cele de pe Panou nu ajung. */
   onOpenTasks?: () => void;
+  /** Ducerea in Financiar, la referate sau la contracte. */
+  onOpenFinance?: (tab: 'REFERATE' | 'CONTRACTS') => void;
 }
+
+/** Cate zile mai sunt pana la o data, negativ daca a trecut. */
+const zilePanaLa = (data?: string): number | null => {
+  if (!data) return null;
+  const t = new Date(data).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.ceil((t - Date.now()) / 86400000);
+};
+
+const lei = (n: number) => n.toLocaleString('ro-RO', { maximumFractionDigits: 0 });
 
 /** Urgentele intai, si la aceeasi urgenta cel deschis mai de curand. */
 const RANG_PRIORITATE: Record<TaskPriority, number> = {
@@ -25,7 +43,10 @@ const RANG_PRIORITATE: Record<TaskPriority, number> = {
 /** Cate tichete incap pe Panou fara sa impinga restul paginii afara. */
 const TICHETE_PE_PANOU = 8;
 
-const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice, onOpenTasks }) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  devices, tasks, referate = [], contracteRegistru = [], canFinance = false,
+  onSelectDevice, onOpenTasks, onOpenFinance,
+}) => {
   
   const statusData = useMemo(() => {
     const counts = {
@@ -80,11 +101,14 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice, o
   /**
    * Termenele care se apropie: metrologie, garantie, contracte, CNCAN.
    *
-   * Contractele stau in interiorul aparatelor, deci se aduna de acolo, cate
-   * unul pe numar — acelasi contract acopera de obicei mai multe aparate.
+   * Contractele stau in doua locuri: in registrul propriu si inauntrul
+   * aparatelor pe care le acopera. Se string la un loc, cate unul pe numar —
+   * acelasi contract acopera de obicei mai multe aparate, si altfel ar fi
+   * numarat de fiecare data.
    */
   const contracte = useMemo(() => Array.from(new Map<string, Contract>(
-    devices.flatMap(d => d.contracts || []).map(c => [c.contractNumber, c])).values()), [devices]);
+    [...contracteRegistru, ...devices.flatMap(d => d.contracts || [])]
+      .map(c => [c.contractNumber, c])).values()), [devices, contracteRegistru]);
   const termene = useMemo(
     () => termeneDeUrmarit(termeneleTuturor(devices, contracte)).filter(t => t.fel !== 'mentenanta'),
     [devices, contracte]);
@@ -97,6 +121,60 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice, o
     () => new Set(devices.map(d => (d.department || '').trim()).filter(Boolean)).size, [devices]);
   const intarziate = useMemo(
     () => upcomingMaintenance.filter(d => d.daysRemaining < 0).length, [upcomingMaintenance]);
+
+  /*
+   * Starea referatelor.
+   *
+   * Un referat trece prin patru maini pana ajunge comanda, si intre ele sta.
+   * Cel depus si neaprobat e cel care blocheaza achizitia, si tocmai el nu se
+   * vedea de nicaieri fara sa intri in Financiar si sa deschizi tabul.
+   */
+  const stareReferate = useMemo(() => {
+    const pe: Record<ReferatStatus, Referat[]> = {
+      [ReferatStatus.DRAFT]: [], [ReferatStatus.SUBMITTED]: [],
+      [ReferatStatus.APPROVED]: [], [ReferatStatus.REJECTED]: [],
+      [ReferatStatus.CLOSED]: [],
+    };
+    referate.forEach(r => { (pe[r.status] || pe[ReferatStatus.DRAFT]).push(r); });
+    // Ce e inca in circuit: tot ce nu s-a inchis si nu s-a respins.
+    const inLucru = [...pe[ReferatStatus.DRAFT], ...pe[ReferatStatus.SUBMITTED], ...pe[ReferatStatus.APPROVED]]
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    return {
+      pe,
+      inLucru,
+      // Valoarea din referatele care inca asteapta ceva de la cineva.
+      valoare: inLucru.reduce((s, r) => s + referatTotal(r.items), 0),
+      moneda: referate[0]?.currency || 'RON',
+    };
+  }, [referate]);
+
+  /*
+   * Starea contractelor.
+   *
+   * Contractul n-are un camp "stare" — starea lui e data de data de sfarsit.
+   * Trei cosuri: expirat (aparatele au ramas fara service), aproape expirat
+   * (mai e timp de prelungire, dar nu mult) si in derulare.
+   */
+  const stareContracte = useMemo(() => {
+    const expirate: Contract[] = [], apropiate: Contract[] = [], active: Contract[] = [], faraTermen: Contract[] = [];
+    contracte.forEach(c => {
+      const z = zilePanaLa(c.endDate);
+      if (z === null) faraTermen.push(c);
+      else if (z < 0) expirate.push(c);
+      else if (z <= 90) apropiate.push(c);
+      else active.push(c);
+    });
+    const cuZile = (l: Contract[]) => l
+      .map(c => ({ c, zile: zilePanaLa(c.endDate) ?? 0 }))
+      .sort((a, b) => a.zile - b.zile);
+    return {
+      expirate, apropiate, active, faraTermen,
+      // Cele care cer o hotarare: intai cele deja expirate.
+      deUrmarit: [...cuZile(expirate), ...cuZile(apropiate)],
+      // Cat se plateste pe an pentru contractele care inca tin.
+      valoareActiva: [...active, ...apropiate].reduce((s, c) => s + (c.annualCost || 0), 0),
+    };
+  }, [contracte]);
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -329,6 +407,210 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice, o
               si inca {termene.length - 24} — vezi lista intreaga in Inventar
             </p>
           )}
+        </div>
+      )}
+
+      {/*
+        Hartia achizitiei, pe scurt.
+        Referatul si contractul isi aveau starea numai inauntrul modulului
+        Financiar, fiecare in tabul lui: ca sa afli daca un referat depus s-a
+        aprobat, sau daca un contract de service a expirat, trebuia sa intri si
+        sa deschizi doua ecrane. Aici e raspunsul dintr-o privire, iar apasarea
+        pe oricare duce la lista intreaga. Se vad doar cu drept pe Financiar.
+      */}
+      {canFinance && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+          <div className="hardware-card p-5 sm:p-7 rounded-3xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+              <div>
+                <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea referatelor</h3>
+                <p className="text-[13px] font-semibold text-slate-500 mt-1">
+                  {referate.length === 0
+                    ? 'Niciun referat inregistrat'
+                    : `${stareReferate.inLucru.length} in circuit din ${referate.length}`}
+                </p>
+              </div>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileSignature className="w-5 h-5" /></div>
+            </div>
+
+            {referate.length === 0 ? (
+              <p className="py-10 text-center text-sm font-semibold text-slate-500">
+                Referatele adaugate in Financiar apar aici.
+              </p>
+            ) : (
+              <>
+                {/* Cate sunt in fiecare stadiu — cifra, nu grafic: sunt cinci
+                    stadii si de obicei sub zece referate in fiecare. */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {([ReferatStatus.DRAFT, ReferatStatus.SUBMITTED, ReferatStatus.APPROVED,
+                     ReferatStatus.REJECTED, ReferatStatus.CLOSED] as ReferatStatus[]).map(st => {
+                    const n = stareReferate.pe[st].length;
+                    const ton = st === ReferatStatus.REJECTED ? 'text-red-700 bg-red-50'
+                      : st === ReferatStatus.APPROVED ? 'text-emerald-700 bg-emerald-50'
+                      : st === ReferatStatus.SUBMITTED ? 'text-amber-700 bg-amber-50'
+                      : 'text-slate-600 bg-slate-50';
+                    return (
+                      <div key={st} className={`px-3 py-2.5 rounded-xl ${n === 0 ? 'text-slate-500 bg-slate-50' : ton}`}>
+                        <p className="text-2xl font-extrabold tabular-nums leading-none">{n}</p>
+                        <p className="text-[12px] font-semibold mt-1">{REFERAT_STATUS_RO[st]}</p>
+                      </div>
+                    );
+                  })}
+                  <div className="px-3 py-2.5 rounded-xl bg-slate-50 text-slate-600">
+                    <p className="text-2xl font-extrabold tabular-nums leading-none">
+                      {lei(stareReferate.valoare)}
+                    </p>
+                    <p className="text-[12px] font-semibold mt-1">{stareReferate.moneda} in circuit</p>
+                  </div>
+                </div>
+
+                {stareReferate.inLucru.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {stareReferate.inLucru.slice(0, 4).map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => onOpenFinance?.('REFERATE')}
+                        disabled={!onOpenFinance}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50 transition-colors ${
+                          onOpenFinance ? 'hover:bg-white hover:border-slate-200 cursor-pointer' : 'cursor-default'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-bold text-slate-900 leading-snug break-words">
+                            {r.subject || 'Referat fara obiect'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px]">
+                            <span className="font-mono font-medium text-slate-500">nr. {r.number || '—'}</span>
+                            {r.department && (
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                                <span className="font-medium text-slate-600 truncate max-w-[10rem]">{r.department}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className={`inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${
+                            r.status === ReferatStatus.APPROVED ? 'bg-emerald-50 text-emerald-700'
+                            : r.status === ReferatStatus.SUBMITTED ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {REFERAT_STATUS_RO[r.status]}
+                          </span>
+                          <p className="text-[12px] font-semibold text-slate-600 mt-1 whitespace-nowrap tabular-nums">
+                            {lei(referatTotal(r.items))} {r.currency || 'RON'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                    {stareReferate.inLucru.length > 4 && (
+                      <button
+                        onClick={() => onOpenFinance?.('REFERATE')}
+                        disabled={!onOpenFinance}
+                        className="w-full py-2.5 text-[13px] font-semibold text-slate-500 hover:text-blue-600 transition-colors"
+                      >
+                        si inca {stareReferate.inLucru.length - 4} — vezi toate referatele
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="hardware-card p-5 sm:p-7 rounded-3xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+              <div>
+                <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea contractelor</h3>
+                <p className="text-[13px] font-semibold text-slate-500 mt-1">
+                  {contracte.length === 0
+                    ? 'Niciun contract inregistrat'
+                    : `${contracte.length} ${contracte.length === 1 ? 'contract' : 'contracte'}, ${lei(stareContracte.valoareActiva)} RON pe an`}
+                </p>
+              </div>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><ShieldCheck className="w-5 h-5" /></div>
+            </div>
+
+            {contracte.length === 0 ? (
+              <p className="py-10 text-center text-sm font-semibold text-slate-500">
+                Contractele adaugate in Financiar apar aici.
+              </p>
+            ) : (
+              <>
+                {/* Contractul n-are camp de stare: o da data de sfarsit. */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className={`px-3 py-2.5 rounded-xl ${stareContracte.expirate.length ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-500'}`}>
+                    <p className="text-2xl font-extrabold tabular-nums leading-none">{stareContracte.expirate.length}</p>
+                    <p className="text-[12px] font-semibold mt-1">Expirate</p>
+                  </div>
+                  <div className={`px-3 py-2.5 rounded-xl ${stareContracte.apropiate.length ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-500'}`}>
+                    <p className="text-2xl font-extrabold tabular-nums leading-none">{stareContracte.apropiate.length}</p>
+                    <p className="text-[12px] font-semibold mt-1">Sub 90 zile</p>
+                  </div>
+                  <div className={`px-3 py-2.5 rounded-xl ${stareContracte.active.length ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'}`}>
+                    <p className="text-2xl font-extrabold tabular-nums leading-none">{stareContracte.active.length}</p>
+                    <p className="text-[12px] font-semibold mt-1">In derulare</p>
+                  </div>
+                  <div className="px-3 py-2.5 rounded-xl bg-slate-50 text-slate-600">
+                    <p className="text-2xl font-extrabold tabular-nums leading-none">{stareContracte.faraTermen.length}</p>
+                    <p className="text-[12px] font-semibold mt-1">Fara termen</p>
+                  </div>
+                </div>
+
+                {stareContracte.deUrmarit.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {stareContracte.deUrmarit.slice(0, 4).map(({ c, zile }) => (
+                      <button
+                        key={c.id || c.contractNumber}
+                        onClick={() => onOpenFinance?.('CONTRACTS')}
+                        disabled={!onOpenFinance}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                          zile < 0 ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'
+                        } ${onOpenFinance ? 'hover:bg-white cursor-pointer' : 'cursor-default'}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-bold text-slate-900 leading-snug break-words">
+                            {c.name || c.provider || 'Contract fara furnizor'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px]">
+                            <span className="font-mono font-medium text-slate-500">nr. {c.contractNumber || '—'}</span>
+                            {c.provider && c.name && (
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                                <span className="font-medium text-slate-600 truncate max-w-[10rem]">{c.provider}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className={`text-[14px] font-bold whitespace-nowrap ${zile < 0 ? 'text-red-700' : 'text-amber-700'}`}>
+                            {zile < 0 ? 'Expirat' : zile === 0 ? 'Expira azi' : `${zile} zile`}
+                          </p>
+                          <p className="text-[12px] font-semibold text-slate-500 mt-1 whitespace-nowrap">{c.endDate}</p>
+                        </div>
+                      </button>
+                    ))}
+                    {stareContracte.deUrmarit.length > 4 && (
+                      <button
+                        onClick={() => onOpenFinance?.('CONTRACTS')}
+                        disabled={!onOpenFinance}
+                        className="w-full py-2.5 text-[13px] font-semibold text-slate-500 hover:text-blue-600 transition-colors"
+                      >
+                        si inca {stareContracte.deUrmarit.length - 4} — vezi toate contractele
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4 py-8 text-center">
+                    <CheckCircle className="w-10 h-10 text-emerald-100 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-500">
+                      Niciun contract expirat sau aproape de termen
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 

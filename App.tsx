@@ -175,6 +175,8 @@ const App: React.FC = () => {
   const [deletions, setDeletions] = useState<Deletion[]>([]);
   /** Contractele, cu casa lor: unul de consumabile nu se leaga de niciun aparat. */
   const [contracte, setContracte] = useState<Contract[]>([]);
+  /** Cu ce tab se deschide Financiarul, cand se intra de pe Panou. */
+  const [tabFinanciar, setTabFinanciar] = useState<'REFERATE' | 'CONTRACTS' | undefined>();
   /** Randul pe care a scris si altcineva, cat timp se asteapta alegerea. */
   const [conflict, setConflict] = useState<{
     ce: string; nume: string; diferente: Diferenta[]; candLui?: string;
@@ -255,6 +257,10 @@ const App: React.FC = () => {
   const navigate = useCallback((nextView: ViewState, deviceId: string | null = null) => {
     setView(nextView);
     setSelectedDeviceId(deviceId);
+    // Tab-ul cerut de pe Panou tine o singura intrare. Fara asta, Financiarul
+    // deschis a doua zi din meniu s-ar fi deschis tot pe Contracte, pentru ca
+    // asa se intrase ultima data.
+    setTabFinanciar(undefined);
     try {
       window.history.pushState({ mtView: nextView, mtDeviceId: deviceId }, '');
       historyDepth.current += 1;
@@ -1454,7 +1460,18 @@ const App: React.FC = () => {
                   <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Se incarca modulul...</p>
                 </div>
               }>
-                {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }} onOpenTasks={() => navigate('TASKS')} />}
+                {view === 'DASHBOARD' && (
+                  <Dashboard
+                    devices={devices}
+                    tasks={tasks}
+                    referate={referate}
+                    contracteRegistru={contracte}
+                    canFinance={canFinance}
+                    onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }}
+                    onOpenTasks={() => navigate('TASKS')}
+                    onOpenFinance={tab => { navigate('FINANCE'); setTabFinanciar(tab); }}
+                  />
+                )}
                 {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={handleSelectDevice} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={handleAddDevice} canDelete={canDelete} />}
                 {view === 'DEVICE_DETAIL' && selectedDevice && (
                   <DeviceDetail 
@@ -1523,6 +1540,7 @@ const App: React.FC = () => {
                     canDelete={canDelete}
                     contracte={contracte}
                     onSaveContract={handleSaveContract}
+                    tabInitial={tabFinanciar}
                   />
                 )}
                 {view === 'FINANCE' && !canFinance && (

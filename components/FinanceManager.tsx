@@ -47,6 +47,8 @@ interface FinanceManagerProps {
   onUpsertComanda: (c: Comanda) => void;
   onDeleteComanda: (id: string) => void;
   canDelete: boolean;
+  /** Tab-ul cu care se deschide modulul, cand se vine dintr-un anume loc. */
+  tabInitial?: FinanceTab;
 }
 
 type FinanceTab = 'OVERVIEW' | 'DOSARE' | 'INVOICES' | 'BUDGET' | 'REFERATE' | 'FUNDAMENTARE' | 'COMENZI' | 'CONTRACTS';
@@ -147,9 +149,11 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   onUpsertInvoice, onDeleteInvoice, onSaveContract,
   onUpsertReferat, onDeleteReferat, onUpsertFoundationDoc, onDeleteFoundationDoc,
   onUpsertComanda, onDeleteComanda,
-  canDelete,
+  canDelete, tabInitial,
 }) => {
-  const [tab, setTab] = useState<FinanceTab>('OVERVIEW');
+  // Sumarul e punctul de plecare obisnuit, dar cand se intra de pe Panou,
+  // apasand pe un referat sau pe un contract, se deschide direct lista lui.
+  const [tab, setTab] = useState<FinanceTab>(tabInitial || 'OVERVIEW');
   // Cand se apasa pe insigna de documente a unui referat, se trece pe tab-ul
   // celalalt cu lista deja restransa la dosarul lui.
   const [dosarReferat, setDosarReferat] = useState<string | null>(null);
