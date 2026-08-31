@@ -1,6 +1,6 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, Contract, normaliseDeviceStatus } from '../types';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, normaliseDeviceStatus } from '../types';
 import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock } from 'lucide-react';
 import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, Termen, FelTermen } from '../services/termene';
 
@@ -10,9 +10,22 @@ interface DashboardProps {
   devices: MedicalDevice[];
   tasks: MedicalTask[];
   onSelectDevice?: (id: string) => void;
+  /** Ducerea la lista intreaga de tichete, cand cele de pe Panou nu ajung. */
+  onOpenTasks?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice }) => {
+/** Urgentele intai, si la aceeasi urgenta cel deschis mai de curand. */
+const RANG_PRIORITATE: Record<TaskPriority, number> = {
+  [TaskPriority.CRITICAL]: 0,
+  [TaskPriority.HIGH]: 1,
+  [TaskPriority.MEDIUM]: 2,
+  [TaskPriority.LOW]: 3,
+};
+
+/** Cate tichete incap pe Panou fara sa impinga restul paginii afara. */
+const TICHETE_PE_PANOU = 8;
+
+const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice, onOpenTasks }) => {
   
   const statusData = useMemo(() => {
     const counts = {
@@ -30,9 +43,22 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
   const pendingTasks = useMemo(() => tasks.filter(t => t.status !== TaskStatus.COMPLETED).length, [tasks]);
   const criticalTasks = useMemo(() => tasks.filter(t => t.priority === TaskPriority.CRITICAL && t.status !== TaskStatus.COMPLETED).length, [tasks]);
 
-  const dispatchTasks = useMemo(() => 
-    tasks.filter(t => t.priority === TaskPriority.CRITICAL || t.priority === TaskPriority.HIGH)
-         .filter(t => t.status !== TaskStatus.COMPLETED),
+  /*
+   * Tichetele deschise, toate.
+   *
+   * Panoul arata pana acum doar tichetele critice si ridicate, sub numele
+   * "Interventii prioritare" — restul, adica majoritatea muncii de peste zi, se
+   * vedeau doar daca intrai in Tichete service. Cine deschidea dimineata
+   * aplicatia isi vedea aparatura, termenele si mentenanta, dar nu si ce a
+   * lasat in lucru ieri. Acum sunt toate aici, cu urgentele primele.
+   */
+  const tichete = useMemo(() =>
+    tasks
+      .filter(t => t.status !== TaskStatus.COMPLETED)
+      .slice()
+      .sort((a, b) =>
+        (RANG_PRIORITATE[a.priority] ?? 9) - (RANG_PRIORITATE[b.priority] ?? 9) ||
+        String(b.createdAt || '').localeCompare(String(a.createdAt || ''))),
     [tasks]
   );
 
@@ -126,6 +152,135 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
       </div>
 
       {/*
+        Tichetele deschise, primele pe pagina.
+        Panoul incepea cu termenele si cu mentenanta preventiva — lucruri care
+        se misca o data pe luna — iar munca deschisa acum statea intr-o coloana
+        ingusta mai jos, si numai partea critica din ea. Ce ai in lucru azi se
+        vede primul; ceasurile care ticaie lung au coborat sub el.
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 hardware-card p-5 sm:p-8 rounded-3xl">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
+            <div>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Tichete service deschise</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">
+                {tichete.length === 0
+                  ? 'Nimic in lucru'
+                  : `${tichete.length} ${tichete.length === 1 ? 'tichet' : 'tichete'} in lucru, urgentele primele`}
+              </p>
+            </div>
+            {onOpenTasks && tasks.length > 0 && (
+              <button
+                onClick={onOpenTasks}
+                className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-[13px] font-semibold hover:border-slate-300 hover:text-slate-900 transition active:scale-95"
+              >
+                Vezi toate
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            {tichete.slice(0, TICHETE_PE_PANOU).map(task => (
+              <button
+                key={task.id}
+                onClick={onOpenTasks}
+                disabled={!onOpenTasks}
+                className={`w-full text-left group flex items-start gap-3 p-3.5 rounded-2xl border border-slate-100 bg-slate-50 transition-colors ${
+                  onOpenTasks ? 'hover:bg-white hover:border-slate-200 cursor-pointer' : 'cursor-default'
+                }`}
+              >
+                {/* Urgenta ca o dunga, nu ca o pastila colorata pe fiecare rand:
+                    opt pastile rosii una sub alta nu mai spun care e cea grava. */}
+                <span
+                  className={`shrink-0 w-1 self-stretch rounded-full ${
+                    task.priority === TaskPriority.CRITICAL ? 'bg-red-600'
+                    : task.priority === TaskPriority.HIGH ? 'bg-orange-500'
+                    : task.priority === TaskPriority.MEDIUM ? 'bg-blue-500'
+                    : 'bg-slate-300'
+                  }`}
+                  aria-hidden="true"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-bold text-slate-900 leading-snug break-words group-hover:text-blue-600 transition-colors">
+                    {task.title}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[13px]">
+                    <span className={`font-semibold ${
+                      task.priority === TaskPriority.CRITICAL ? 'text-red-600'
+                      : task.priority === TaskPriority.HIGH ? 'text-orange-600'
+                      : 'text-slate-500'
+                    }`}>
+                      {TASK_PRIORITY_RO[task.priority]}
+                    </span>
+                    {/* Punctul si textul de dupa el stau in aceeasi bucata:
+                        altfel, cand randul se rupe pe telefon, punctul ramane
+                        agatat la capat si arata ca o greseala. */}
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                      <span className="font-medium text-slate-600 truncate max-w-[12rem]">{task.department}</span>
+                    </span>
+                    {task.deviceName && (
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                        <span className="font-medium text-slate-500 truncate max-w-[14rem]">{task.deviceName}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className={`inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${
+                    task.status === TaskStatus.IN_PROGRESS
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {TASK_STATUS_RO[task.status]}
+                  </span>
+                  {task.createdAt && (
+                    <p className="text-[11px] font-medium text-slate-500 mt-1 whitespace-nowrap">{task.createdAt}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+
+            {tichete.length > TICHETE_PE_PANOU && (
+              <button
+                onClick={onOpenTasks}
+                disabled={!onOpenTasks}
+                className="w-full py-3 text-[13px] font-semibold text-slate-500 hover:text-blue-600 transition-colors"
+              >
+                si inca {tichete.length - TICHETE_PE_PANOU} — vezi toate tichetele
+              </button>
+            )}
+
+            {tichete.length === 0 && (
+              <div className="py-14 text-center">
+                <CheckCircle className="w-12 h-12 text-emerald-100 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-500">
+                  {tasks.length === 0 ? 'Niciun tichet deschis inca' : 'Toate tichetele sunt finalizate'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-5 hardware-card p-5 sm:p-8 rounded-3xl">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
+            <div>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea dispozitivelor medicale</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">Distributie status in timp real</p>
+            </div>
+            <div className="flex items-center gap-2">
+               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Timp real</span>
+            </div>
+          </div>
+          <Suspense fallback={<div className="h-72 flex items-center justify-center"><div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}>
+            <DashboardCharts statusData={statusData} total={devices.length} />
+          </Suspense>
+        </div>
+      </div>
+
+      {/*
         Termenele care se apropie, toate la un loc. Aplicatia se uita pana acum
         doar la mentenanta; restul ceasurilor ticaiau nevazute.
       */}
@@ -177,67 +332,6 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 hardware-card p-5 sm:p-10 rounded-3xl">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
-            <div>
-              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Starea dispozitivelor medicale</h3>
-              <p className="text-[13px] font-semibold text-slate-500 mt-1">Distributie status in timp real</p>
-            </div>
-            <div className="flex items-center gap-2">
-               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Timp real</span>
-            </div>
-          </div>
-          <Suspense fallback={<div className="h-72 flex items-center justify-center"><div className="w-8 h-8 border-2 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}>
-            <DashboardCharts statusData={statusData} total={devices.length} />
-          </Suspense>
-        </div>
-
-        <div className="lg:col-span-5 hardware-card p-5 sm:p-10 rounded-3xl">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
-            <div>
-              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Interventii Prioritare</h3>
-              <p className="text-[13px] font-semibold text-slate-500 mt-1">Operatiuni cu prioritate ridicata</p>
-            </div>
-            {/* A count, not a slogan: the black "Prioritate maxima" pill sat
-                here even when the list under it was empty. */}
-            <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${
- dispatchTasks.length === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white'
-            }`}>
-              {dispatchTasks.length === 0
-                ? 'Nimic urgent'
-                : `${dispatchTasks.length} ${dispatchTasks.length === 1 ? 'interventie' : 'interventii'}`}
-            </span>
-          </div>
-          <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
-            {dispatchTasks.map(task => (
-              <div key={task.id} className="group p-5 bg-slate-50 hover:bg-white hover:shadow-sm hover:shadow-slate-200/50 rounded-2xl border border-slate-100 transition-all duration-300">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">{task.title}</p>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
-                       <span className="text-xs font-semibold text-slate-500">{task.department}</span>
-                       <div className="w-1 h-1 rounded-full bg-slate-300" />
-                       <span className="text-xs font-mono font-semibold text-slate-500 whitespace-nowrap">{task.id}</span>
-                    </div>
-                  </div>
-                  <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold ${task.priority === TaskPriority.CRITICAL ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'}`}>
-                    {TASK_PRIORITY_RO[task.priority]}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {tasks.length === 0 && (
-              <div className="py-20 text-center">
-                 <CheckCircle className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                 <p className="text-sm font-semibold text-slate-500">Niciun tichet critic activ</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="hardware-card p-5 sm:p-10 rounded-3xl">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-8 sm:mb-10">
           <div>
@@ -256,7 +350,11 @@ const Dashboard: React.FC<DashboardProps> = ({ devices, tasks, onSelectDevice })
                 <Clock className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words" title={device.model}>{device.model}</p>
+                {/* Numele aparatului, nu modelul singur: "EQ-90" si "Corpuls 3"
+                    nu spun nimanui care aparat trebuie scos din sectie. */}
+                <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words" title={device.name}>
+                  {device.name || device.model || 'Dispozitiv fara nume'}
+                </p>
                 <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate">{device.department}</p>
               </div>
               <div className="text-right shrink-0">

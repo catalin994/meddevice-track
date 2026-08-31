@@ -1454,7 +1454,7 @@ const App: React.FC = () => {
                   <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Se incarca modulul...</p>
                 </div>
               }>
-                {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }} />}
+                {view === 'DASHBOARD' && <Dashboard devices={devices} tasks={tasks} onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }} onOpenTasks={() => navigate('TASKS')} />}
                 {view === 'INVENTORY' && <DeviceList devices={devices} onSelectDevice={handleSelectDevice} onUpdateDevice={handleUpsertDevices} onBulkUpdate={handleUpsertDevices} onDelete={handleDeleteDevice} onAddDevice={handleAddDevice} canDelete={canDelete} />}
                 {view === 'DEVICE_DETAIL' && selectedDevice && (
                   <DeviceDetail 
