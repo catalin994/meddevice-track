@@ -8,6 +8,7 @@ import {
   comandaValoare, comandaPrimit, Invoice, Referat, MedicalDevice,
 } from '../types';
 import Portal from './Portal';
+import useTragere from './useTragere';
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import Pager, { usePagination, PageSizePicker } from './Pager';
@@ -144,10 +145,12 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
    * repere ia mai mult decat merita, si greselile de cantitate nu se vad decat
    * cand vine marfa.
    */
-  const incarcaPdf = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const citesteComanda = useCallback(async (f: File | null | undefined) => {
     if (!f) return;
+    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+      setNotaPdf(`"${f.name}" nu e un PDF. Comanda se incarca in format PDF.`);
+      return;
+    }
     setCiteste(true); setNotaPdf('');
     try {
       const c = await citesteComandaPdf(f, (pag, din, proc) =>
@@ -204,6 +207,15 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
       setCiteste(false);
     }
   }, [idEditat]);
+
+  const incarcaPdf = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    void citesteComanda(f);
+  }, [citesteComanda]);
+
+  /* Comanda se poate si trage peste caseta, nu doar aleasa din fereastra. */
+  const tragere = useTragere(useCallback((fisiere: File[]) => { void citesteComanda(fisiere[0]); }, [citesteComanda]), true);
 
   const salveaza = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -263,14 +275,20 @@ const ComenziManager: React.FC<Props> = ({ comenzi, invoices, referate, devices,
           </div>
 
           <form onSubmit={salveaza} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 sm:p-8 space-y-5">
-            <div className="bg-slate-900 p-5 rounded-2xl text-white">
+            <div
+              className={`p-5 rounded-2xl text-white transition-colors ${
+                tragere.peDeasupra ? 'bg-blue-700 ring-2 ring-blue-400 ring-offset-2' : 'bg-slate-900'
+              }`}
+              {...tragere.proprietati}
+            >
               <div className="flex items-center gap-3 mb-2">
                 <FileText className="w-5 h-5 text-blue-400" />
                 <h4 className="text-sm font-black tracking-tight">Comanda in PDF</h4>
               </div>
               <p className="text-[12px] font-semibold text-slate-300 leading-relaxed mb-4">
-                Se ataseaza si se citesc din ea numarul, data, furnizorul, referatul, gestiunea,
-                termenul de plata si pozitiile cu cantitati si preturi.
+                {tragere.peDeasupra
+                  ? 'Lasa comanda aici'
+                  : 'Trage PDF-ul aici sau alege-l. Se citesc din el numarul, data, furnizorul, referatul, gestiunea, termenul de plata si pozitiile cu cantitati si preturi.'}
               </p>
               <input ref={pdfRef} type="file" accept="application/pdf" onChange={incarcaPdf} className="hidden" />
               <div className="flex flex-wrap items-center gap-3">

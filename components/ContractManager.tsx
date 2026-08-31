@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, Suspense } from 'react';
+import React, { useCallback, useRef, useState, Suspense } from 'react';
 import { notify } from '../services/notices';
 import { Contract, MedicalDevice, Invoice, InvoiceStatus, DeviceFile, normaliseInvoiceStatus } from '../types';
 import { ShieldCheck, Plus, X, Wand2, Search, Check, Info, Calendar, DollarSign, Phone, FileText, ChevronRight, Loader2, Pencil, Eye } from 'lucide-react';
@@ -10,6 +10,7 @@ import { marime } from '../services/spatiu';
 import { saveFileAs } from '../services/fileService';
 
 import Portal from './Portal';
+import useTragere from './useTragere';
 const FileViewer = React.lazy(() => import('./FileViewer'));
 interface ContractManagerProps {
   devices: MedicalDevice[];
@@ -98,10 +99,12 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
    * Ce nu s-a putut citi ramane gol si se scrie de mana — asa se vede exact
    * unde a dat gres, in loc sa para ca aplicatia a inteles tot.
    */
-  const incarcaPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
+  const citesteContract = async (f: File | null | undefined) => {
     if (!f) return;
+    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+      setNotaPdf(`"${f.name}" nu e un PDF. Contractul se incarca in format PDF.`);
+      return;
+    }
     setCiteste(true);
     setNotaPdf('');
     try {
@@ -159,6 +162,15 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
       setCiteste(false);
     }
   };
+
+  const incarcaPdf = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    void citesteContract(f);
+  };
+
+  /* Contractul se poate si trage peste caseta, nu doar ales din fereastra. */
+  const tragere = useTragere(useCallback((fisiere: File[]) => { void citesteContract(fisiere[0]); }, [citesteContract]), true);
 
   /*
    * Toate contractele, din amandoua locurile.
@@ -699,14 +711,20 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                           se completeaza numarul, firma, obiectul, perioada si
                           valoarea — de verificat, nu de crezut pe cuvant.
                         */}
-                        <div className="bg-slate-900 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl">
+                        <div
+                          className={`p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] text-white shadow-xl transition-colors ${
+                            tragere.peDeasupra ? 'bg-blue-700 ring-2 ring-blue-400 ring-offset-2' : 'bg-slate-900'
+                          }`}
+                          {...tragere.proprietati}
+                        >
                            <div className="flex items-center gap-3 mb-3">
                               <FileText className="w-6 h-6 text-blue-400" />
                               <h4 className="text-sm font-black tracking-tight">Contractul in PDF</h4>
                            </div>
                            <p className="text-[13px] font-semibold text-slate-300 leading-relaxed mb-5">
-                              Se ataseaza la contract si se citesc din el denumirea, numarul, firma,
-                              obiectul, perioada si valoarea. Ce nu se poate citi ramane de completat.
+                              {tragere.peDeasupra
+                                ? 'Lasa contractul aici'
+                                : 'Trage PDF-ul aici sau alege-l. Se citesc din el denumirea, numarul, firma, obiectul, perioada si valoarea. Ce nu se poate citi ramane de completat.'}
                            </p>
                            <input ref={pdfRef} type="file" accept="application/pdf" onChange={incarcaPdf} className="hidden" />
                            <div className="flex flex-wrap items-center gap-3">

@@ -12,6 +12,7 @@ import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage
 
 import Portal from './Portal';
 import useEscape from './useEscape';
+import useTragere from './useTragere';
 import Pager, { usePagination, PageSizePicker } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { extractInvoiceFields, pdfItemsToText } from '../services/invoiceParse';
@@ -175,17 +176,6 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [readLines, setReadLines] = useState<string[]>([]);
   const [showRead, setShowRead] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
-
-  /*
-   * Facturile trase cu mouse-ul peste pagina.
-   *
-   * Numaratoarea, nu un simplu adevarat/fals: dragenter si dragleave se
-   * declanseaza si cand cursorul trece de pe cartela pe textul dinauntrul ei,
-   * iar cu un steag simplu chenarul palpaia la fiecare rand peste care trecea
-   * mana. Se numara intrarile si iesirile, si se stinge doar cand ajung egale.
-   */
-  const [peDeasupra, setPeDeasupra] = useState(0);
-  const traS = useRef(0);
 
   // Bulk folder import
   const bulkInputRef = useRef<HTMLInputElement>(null);
@@ -534,89 +524,10 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
     void proceseazaFacturi(Array.from(e.target.files || []));
   }, [proceseazaFacturi]);
 
-  /*
-   * Fisierele scoase dintr-o tragere.
-   *
-   * Cand se trage un folder intreg, browserul nu da fisierele din el in
-   * `files`, ci un singur "director" in `items`. Se coboara prin el cu API-ul
-   * de intrari, ca sa mearga si trasul unui folder de facturi, nu doar al
-   * fisierelor din el.
-   */
-  const fisiereleDinTragere = useCallback(async (dt: DataTransfer): Promise<File[]> => {
-    const items = Array.from(dt.items || []);
-    const areFoldere = items.some(i => typeof (i as any).webkitGetAsEntry === 'function');
-    if (!areFoldere) return Array.from(dt.files || []);
-
-    const intrari = items
-      .map(i => (i as any).webkitGetAsEntry?.())
-      .filter(Boolean) as any[];
-    if (intrari.length === 0) return Array.from(dt.files || []);
-
-    const gasite: File[] = [];
-    const coboara = async (intrare: any, cale: string): Promise<void> => {
-      if (intrare.isFile) {
-        const f: File = await new Promise((res, rej) => intrare.file(res, rej));
-        // Calea din folder se pastreaza: lista de import o arata, ca sa se
-        // stie din ce subfolder a venit fiecare factura.
-        if (cale) { try { Object.defineProperty(f, 'webkitRelativePath', { value: `${cale}/${f.name}` }); } catch { /* unele browsere nu lasa */ } }
-        gasite.push(f);
-        return;
-      }
-      if (!intrare.isDirectory) return;
-      const reader = intrare.createReader();
-      // readEntries da cel mult o suta odata; se citeste pana se goleste.
-      for (;;) {
-        const lot: any[] = await new Promise((res, rej) => reader.readEntries(res, rej));
-        if (lot.length === 0) break;
-        for (const e of lot) await coboara(e, cale ? `${cale}/${intrare.name}` : intrare.name);
-      }
-    };
-    try {
-      for (const e of intrari) await coboara(e, '');
-    } catch {
-      return Array.from(dt.files || []);
-    }
-    return gasite.length ? gasite : Array.from(dt.files || []);
-  }, []);
-
-  /** Cursorul a intrat peste zona cu un fisier in mana. */
-  const laIntrare = useCallback((e: React.DragEvent) => {
-    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
-    e.preventDefault();
-    traS.current += 1;
-    setPeDeasupra(traS.current);
-  }, []);
-  const laIesire = useCallback((e: React.DragEvent) => {
-    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
-    e.preventDefault();
-    traS.current = Math.max(0, traS.current - 1);
-    setPeDeasupra(traS.current);
-  }, []);
-  /* Fara asta, browserul deschide PDF-ul intr-un tab in loc sa-l dea paginii. */
-  const laTrecere = useCallback((e: React.DragEvent) => {
-    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  }, []);
-  const laLasare = useCallback(async (e: React.DragEvent) => {
-    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
-    e.preventDefault();
-    traS.current = 0;
-    setPeDeasupra(0);
-    const fisiere = await fisiereleDinTragere(e.dataTransfer);
-    if (fisiere.length === 0) return;
-    void proceseazaFacturi(fisiere);
-  }, [fisiereleDinTragere, proceseazaFacturi]);
-
-  /** Aceleasi patru, dar pentru formularul unei singure facturi. */
-  const laLasareInFormular = useCallback(async (e: React.DragEvent) => {
-    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
-    e.preventDefault();
-    traS.current = 0;
-    setPeDeasupra(0);
-    const fisiere = await fisiereleDinTragere(e.dataTransfer);
-    void citesteFactura(fisiere[0]);
-  }, [fisiereleDinTragere, citesteFactura]);
+  /* Facturile trase cu mouse-ul: peste toata pagina, sau peste caseta de
+     import PDF din formularul unei singure facturi. */
+  const tragereLista = useTragere(useCallback((f: File[]) => { void proceseazaFacturi(f); }, [proceseazaFacturi]));
+  const tragereFormular = useTragere(useCallback((f: File[]) => { void citesteFactura(f[0]); }, [citesteFactura]), true);
 
   const updateBulkDraft = useCallback((key: string, updates: Partial<BulkDraft>) => {
     setBulkDrafts(prev => prev ? prev.map(d => d.key === key ? { ...d, ...updates } : d) : prev);
@@ -1077,14 +988,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
          * Chenarul albastru apare abia cand chiar e un fisier in mana — o
          * selectie de text trasa dintr-o parte in alta a paginii nu-l aprinde.
          */
-        <div
-          className="space-y-4 relative"
-          onDragEnter={laIntrare}
-          onDragOver={laTrecere}
-          onDragLeave={laIesire}
-          onDrop={laLasare}
-        >
-          {peDeasupra > 0 && (
+        <div className="space-y-4 relative" {...tragereLista.proprietati}>
+          {tragereLista.peDeasupra && (
             <div className="absolute inset-0 z-30 rounded-[2rem] border-2 border-dashed border-blue-500 bg-blue-50/85 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 pointer-events-none">
               <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/20">
                 <Upload className="w-7 h-7" />
@@ -1643,12 +1548,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                   PDF-ul deschis alaturi. */}
               <div
                 className={`p-6 rounded-3xl text-white transition-colors ${
-                  peDeasupra > 0 ? 'bg-blue-700 ring-2 ring-blue-400 ring-offset-2' : 'bg-slate-900'
+                  tragereFormular.peDeasupra ? 'bg-blue-700 ring-2 ring-blue-400 ring-offset-2' : 'bg-slate-900'
                 }`}
-                onDragEnter={laIntrare}
-                onDragOver={laTrecere}
-                onDragLeave={laIesire}
-                onDrop={laLasareInFormular}
+                {...tragereFormular.proprietati}
               >
                 <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" />
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
@@ -1657,7 +1559,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide">Import PDF factura</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5">
-                        {peDeasupra > 0
+                        {tragereFormular.peDeasupra
                           ? 'Lasa factura aici'
                           : form.fileName || 'Trage PDF-ul aici sau alege-l — se citesc numarul, suma, dispozitivele si contractul'}
                       </p>

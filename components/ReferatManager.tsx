@@ -8,6 +8,7 @@ import {
   FoundationDoc, referatTotal, getUniqueDepartments,
 } from '../types';
 import Portal from './Portal';
+import useTragere from './useTragere';
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import DepartmentPicker from './DepartmentPicker';
@@ -185,17 +186,29 @@ const ReferatManager: React.FC<Props> = ({
     setEditez(true);
   }, []);
 
-  const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  /* Referatul semnat, indiferent de unde vine fisierul: ales din fereastra sau
+     tras cu mouse-ul peste caseta. Se primeste si o poza — un referat semnat
+     ajunge de multe ori fotografiat, nu scanat. */
+  const preiaReferatul = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
+    const bun = file.type === 'application/pdf' || file.type.startsWith('image/')
+      || /\.(pdf|png|jpe?g|webp|heic)$/i.test(file.name);
+    if (!bun) { notify(`"${file.name}" nu e nici PDF, nici poza.`, 'warning'); return; }
     const dataUrl = await new Promise<string>(res => {
       const fr = new FileReader();
       fr.onload = () => res(fr.result as string);
       fr.readAsDataURL(file);
     });
     setForm(p => ({ ...p, fileUrl: dataUrl, fileName: file.name, filePath: undefined }));
-    e.target.value = '';
   }, []);
+
+  const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    await preiaReferatul(file);
+  }, [preiaReferatul]);
+
+  const tragere = useTragere(useCallback((fisiere: File[]) => { void preiaReferatul(fisiere[0]); }, [preiaReferatul]), true);
 
   const salveaza = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,13 +572,20 @@ const ReferatManager: React.FC<Props> = ({
                 </div>
 
                 {/* documentul scanat */}
-                <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                <div
+                  className={`p-5 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3 transition-colors ${
+                    tragere.peDeasupra ? 'bg-blue-700 ring-2 ring-blue-400 ring-offset-2' : 'bg-slate-900'
+                  }`}
+                  {...tragere.proprietati}
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
                     <div className="min-w-0">
                       <p className="text-xs font-black uppercase tracking-wide">Referatul scanat</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
-                        {form.fileName || 'Ataseaza PDF-ul semnat'}
+                        {tragere.peDeasupra
+                          ? 'Lasa referatul aici'
+                          : form.fileName || 'Trage aici PDF-ul semnat sau alege-l'}
                       </p>
                     </div>
                   </div>
