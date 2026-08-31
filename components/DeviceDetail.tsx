@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
-import { valabilitatePropusa } from '../services/termene';
+import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
 import Portal from './Portal';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
@@ -731,7 +731,21 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           {device.isCNCAN && (
                             <TermenRow eticheta="Autorizatie CNCAN" data={device.cncanExpiry} gol="Netrecuta" greuCandLipseste />
                           )}
-                          <TermenRow eticheta="Urmatoarea mentenanta" data={device.nextMaintenanceDate} gol="Neprogramata" />
+                          {/*
+                            Data urmatoarei mentenante se numara doar cand
+                            exista hartia care spune ca aparatul chiar a trecut
+                            pe la cineva. Fara ea ramane la vedere, dar fara
+                            socoteala zilelor si fara rosu: cele mai multe date
+                            de acest fel vin dintr-un import vechi, iar o mie de
+                            alarme false invata omul sa nu se mai uite la rosu.
+                          */}
+                          <TermenRow
+                            eticheta="Urmatoarea mentenanta"
+                            data={device.nextMaintenanceDate}
+                            gol="Neprogramata"
+                            neconfirmat={!areDovadaVerificarii(device)}
+                            notaNeconfirmat="Neconfirmata — incarca raportul de service sau fisa de interventie, in Documente, si termenul incepe sa se numere."
+                          />
                         </div>
                       )}
                    </div>
@@ -1257,29 +1271,36 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
  * Data singura nu spune nimic: "12.03.2026" cere socoteala in cap de fiecare
  * data. Aici scrie si daca a trecut, si peste cat timp vine.
  */
-const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste }: {
+const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste, neconfirmat, notaNeconfirmat }: {
   eticheta: string; data?: string; gol: string; detaliu?: string; greuCandLipseste?: boolean;
+  /* Data exista, dar nimic n-o sustine — se arata, nu se numara. */
+  neconfirmat?: boolean; notaNeconfirmat?: string;
 }) => {
   const zile = data && !Number.isNaN(Date.parse(data))
     ? Math.ceil((new Date(`${data}T00:00:00`).getTime()
       - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00').getTime()) / 86400000)
     : null;
-  const ton = zile === null
-    ? (greuCandLipseste ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-500')
-    : zile < 0 ? 'bg-red-50 border-red-200 text-red-800'
-    : zile <= 45 ? 'bg-amber-50 border-amber-200 text-amber-800'
+  const numara = zile !== null && !neconfirmat;
+  const ton = !numara
+    ? (greuCandLipseste && zile === null ? 'bg-amber-50 border-amber-200 text-amber-800'
+       : 'bg-slate-50 border-slate-200 text-slate-500')
+    : zile! < 0 ? 'bg-red-50 border-red-200 text-red-800'
+    : zile! <= 45 ? 'bg-amber-50 border-amber-200 text-amber-800'
     : 'bg-emerald-50 border-emerald-200 text-emerald-800';
   return (
     <div className={`px-4 py-3 rounded-2xl border ${ton}`}>
       <p className="text-[10px] font-black uppercase tracking-wide opacity-70">{eticheta}</p>
       <p className="text-[14px] font-black mt-0.5">
         {data || gol}
-        {zile !== null && (
+        {numara && (
           <span className="text-[11px] font-bold ml-2 opacity-80">
-            {zile < 0 ? `expirat de ${-zile} zile` : zile === 0 ? 'expira azi' : `peste ${zile} zile`}
+            {zile! < 0 ? `expirat de ${-zile!} zile` : zile === 0 ? 'expira azi' : `peste ${zile} zile`}
           </span>
         )}
       </p>
+      {neconfirmat && notaNeconfirmat && (
+        <p className="text-[11px] font-semibold opacity-80 mt-1 leading-snug">{notaNeconfirmat}</p>
+      )}
       {detaliu && <p className="text-[11px] font-bold opacity-70 mt-0.5 truncate">{detaliu}</p>}
     </div>
   );

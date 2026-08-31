@@ -2,7 +2,7 @@
 import React, { useMemo, Suspense, lazy } from 'react';
 import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, referatTotal, normaliseDeviceStatus } from '../types';
 import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature } from 'lucide-react';
-import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, Termen, FelTermen } from '../services/termene';
+import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, areDovadaVerificarii, mentenantaNeconfirmata, Termen, FelTermen } from '../services/termene';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
@@ -83,13 +83,21 @@ const Dashboard: React.FC<DashboardProps> = ({
     [tasks]
   );
 
+  /*
+   * Mentenantele programate, dar numai cele sustinute de o hartie.
+   *
+   * Fara filtrul de mai jos, cifra numara datele mostenite dintr-un import:
+   * aparate cu "urmatoarea mentenanta" trecuta cu ani in urma, la care nimeni
+   * n-a umblat vreodata. O suta de intarzieri false fac cifra sa nu mai
+   * insemne nimic.
+   */
   const upcomingMaintenance = useMemo(() => {
     const today = new Date();
     const nextMonth = new Date();
     nextMonth.setMonth(today.getMonth() + 1);
     
     return devices
-      .filter(d => d.nextMaintenanceDate)
+      .filter(d => d.nextMaintenanceDate && areDovadaVerificarii(d))
       .map(d => ({
         ...d,
         daysRemaining: Math.ceil((new Date(d.nextMaintenanceDate!).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
@@ -121,6 +129,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     () => new Set(devices.map(d => (d.department || '').trim()).filter(Boolean)).size, [devices]);
   const intarziate = useMemo(
     () => upcomingMaintenance.filter(d => d.daysRemaining < 0).length, [upcomingMaintenance]);
+  /** Aparatele cu o data de mentenanta pe care nimic n-o sustine. */
+  const neconfirmate = useMemo(() => mentenantaNeconfirmata(devices), [devices]);
 
   /*
    * Starea referatelor.
@@ -208,12 +218,19 @@ const Dashboard: React.FC<DashboardProps> = ({
           note={criticalTasks === 0 ? 'Niciuna' : 'Imediat'}
           tone={criticalTasks === 0 ? 'ok' : 'alert'}
         />
+        {/* Cand nu e nimic de facut in 30 de zile, dar sunt aparate care asteapta
+            raportul de service, cifra spune asta in loc sa spuna "e liniste". */}
         <StatCard
           title="Mentenante Programate" value={upcomingMaintenance.length}
           icon={<Wrench className="w-5 h-5" />} color="text-amber-700" bgColor="bg-amber-50"
-          note={upcomingMaintenance.length === 0 ? 'Nimic in 30 zile'
+          note={upcomingMaintenance.length === 0
+                  ? (neconfirmate.length
+                      ? `${neconfirmate.length} fara raport atasat`
+                      : 'Nimic in 30 zile')
                 : intarziate > 0 ? `${intarziate} cu termen depasit` : 'Urm. 30 zile'}
-          tone={upcomingMaintenance.length === 0 ? 'ok' : intarziate > 0 ? 'alert' : 'warn'}
+          tone={upcomingMaintenance.length === 0
+                  ? (neconfirmate.length ? 'neutral' : 'ok')
+                  : intarziate > 0 ? 'alert' : 'warn'}
         />
         {/*
           Metrologia isi merita cifra ei: un aparat cu buletinul expirat nu are
@@ -650,7 +667,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           {upcomingMaintenance.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
               <CheckCircle className="w-16 h-16 text-emerald-100 mx-auto mb-4" />
-              <p className="text-sm font-semibold text-slate-500">Totul operational. Nicio mentenanta programata.</p>
+              <p className="text-sm font-semibold text-slate-500">
+                {neconfirmate.length > 0
+                  ? `Nicio mentenanta de facut in 30 de zile. ${neconfirmate.length} ${neconfirmate.length === 1 ? 'aparat are o data' : 'aparate au o data'} fara raport de service atasat — pana atunci termenul nu se numara.`
+                  : 'Totul operational. Nicio mentenanta programata.'}
+              </p>
             </div>
           )}
         </div>

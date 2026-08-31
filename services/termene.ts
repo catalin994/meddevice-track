@@ -56,6 +56,23 @@ export const PRAGURI: Record<FelTermen, number> = {
   mentenanta: 30,
 };
 
+/**
+ * Dovada ca aparatul chiar a fost verificat.
+ *
+ * Data urmatoarei mentenante vine de cele mai multe ori dintr-un import: o
+ * coloana intr-un fisier Excel, pusa acolo cu ani in urma, fara ca cineva sa
+ * fi umblat la aparat. Numarata ca termen, ea scotea "expirat de 865 de zile"
+ * pe un aparat care poate merge perfect — si o mie de asemenea alarme rosii
+ * intr-un inventar de o mie de aparate invata omul sa nu se mai uite la rosu.
+ *
+ * Termenul se numara deci doar cand exista hartia care spune ca aparatul a
+ * trecut pe la cineva: un raport de service sau o fisa de interventie atasata
+ * la aparat. Pana atunci data ramane la vedere pe fisa, dar ca informatie, nu
+ * ca alarma.
+ */
+export const areDovadaVerificarii = (d: MedicalDevice): boolean =>
+  (d.files || []).some(f => f.type === 'service' || f.type === 'report');
+
 const zileP = (data: string, azi: Date): number =>
   Math.ceil((new Date(`${data}T00:00:00`).getTime() - azi.getTime()) / 86400000);
 
@@ -88,7 +105,9 @@ export const termeneleTuturor = (
       out.push({ fel: 'cncan', eticheta: ETICHETE.cncan, ...baza,
         data: d.cncanExpiry, zile: zileP(d.cncanExpiry, azi) });
     }
-    if (valida(d.nextMaintenanceDate)) {
+    // Numai cu documentul verificarii la dosar — altfel e o data mostenita
+    // dintr-un import, nu un termen de respectat.
+    if (valida(d.nextMaintenanceDate) && areDovadaVerificarii(d)) {
       out.push({ fel: 'mentenanta', eticheta: ETICHETE.mentenanta, ...baza,
         data: d.nextMaintenanceDate, zile: zileP(d.nextMaintenanceDate, azi) });
     }
@@ -149,3 +168,12 @@ export const CATEGORII_CU_METROLOGIE = [
   'Monitor functii vitale',
   'Electrocardiograf (ECG)',
 ];
+
+/**
+ * Aparatele cu o data de mentenanta pe care nimic n-o sustine.
+ *
+ * Nu e o alarma, e o lista de lucru: aparatele carora le lipseste raportul de
+ * service. Cand raportul se incarca, data incepe sa se numere.
+ */
+export const mentenantaNeconfirmata = (devices: MedicalDevice[]): MedicalDevice[] =>
+  devices.filter(d => d.status !== 'Retired' && valida(d.nextMaintenanceDate) && !areDovadaVerificarii(d));
