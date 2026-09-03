@@ -17,27 +17,31 @@ import { MedicalDevice, MedicalTask } from '../types';
 /**
  * Cuvinte care nu deosebesc o sectie de alta.
  *
- * "Cabinet" nu e printre ele, si nici "laborator". Cabinetul de cardiologie din
- * ambulatoriu si sectia de cardiologie sunt doua locuri diferite, cu alte
- * aparate si cu alt om care raspunde de ele; unite, aparatele unuia ar aparea
- * la celalalt. Cuvantul ramane in cheie, dar scris la fel de fiecare data.
+ * "Cabinet" nu e printre ele. Cabinetul de cardiologie din ambulatoriu si
+ * sectia de cardiologie sunt doua locuri diferite, cu alte aparate si cu alt om
+ * care raspunde de ele; unite, aparatele unuia ar aparea la celalalt. Cuvantul
+ * ramane in cheie, dar scris la fel de fiecare data.
+ *
+ * "Laborator" e insa aici, si a fost mutat incoace din cheie: la laborator,
+ * cuvantul nu numeste alt loc, ci acelasi. "Lab.Anatomie Patologica" si
+ * "Anatomie Patologica" sunt un singur laborator scris in doua feluri — nu
+ * exista o sectie de anatomie patologica pe langa laboratorul ei, cum exista un
+ * cabinet de cardiologie pe langa sectia de cardiologie.
  */
 const UMPLUTURA = new Set([
   'sectia', 'sectie', 'sec', 'compartimentul', 'compartiment', 'comp',
   'serviciul', 'serviciu', 'serv', 'unitatea', 'unitate', 'clinica', 'clinic',
+  'laborator', 'laboratorul', 'laboratoare', 'lab',
   'de', 'si', 'a', 'al', 'ale', 'cu', 'din', 'pentru', 'la',
 ]);
 
 /** Prescurtari care inseamna acelasi lucru cu forma intreaga. */
 const SINONIME: Record<string, string> = {
-  // Cabinetul si laboratorul raman in cheie, dar scrise la fel: "Cab. ORL",
-  // "CABINETUL ORL" si "Cabinet O.R.L." sunt acelasi cabinet.
+  // Cabinetul ramane in cheie, dar scris la fel: "Cab. ORL", "CABINETUL ORL"
+  // si "Cabinet O.R.L." sunt acelasi cabinet.
   cab: 'cabinet',
   cabinetul: 'cabinet',
   cabinete: 'cabinet',
-  lab: 'laborator',
-  laboratorul: 'laborator',
-  laboratoare: 'laborator',
   ati: 'anestezie terapie intensiva',
   ti: 'terapie intensiva',
   upu: 'unitate primiri urgente',
@@ -128,9 +132,23 @@ export const sectiiDeUnit = (
     .map(g => {
       g.feluri.sort((a, b) => (b.aparate + b.tichete) - (a.aparate + a.tichete)
         || a.nume.localeCompare(b.nume, 'ro'));
-      // Cea mai folosita e cea mai probabil scrisa cum trebuie; la egalitate,
-      // cea cu diacritice, fiindca asa se scrie romaneste.
-      const capi = g.feluri.filter(f => (f.aparate + f.tichete) === (g.feluri[0].aparate + g.feluri[0].tichete));
+      /*
+       * Care scriere se propune spre pastrare.
+       *
+       * Intai cea nescurtata. "Lab.Anatomie Patologica" era propusa inaintea lui
+       * "Anatomie Patologica" doar fiindca era tastata mai des — dar un nume
+       * scurtat, cu punct si fara spatiu dupa el, e o graba de tastare, nu
+       * numele sectiei. Abia apoi cea mai folosita, si la egalitate cea cu
+       * diacritice, fiindca asa se scrie romaneste.
+       *
+       * Prescurtarile fara punct — "ATI", "UPU" — nu intra aici: alea chiar
+       * sunt numele sub care se stie sectia in spital.
+       */
+      const scurtat = (n: string) => /\b[a-zA-ZăâîșțĂÂÎȘȚ]{1,4}\./.test(n);
+      const intregi = g.feluri.filter(f => !scurtat(f.nume));
+      const dintre = intregi.length ? intregi : g.feluri;
+      const varf = dintre[0].aparate + dintre[0].tichete;
+      const capi = dintre.filter(f => (f.aparate + f.tichete) === varf);
       g.propus = capi.find(f => /[ăâîșțĂÂÎȘȚşţŞŢ]/.test(f.nume))?.nume || capi[0].nume;
       return g;
     })
