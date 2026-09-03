@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import UnesteSectii from './UnesteSectii';
+import { sectiiDeUnit } from '../services/sectii';
 import { notify } from '../services/notices';
 import { MedicalDevice, AuditEntry, AppUser, UserRole, ROLE_LABELS, hasPermission, Invoice, MedicalTask, Referat, FoundationDoc, Comanda, Deletion, sePoatePuneLaLoc, NUME_ENTITATE, ZILE_IN_COS } from '../types';
 import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, LogOut, ShieldCheck, RefreshCw, Loader2, AlertCircle, Terminal, Copy, Check, Info, HardDrive, Wand2, Activity, Users, Plus, Trash2, Clock, Pencil, Camera , CloudOff, FileText } from 'lucide-react';
@@ -593,9 +594,24 @@ NOTIFY pgrst, 'reload schema';
   // opreste sincronizarea pentru toata lumea de pe acest dispozitiv.
   const [showDisconnect, setShowDisconnect] = useState(false);
 
+  /* Daca are ce propune. Cand da, panoul deschide pagina; cand nu, sta jos. */
+  const areDeUnit = useMemo(() => sectiiDeUnit(devices, tasks).length > 0, [devices, tasks]);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
-      
+
+      {/*
+        Sectiile care se repeta urca in capul paginii cand chiar se repeta.
+        Panoul statea la capatul unei pagini lungi, sub conexiunea la cloud,
+        scripturile SQL, conturile si spatiul — adica dupa tot ce se face o
+        singura data, la instalare. Cine cauta de ce ii apar doua "Anatomie
+        Patologica" nu ajungea pana la el. Cand nu se repeta nimic, ramane jos
+        unde era: n-are rost sa deschida pagina un panou care spune ca e bine.
+      */}
+      {onUnesteSectii && areDeUnit && (
+        <UnesteSectii devices={devices} tasks={tasks} onUneste={onUnesteSectii} canEdit={canEdit} />
+      )}
+
       {/* CLOUD CONNECTION PANEL */}
       <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-slate-100">
         {/*
@@ -894,9 +910,6 @@ NOTIFY pgrst, 'reload schema';
       </div>
 
       {/* ── SECTII CARE SE REPETA ── */}
-      {onUnesteSectii && (
-        <UnesteSectii devices={devices} tasks={tasks} onUneste={onUnesteSectii} canEdit={canEdit} />
-      )}
 
       {/* ── COSUL DE STERGERI ── */}
       {onRestore && (() => {
@@ -1335,6 +1348,11 @@ NOTIFY pgrst, 'reload schema';
           </div>
         </div>
       </div>
+
+      {/* Cand nu se repeta nimic, panoul ramane jos, ca o confirmare. */}
+      {onUnesteSectii && !areDeUnit && (
+        <UnesteSectii devices={devices} tasks={tasks} onUneste={onUnesteSectii} canEdit={canEdit} />
+      )}
 
       <ConfirmDialog
         open={showDisconnect}
