@@ -136,7 +136,15 @@ const cleanMask = (mask: Uint8Array, w: number, h: number): Uint8Array => {
   return dilate(erode(closed, w, h), w, h);
 };
 
-interface Blob { area: number; x0: number; x1: number; y0: number; y1: number }
+interface Blob {
+  area: number; x0: number; x1: number; y0: number; y1: number;
+  /** Masca petei castigatoare, doar ea. Fara asta, colturile se citeau de pe
+   *  toata masca: o lampa in cadru sau a doua foaie pe birou trageau
+   *  patrulaterul peste ele, si umplerea se prabusea. Masurat, cu o lampa in
+   *  colt colturile cadeau la 119 pixeli de cele adevarate, iar cu o a doua
+   *  foaie alaturi umplerea scadea la 0.71 si pagina nu mai era gasita deloc. */
+  masca: Uint8Array;
+}
 
 /**
  * Cele patru colturi ale petei, cautate pe diagonale.
@@ -181,7 +189,8 @@ const dist = (a: Punct, b: Punct): number => Math.hypot(a.x - b.x, a.y - b.y);
 const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
   const seen = new Uint8Array(mask.length);
   const stack = new Int32Array(mask.length);
-  let best: Blob = { area: 0, x0: 0, x1: 0, y0: 0, y1: 0 };
+  const pixeli = new Int32Array(mask.length);
+  let best: Blob = { area: 0, x0: 0, x1: 0, y0: 0, y1: 0, masca: new Uint8Array(0) };
 
   for (let seed = 0; seed < mask.length; seed++) {
     if (seen[seed] || !mask[seed]) continue;
@@ -193,6 +202,7 @@ const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
     while (sp > 0) {
       const q = stack[--sp];
       const qx = q % w, qy = (q / w) | 0;
+      pixeli[area] = q;
       area++;
       if (qx < x0) x0 = qx;
       if (qx > x1) x1 = qx;
@@ -204,7 +214,11 @@ const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
       if (qy > 0     && !seen[q - w] && mask[q - w]) { seen[q - w] = 1; stack[sp++] = q - w; }
       if (qy < h - 1 && !seen[q + w] && mask[q + w]) { seen[q + w] = 1; stack[sp++] = q + w; }
     }
-    if (area > best.area) best = { area, x0, x1, y0, y1 };
+    if (area > best.area) {
+      const masca = new Uint8Array(mask.length);
+      for (let i = 0; i < area; i++) masca[pixeli[i]] = 1;
+      best = { area, x0, x1, y0, y1, masca };
+    }
   }
   return best;
 };
@@ -459,79 +473,289 @@ export const analyzeFrame = (
     return cleanMask(m, w, h);
   };
 
-  let level = threshold;
-  let masca = buildMask(level);
-  let best = largestBlob(masca, w, h);
-
-  // A blob covering almost the whole frame means the split failed — paper on a
-  // pale desk, where the sheet is barely brighter than what it lies on.
-  //
-  // Re-thresholding the bright half once is not enough: the anti-aliased edges
-  // of the text spread thinly across the middle of the histogram, and Otsu
-  // happily separates *those* from everything else, leaving desk and paper
-  // still together. So walk the threshold up until the blob stops filling the
-  // frame, at most a few times.
-  for (let pass = 0; pass < 3 && best.area > w * h * 0.8; pass++) {
-    const brightHist = new Int32Array(256);
-    let brightTotal = 0;
-    for (let t = level + 1; t < 256; t++) { brightHist[t] = hist[t]; brightTotal += hist[t]; }
-    if (brightTotal < w * h * 0.03) break;
-
-    const next = otsuThreshold(brightHist, brightTotal);
-    if (next <= level) break;
-    level = next;
-
-    const mascaNoua = buildMask(level);
-    const retry = largestBlob(mascaNoua, w, h);
-    if (retry.area === 0) break;
-    masca = mascaNoua;
-    best = retry;
+  /*
+   * Un singur prag nu ajunge, si nu fiindca ar fi prost ales.
+   *
+   * Otsu imparte cadrul in doua dupa histograma intreaga, deci dupa niste
+   * numere care nu stiu nimic despre unde cade lumina. Cand mana care tine
+   * telefonul isi lasa umbra peste jumatate de foaie, jumatatea umbrita ajunge
+   * mai inchisa decat biroul luminat de langa ea: pragul taie prin pagina, si
+   * ce ramane e doar partea luminata. Masurat, colturile cadeau la 147 pixeli
+   * de cele adevarate. Un prag mai jos ar fi prins toata foaia — dar nu se
+   * putea sti dinainte care e.
+   *
+   * Deci se incearca mai multe si se alege dupa rezultat, nu dupa histograma:
+   * pragul lui Otsu, cateva mai sus (pentru hartia pe birou deschis la
+   * culoare, unde bezna si hartia stau lipite in histograma) si cateva mai jos
+   * (pentru umbra peste foaie). Fiecare da o pata; se pastreaza cea care arata
+   * cel mai mult a pagina.
+   *
+   * Costa cateva treceri in plus peste o imagine de o suta saizeci de pixeli
+   * latime — sub o milisecunda.
+   */
+  const nivele: number[] = [threshold];
+  {
+    // In sus: Otsu peste ce a ramas luminos, de doua ori.
+    let sus = threshold;
+    for (let i = 0; i < 2; i++) {
+      const h2 = new Int32Array(256);
+      let n2 = 0;
+      for (let t = sus + 1; t < 256; t++) { h2[t] = hist[t]; n2 += hist[t]; }
+      if (n2 < w * h * 0.03) break;
+      const next = otsuThreshold(h2, n2);
+      if (next <= sus) break;
+      sus = next;
+      nivele.push(sus);
+    }
+    // In jos, catre media partii intunecate: acolo sta foaia cazuta in umbra.
+    const jos = sumLow / nLow;
+    for (const k of [0.6, 0.3]) {
+      const t = Math.round(jos + (threshold - jos) * k);
+      if (t > jos && t < threshold) nivele.push(t);
+    }
   }
 
-  if (best.area === 0) return empty;
+  /**
+   * Foaia gasita dupa margine, nu dupa luminozitate.
+   *
+   * Sunt scene in care niciun prag nu poate reusi, oricat de bine ales. Un birou
+   * deschis la culoare sub o lumina care scade de la un capat la altul: hartia e
+   * cu treizeci de trepte peste masa, dar lumina insasi variaza cu doua sute pe
+   * latimea cadrului, asa ca hartia din coltul umbrit e mai inchisa decat masa
+   * din coltul luminat. Orice taietura la un numar taie prin scena aiurea —
+   * masurat, colturile cadeau la 245 de pixeli.
+   *
+   * Ce ramane adevarat e ca marginea foii e o treapta, iar lumina e o panta.
+   * Pe o panta, doi pixeli vecini difera cu mai putin de o treapta; peste
+   * marginea hartiei difera cu toata diferenta dintre hartie si masa, oricat de
+   * intunecat ar fi acolo. Deci se cauta treptele, se ingroasa ca sa nu ramana
+   * intrerupte, si se toarna apa din marginea cadrului: ce nu se uda, inconjurat
+   * fiind de trepte, e foaia. Textul dinauntru face si el trepte, dar apa n-a
+   * ajuns pana la el.
+   */
+  /* Cat de abrupt se schimba lumina de la un pixel la vecinul lui. Sobel,
+     impartit la patru: peste o treapta de N trepte iese chiar N. */
+  const grad = new Uint8ClampedArray(w * h);
+  const histGrad = new Int32Array(256);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const q = y * w + x;
+      const gx = (lum[q - w + 1] + 2 * lum[q + 1] + lum[q + w + 1])
+               - (lum[q - w - 1] + 2 * lum[q - 1] + lum[q + w - 1]);
+      const gy = (lum[q + w - 1] + 2 * lum[q + w] + lum[q + w + 1])
+               - (lum[q - w - 1] + 2 * lum[q - w] + lum[q - w + 1]);
+      const g = Math.min(255, (Math.abs(gx) + Math.abs(gy)) >> 2);
+      grad[q] = g;
+      histGrad[g]++;
+    }
+  }
+
+  const foaiaDupaMuchii = (): Uint8Array => {
+    /*
+     * Panta se cantareste fata de cata lumina e in locul acela, nu in trepte.
+     *
+     * Lumina inmulteste: aceeasi margine de hartie da o treapta de treizeci si
+     * patru de trepte in coltul luminat si de sapte in cel umbrit, desi e
+     * aceeasi hartie pe aceeasi masa. Un prag pe trepte o vede pe prima si n-o
+     * vede pe a doua, apa intra pe acolo si mananca un sfert de pagina —
+     * masurat, masca iesea 0.40 din cadru in loc de 0.48. Impartita la lumina
+     * locala, treapta iese treisprezece la suta in amandoua colturile.
+     *
+     * Numitorul are un prag de jos: intr-un colt aproape negru, orice fir de
+     * zgomot ar iesi altfel o margine.
+     */
+    const relativ = new Uint8ClampedArray(w * h);
+    const histRel = new Int32Array(256);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const q = y * w + x;
+        const v = Math.min(255, (grad[q] * 255 / Math.max(24, lum[q])) | 0);
+        relativ[q] = v;
+        histRel[v]++;
+      }
+    }
+    /*
+     * Doua praguri, nu unul, si al doilea tine doar unde se prinde de primul.
+     *
+     * Un singur prag nu poate fi bun peste tot, si nu fiindca ar fi rau ales.
+     * Otsu il pune acolo unde imparte cel mai bine histograma — dar histograma e
+     * plina de muchiile literelor, care sunt de zece ori mai tari decat marginea
+     * hartiei, si pragul urca dupa ele. Marginea din partea umbrita a foii ramane
+     * dedesubt, apa intra pe acolo si mananca o fasie din pagina: masurat, latura
+     * din dreapta lipsea cu o suta treizeci de pixeli, si coltul de sus-dreapta
+     * cadea cu o suta treizeci si cinci mai incolo decat trebuia.
+     *
+     * Marginea aceea slaba nu e insa singura: e capatul aceluiasi contur care,
+     * in partea luminata, e limpede. Deci se tin si pragurile slabe, cu conditia
+     * sa se prinda de unul tare — asa conturul se continua in umbra pana se
+     * inchide, iar un fir de zgomot rasarit singur in mijlocul biroului nu
+     * devine margine.
+     */
+    const prag = Math.max(6, otsuThreshold(histRel, (w - 2) * (h - 2)));
+    const pragSlab = Math.max(4, Math.round(prag * 0.4));
+
+    const muchiiTari = new Uint8Array(w * h);
+    const coadaM = new Int32Array(w * h);
+    let capM = 0;
+    for (let p = 0; p < relativ.length; p++) {
+      if (relativ[p] > prag) { muchiiTari[p] = 1; coadaM[capM++] = p; }
+    }
+    for (let i = 0; i < capM; i++) {
+      const q = coadaM[i], qx = q % w, qy = (q / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = qy + dy;
+        if (yy < 1 || yy >= h - 1) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = qx + dx;
+          if (xx < 1 || xx >= w - 1) continue;
+          const r = yy * w + xx;
+          if (!muchiiTari[r] && relativ[r] > pragSlab) { muchiiTari[r] = 1; coadaM[capM++] = r; }
+        }
+      }
+    }
+
+    // Ingrosate o data: o margine intrerupta de un fir de praf lasa apa sa intre.
+    const muchii = dilate(muchiiTari, w, h);
+
+    // Apa din marginea cadrului, pana da de trepte.
+    const udat = new Uint8Array(w * h);
+    const coada = new Int32Array(w * h);
+    let cap = 0;
+    const pune = (q: number) => { if (!udat[q] && !muchii[q]) { udat[q] = 1; coada[cap++] = q; } };
+    for (let x = 0; x < w; x++) { pune(x); pune((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { pune(y * w); pune(y * w + w - 1); }
+    for (let i = 0; i < cap; i++) {
+      const q = coada[i], qx = q % w;
+      if (qx > 0) pune(q - 1);
+      if (qx < w - 1) pune(q + 1);
+      if (q >= w) pune(q - w);
+      if (q < w * (h - 1)) pune(q + w);
+    }
+
+    /*
+     * Treptele insele raman uscate, deci ce iese cuprinde si conturul, nu se
+     * opreste inaintea lui — iar conturul a fost ingrosat cu un pixel ca sa nu
+     * curga apa prin el. Se dau inapoi cei doi pixeli, ca marginea gasita sa
+     * cada pe marginea foii, nu in afara ei: masurat pe douasprezece scene,
+     * colturile cad la patru pana la zece pixeli de cele adevarate, fata de
+     * saptesprezece fara asta.
+     */
+    const uscat = new Uint8Array(w * h);
+    for (let p = 0; p < uscat.length; p++) uscat[p] = udat[p] ? 0 : 1;
+    return erode(erode(cleanMask(uscat, w, h), w, h), w, h);
+  };
+
+  /**
+   * Cat de abrupta e marginea petei.
+   *
+   * Aici au cazut, pe rand, doua masuri mai simple. "Cat de luminoasa e pata
+   * fata de tot ce o inconjoara" se lasa pacalita de un birou crem, fiindca
+   * pagina statea inauntrul petei "birou" si ii tragea in sus sfertul luminos —
+   * cincizeci de trepte, exact cat masura si pagina adevarata. Mutata pe doua
+   * benzi subtiri lipite de margine, masura tinea pana la o scena in care lumina
+   * scade tare pe latimea cadrului: acolo orice taietura la un numar da o pata
+   * marginita de o linie de nivel a luminii, iar banda dinauntru prinde si o
+   * bucata de pagina, deci iese contrastanta desi nu e nicio margine acolo.
+   *
+   * Ce nu se poate imita e panta. O linie de nivel a luminii trece exact pe
+   * unde lumina se schimba cel mai incet; marginea unei foi trece pe unde se
+   * schimba dintr-o data. Deci se ia mijlocul pantei de-a lungul conturului:
+   * pe hartie iese cat diferenta dintre hartie si masa, oricat de intunecat ar
+   * fi acolo, iar pe o linie de nivel iese aproape zero.
+   */
+  const tariaMarginii = (masca: Uint8Array): number => {
+    const inauntru = erode(masca, w, h);
+    const h1 = new Int32Array(256);
+    let n = 0;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const q = y * w + x;
+        if (!masca[q] || inauntru[q]) continue;
+        // Cea mai mare panta din vecinatate, nu cea de sub degetul exact:
+        // conturul iesit din morfologie nu cade niciodata fix pe marginea foii,
+        // iar un pixel alaturi e destul ca sa nu mai vada treapta deloc.
+        let g = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const v = grad[q + dy * w + dx];
+            if (v > g) g = v;
+          }
+        }
+        h1[g]++; n++;
+      }
+    }
+    return n < 24 ? 0 : percentile(h1, n, 0.5);
+  };
+
+  /**
+   * Cat de mult arata o pata a pagina.
+   *
+   * Umplerea la patrat inmultita cu aria patrulaterului: intre o pata mare si
+   * zdrentuita si una mica dar curata castiga cea curata, iar intre doua la fel
+   * de curate castiga cea mare. Asa partea luminata a unei foi umbrite pierde
+   * in fata foii intregi, desi si ea are marginile drepte.
+   */
+  const cantareste = (blob: Blob) => {
+    if (blob.area === 0) return null;
+    const rw = (blob.x1 - blob.x0 + 1) / w;
+    const rh = (blob.y1 - blob.y0 + 1) / h;
+    const arie = rw * rh;
+    if (arie < 0.05 || arie > 0.98) return null;
+
+    const colturi = colturileMastii(blob.masca, w, h);
+    const ariePatru = colturi ? ariePatrulater(colturi) : 0;
+    const fill = ariePatru > 0
+      ? Math.min(1, blob.area / ariePatru)
+      : blob.area / ((blob.x1 - blob.x0 + 1) * (blob.y1 - blob.y0 + 1));
+    if (fill < 0.72) return { blob, colturi, fill, scor: -1 };
+
+    // Proportia se ia pe laturile foii, nu pe cutia din jur: la o pagina rotita
+    // cu patruzeci si cinci de grade cutia e aproape patrata, si testul ar fi
+    // trecut orice.
+    let prop: number;
+    if (colturi) {
+      const lat = (dist(colturi[0], colturi[1]) + dist(colturi[3], colturi[2])) / 2;
+      const inalt = (dist(colturi[0], colturi[3]) + dist(colturi[1], colturi[2])) / 2;
+      prop = (lat / w * viewW) / Math.max(1e-6, inalt / h * viewH);
+    } else {
+      prop = (rw * viewW) / (rh * viewH);
+    }
+    if (prop < 0.3 || prop > 3.4) return { blob, colturi, fill, scor: -1 };
+
+    // Sub trei trepte nu e o margine, ci o panta — o bucata taiata dintr-o
+    // suprafata intinsa peste care cade lumina neuniform.
+    const taria = tariaMarginii(blob.masca);
+    if (taria < 3) return { blob, colturi, fill, scor: -1 };
+
+    // Se satureaza: peste vreo doisprezece trepte marginea e limpede o margine,
+    // si n-are rost sa bata o foaie pe birou negru una pe birou crem doar
+    // fiindca prima are contrastul mai mare.
+    const suprafata = ariePatru > 0 ? ariePatru / (w * h) : arie;
+    return { blob, colturi, fill, scor: fill * fill * suprafata * Math.min(1, taria / 12) };
+  };
+
+  let ales: ReturnType<typeof cantareste> = null;
+  let respins: ReturnType<typeof cantareste> = null;
+  const masti = nivele.map(buildMask);
+  masti.push(foaiaDupaMuchii());
+  for (const m of masti) {
+    const c = cantareste(largestBlob(m, w, h));
+    if (!c) continue;
+    if (c.scor < 0) { if (!respins || c.fill > respins.fill) respins = c; continue; }
+    if (!ales || c.scor > ales.scor) ales = c;
+  }
+
+  // Nimic nu a trecut: se raporteaza cea mai buna umplere vazuta, ca ecranul sa
+  // poata spune de ce nu merge, nu doar ca nu merge.
+  if (!ales) return { rect: null, colturi: null, sharpness: 0, fill: respins?.fill ?? 0 };
+
+  const best = ales.blob;
+  const colturiMasca = ales.colturi;
+  const fill = ales.fill;
 
   const rw = (best.x1 - best.x0 + 1) / w;
   const rh = (best.y1 - best.y0 + 1) / h;
 
-  /*
-   * Cat de plina e forma gasita — fata de patrulaterul ei, nu fata de cutia
-   * dreapta din jur.
-   *
-   * Aici era greseala care refuza foile asezate stramb. O foaie rotita nu umple
-   * niciodata cutia cu laturile drepte din jurul ei: la douazeci si cinci de
-   * grade umple 0.55, la patruzeci 0.49, iar pragul cerea 0.62 — deci pagina nu
-   * era gasita deloc, oricat de curat ar fi fost fotografiata. Fata de propriul
-   * patrulater, o foaie umple aproape tot, indiferent cum e intoarsa.
-   */
-  const colturiMasca = colturileMastii(masca, w, h);
-  const ariePatru = colturiMasca ? ariePatrulater(colturiMasca) : 0;
-  const arieCutie = (best.x1 - best.x0 + 1) * (best.y1 - best.y0 + 1);
-  const fill = ariePatru > 0
-    ? Math.min(1, best.area / ariePatru)
-    : best.area / arieCutie;
-
-  // Mai putin decat atat inseamna o forma care nu e foaie — o margine de birou,
-  // o umbra, o mana.
-  if (fill < 0.72) return { rect: null, colturi: null, sharpness: 0, fill };
-
-  const area = rw * rh;
-  // The old floor of 0.15 refused a page simply held further away.
-  if (area < 0.05 || area > 0.98) return { rect: null, colturi: null, sharpness: 0, fill };
-
-  /*
-   * Proportia se ia acum pe laturile foii, nu pe cutia din jur: la o pagina
-   * rotita cu patruzeci si cinci de grade cutia e aproape patrata, si testul de
-   * proportie ar fi trecut orice.
-   */
-  if (colturiMasca) {
-    const latime = (dist(colturiMasca[0], colturiMasca[1]) + dist(colturiMasca[3], colturiMasca[2])) / 2;
-    const inaltime = (dist(colturiMasca[0], colturiMasca[3]) + dist(colturiMasca[1], colturiMasca[2])) / 2;
-    const prop = (latime / w * viewW) / Math.max(1e-6, inaltime / h * viewH);
-    if (prop < 0.3 || prop > 3.4) return { rect: null, colturi: null, sharpness: 0, fill };
-  } else {
-    const ratio = (rw * viewW) / (rh * viewH);
-    if (ratio < 0.3 || ratio > 3.4) return { rect: null, colturi: null, sharpness: 0, fill };
-  }
 
   // ── sharpness, measured inside the sheet only ──────────────────────────
   let lapSum = 0, lapSq = 0, lapN = 0;
