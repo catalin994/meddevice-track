@@ -164,7 +164,8 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('DASHBOARD');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'cloud' | 'local' | 'error' | 'table-missing' | 'paused'>('local');
+  const [syncStatus, setSyncStatus] = useState<'cloud' | 'local' | 'error' | 'table-missing' | 'paused' | 'nesalvat'>('local');
+
   // Why the last sync ended the way it did — without this, a failure is
   // indistinguishable from "still working" and the button looks dead.
   const [syncMessage, setSyncMessage] = useState<string>('');
@@ -762,6 +763,47 @@ const App: React.FC = () => {
     }
   }, [isSupabaseConfigured, devicesMap, logAudit, recordDeletion, canDelete]);
 
+  /**
+   * Scrierea in cloud, cu gura.
+   *
+   * Toate salvarile treceau printr-un try/catch care inghitea eroarea in
+   * consola. Aici, cand scrierea nu reuseste, se spune: pe ecran, si in
+   * indicatorul din bara laterala, care nu mai are voie sa arate verde cat timp
+   * ceva n-a plecat. Randul ramane salvat pe aparat si pleaca singur la
+   * urmatoarea sincronizare — dar asta e o promisiune, nu o scuza sa taci.
+   */
+  const trimiteInCloud = useCallback(async (
+    tabel: string, randuri: any[], ce: string,
+  ): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase || randuri.length === 0) return true;
+    let motiv = '';
+    try {
+      const { error, oversized } = await upsertInChunks(tabel, randuri);
+      if (error) motiv = (error as any).message || String(error);
+      // Randurile prea mari sunt sarite ca sa nu blocheze restul lotului — dar
+      // sarite inseamna nescrise, si asta trebuie spus, nu ascuns.
+      else if (oversized.length) {
+        motiv = `prea mare pentru cloud (${oversized.slice(0, 3).join(', ')})`;
+      }
+    } catch (err: any) {
+      motiv = err?.message || String(err);
+    }
+    if (!motiv) {
+      // A mers. Daca ecranul arata inca esecul de data trecuta, se stinge.
+      setSyncStatus(prev => (prev === 'nesalvat' ? 'cloud' : prev));
+      setSyncMessage(prev => (prev.includes('nu a ajuns in cloud') ? '' : prev));
+      return true;
+    }
+    setSyncStatus('nesalvat');
+    setSyncMessage(`${ce} nu a ajuns in cloud: ${motiv}`);
+    notify(
+      `${ce} s-a salvat pe acest aparat, dar nu a ajuns in cloud: ${motiv}. `
+      + 'Pe alte dispozitive nu se vede inca. Se reincearca la urmatoarea sincronizare.',
+      'error',
+    );
+    return false;
+  }, [isSupabaseConfigured]);
+
   const handleUpsertDevices = useCallback(async (data: MedicalDevice | MedicalDevice[]) => {
     const now = new Date().toISOString();
     const items = Array.isArray(data) ? data : [data];
@@ -795,17 +837,16 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await saveDevicesToDB(payload);
-      if (isSupabaseConfigured && supabase) {
-        // Chunked: a 2000-row Excel import in one request exceeds the size limit
-        const { error } = await upsertInChunks('devices', payload);
-        if (error) throw error;
-      }
+      // Chunked: a 2000-row Excel import in one request exceeds the size limit
+      await trimiteInCloud('devices', payload,
+        payload.length === 1 ? `Aparatul "${payload[0].name}"` : `${payload.length} aparate`);
     } catch (err) {
-      console.error("[Registry] Sync deferred:", err);
+      console.error("[Registry] Salvarea locala a esuat:", err);
+      notify('Modificarea nu s-a putut salva nici pe acest aparat.', 'error');
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, normalizeDevice, devicesMap, logAudit, potSalva]);
+  }, [trimiteInCloud, normalizeDevice, devicesMap, logAudit, potSalva]);
 
   const handleUpsertTasks = useCallback(async (data: MedicalTask | MedicalTask[]) => {
     const now = new Date().toISOString();
@@ -824,16 +865,15 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await saveTasksToDB(items);
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.from('tasks').upsert(items, { onConflict: 'id' });
-        if (error) throw error;
-      }
+      await trimiteInCloud('tasks', items,
+        items.length === 1 ? `Tichetul "${items[0].title}"` : `${items.length} tichete`);
     } catch (err) {
-      console.error("[Tasks] Sync deferred:", err);
+      console.error("[Tasks] Salvarea locala a esuat:", err);
+      notify('Tichetul nu s-a putut salva nici pe acest aparat.', 'error');
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, tasks, logAudit, recordDeletion]);
+  }, [trimiteInCloud, tasks, logAudit, recordDeletion]);
 
   const handleUpsertInvoice = useCallback(async (invoice: Invoice) => {
     const payload: Invoice = { ...invoice, updated_at: new Date().toISOString() };
@@ -852,16 +892,14 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
       await saveInvoicesToDB([payload]);
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.from('invoices').upsert([payload], { onConflict: 'id' });
-        if (error) console.warn("[Invoices] Cloud sync deferred:", error.message);
-      }
+      await trimiteInCloud('invoices', [payload], `Factura ${payload.invoiceNumber}`);
     } catch (err) {
-      console.error("[Invoices] Sync deferred:", err);
+      console.error("[Invoices] Salvarea locala a esuat:", err);
+      notify('Factura nu s-a putut salva nici pe acest aparat.', 'error');
     } finally {
       setIsSyncing(false);
     }
-  }, [isSupabaseConfigured, invoices, logAudit, recordDeletion, potSalva]);
+  }, [trimiteInCloud, invoices, logAudit, recordDeletion, potSalva]);
 
   /*
    * Referate si documente de fundamentare — salvare si stergere, dupa acelasi
@@ -1681,6 +1719,8 @@ const SYNC_LABELS: Record<string, { text: string; dot: string; tone: string }> =
   error:           { text: 'Eroare de sincronizare', dot: 'bg-red-500',    tone: 'text-red-600' },
   'table-missing': { text: 'Schema lipsa in cloud',  dot: 'bg-red-500',    tone: 'text-red-600' },
   paused:          { text: 'Proiect Supabase oprit', dot: 'bg-red-500',    tone: 'text-red-600' },
+  // Salvat pe aparat, dar nu si in cloud: pe alte dispozitive nu se vede.
+  nesalvat:        { text: 'Nesalvat in cloud',      dot: 'bg-red-500',    tone: 'text-red-600' },
 };
 
 const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, syncStatus, lastSyncTime, loadAndSync, syncMessage, isSyncingNow, canFinance }: {
@@ -1724,7 +1764,8 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
           {(() => {
             const info = SYNC_LABELS[syncStatus] || SYNC_LABELS.local;
-            const isFailure = syncStatus === 'error' || syncStatus === 'table-missing' || syncStatus === 'paused';
+            const isFailure = syncStatus === 'error' || syncStatus === 'table-missing'
+              || syncStatus === 'paused' || syncStatus === 'nesalvat';
             return (
               <>
                 <div className="flex items-center justify-between">

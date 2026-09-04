@@ -98,6 +98,19 @@ export const fetchAllRows = async <T>(
 /** PostgREST names the offending column when the table lacks it. */
 const MISSING_COLUMN = /Could not find the '([^']+)' column/i;
 
+/**
+ * Cand esecul chiar inseamna "randul e prea mare".
+ *
+ * Deosebirea asta lipsea, si de-aici venea cea mai urata tacere din aplicatie:
+ * un rand singur care nu intra era pus deoparte si trecut ca reusit — dar
+ * acelasi lucru se intampla si cu un rand respins de politica de acces, si cu
+ * unul care incalca o constrangere. Iar salvarea unui aparat e mereu un rand
+ * singur. Asa, orice modificare respinsa de cloud se raporta ca salvata: pe
+ * ecran aparea scrisa, indicatorul ramanea verde, si abia pe alt dispozitiv se
+ * vedea ca n-a plecat niciodata.
+ */
+const PREA_MARE = /too large|payload|entity too large|413|body size|exceeded maximum|string too long|value too long/i;
+
 /** Target request size. Devices carry scanned PDFs as base64, so a fixed row
  *  count can produce a request of hundreds of megabytes that the server drops. */
 const MAX_BYTES_PER_REQUEST = 1_000_000;
@@ -178,12 +191,14 @@ export const upsertInChunks = async (
         return await sendChunk(chunk.slice(mid), depth + 1);
       }
 
-      // A single row that still won't fit — record it and keep going
-      if (chunk.length === 1) {
+      // Un rand singur care chiar e prea mare: se pune deoparte si se merge
+      // mai departe, ca restul lotului sa nu ramana nescris din cauza lui.
+      if (chunk.length === 1 && PREA_MARE.test(error.message || '')) {
         oversized.push(String(chunk[0]?.name || chunk[0]?.id || 'necunoscut'));
         return null;
       }
 
+      // Orice altceva e un esec, si se spune ca atare.
       return error;
     }
     return new Error('Prea multe reincercari pentru un lot');
