@@ -15,7 +15,7 @@ import {
 import { listProfiles, updateProfile } from '../services/authService';
 import { SECURITY_SQL } from '../services/authSql';
 import { ACHIZITII_SQL } from '../services/achizitiiSql';
-import { SCAN_QUALITIES, getScanQuality, setScanQuality, ScanQualityId } from '../services/scanQuality';
+import { SCAN_QUALITIES, getScanQuality, setScanQuality, ScanQualityId, getIndreptareLumina, setIndreptareLumina } from '../services/scanQuality';
 import { buildUploadSet } from '../services/syncMerge';
 
 declare const __BUILD_ID__: string;
@@ -198,6 +198,7 @@ const Settings: React.FC<SettingsProps> = ({
   }, [devices, tasks, invoices, referate, foundationDocs, comenzi]);
 
   const [scanQuality, setScanQualityState] = useState<ScanQualityId>(() => getScanQuality().id);
+  const [lumina, setLumina] = useState<boolean>(() => getIndreptareLumina());
   const chooseScanQuality = useCallback((id: ScanQualityId) => {
     setScanQuality(id);
     setScanQualityState(id);
@@ -1079,6 +1080,29 @@ NOTIFY pgrst, 'reload schema';
             );
           })}
         </div>
+
+        {/*
+          Indreptarea luminii. Sta langa calitate fiindca amandoua se hotarasc
+          o data si se aplica scanarilor viitoare.
+        */}
+        <label className="mt-5 flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer">
+          <input
+            type="checkbox"
+            checked={lumina}
+            onChange={e => { setIndreptareLumina(e.target.checked); setLumina(e.target.checked); }}
+            className="mt-0.5 w-5 h-5 accent-blue-600 shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold text-slate-900">Indreapta lumina si scoate umbrele</p>
+            <p className="text-[13px] font-medium text-slate-500 mt-0.5 leading-relaxed">
+              Umbra mainii, coltul mai luminos de sub lampa si galbenul becului se
+              scot dupa fotografiere, iar hartia iese alba peste tot — ca la un
+              scanner. Stampilele si semnaturile colorate raman colorate. Se
+              opreste singura cand ce s-a fotografiat nu e o hartie, deci o poza a
+              unui aparat nu se atinge.
+            </p>
+          </div>
+        </label>
 
         <p className="mt-5 text-[13px] font-medium text-slate-500 leading-relaxed">
           Cu 1 GB de spatiu, alegerea inseamna aproximativ{' '}

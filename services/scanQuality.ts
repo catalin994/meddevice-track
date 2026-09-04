@@ -11,6 +11,8 @@
  * matter, so nothing turns a scan monochrome unless someone asks for it.
  */
 
+import { indreaptaLumina } from './imagineScan';
+
 export type ScanQualityId = 'high' | 'balanced' | 'compact';
 
 export interface ScanQuality {
@@ -59,6 +61,24 @@ export const SCAN_QUALITIES: ScanQuality[] = [
 const KEY = 'meditrack_scan_quality';
 const DEFAULT: ScanQualityId = 'balanced';
 
+/*
+ * Indreptarea luminii, pornita din start.
+ *
+ * E ce deosebeste un scan de o poza a unei hartii, si nu strica nimic pe o
+ * pagina fotografiata bine — acolo harta luminii iese plata si impartirea nu
+ * schimba mai nimic. Se poate opri pentru cazul in care ce se fotografiaza nu
+ * e o hartie: eticheta unui aparat, un afisaj, o piesa.
+ */
+const KEY_LUMINA = 'meditrack_scan_lumina';
+
+export const getIndreptareLumina = (): boolean => {
+  try { return localStorage.getItem(KEY_LUMINA) !== 'off'; } catch { return true; }
+};
+
+export const setIndreptareLumina = (pornit: boolean) => {
+  try { localStorage.setItem(KEY_LUMINA, pornit ? 'on' : 'off'); } catch { /* ignore */ }
+};
+
 export const getScanQuality = (): ScanQuality => {
   let id: ScanQualityId = DEFAULT;
   try {
@@ -82,15 +102,23 @@ export const encodePage = (source: HTMLCanvasElement, profile = getScanQuality()
   const longest = Math.max(source.width, source.height);
   const scale = maxEdge > 0 && longest > maxEdge ? maxEdge / longest : 1;
 
-  if (scale === 1 && !grayscale) return source.toDataURL('image/jpeg', quality);
-
   const out = document.createElement('canvas');
   out.width = Math.max(1, Math.round(source.width * scale));
   out.height = Math.max(1, Math.round(source.height * scale));
-  const ctx = out.getContext('2d')!;
+  const ctx = out.getContext('2d', { willReadFrequently: true })!;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(source, 0, 0, out.width, out.height);
+
+  /*
+   * Indreptarea vine dupa micsorare, nu inainte.
+   *
+   * Aceeasi socoteala pe un sfert din pixeli, si rezultatul e acelasi: harta
+   * luminii e grosiera oricum, iar micsorarea ii face media inainte. Pe o
+   * pagina de opt megapixeli asta e diferenta dintre o clipa si o secunda pe
+   * un telefon.
+   */
+  if (getIndreptareLumina()) indreaptaLumina(out);
 
   if (grayscale) {
     const pixels = ctx.getImageData(0, 0, out.width, out.height);
