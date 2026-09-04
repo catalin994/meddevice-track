@@ -4,7 +4,7 @@ import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, Rect
 
 import Portal from './Portal';
 import useEscape from './useEscape';
-import { cropVideoToFrame, cropVideoToRect, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, FRAME_ASPECT, Orientation, DocRect } from './scanUtils';
+import { cropVideoToFrame, cropVideoToRect, cropVideoToQuad, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, FRAME_ASPECT, Orientation, DocRect, Colturi } from './scanUtils';
 
 interface CameraDocCaptureProps {
   title?: string;
@@ -38,6 +38,8 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastRectRef = useRef<DocRect | null>(null);
   const smoothRectRef = useRef<DocRect | null>(null);
+  /** Colturile ultimei detectii, pentru taierea care indreapta pagina. */
+  const colturiRef = useRef<Colturi | null>(null);
   // Sharpness is compared against the best seen recently rather than a fixed
   // number: a blank sheet has little detail even when perfectly still, so an
   // absolute floor would refuse to photograph it.
@@ -114,8 +116,14 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
       video.videoWidth, video.videoHeight,
       video.clientWidth, video.clientHeight,
     );
-    const { rect } = analyzeFrame(video, workCanvasRef.current, view);
-    return rect && rectIoU(rect, held) > 0.6 ? rect : held;
+    const a = analyzeFrame(video, workCanvasRef.current, view);
+    // Colturile proaspete se tin minte odata cu dreptunghiul: taierea se face
+    // pe ele, si trebuie sa fie ale aceleiasi priviri.
+    if (a.rect && rectIoU(a.rect, held) > 0.6) {
+      colturiRef.current = a.colturi;
+      return a.rect;
+    }
+    return held;
   }, []);
 
   const grabFrame = useCallback((): string => {
@@ -124,14 +132,24 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     if (!video || !canvas) return '';
     // In auto mode use the detected sheet; otherwise fall back to the guide frame
     const rect = autoMode ? rectForCapture() : null;
-    return rect
-      ? cropVideoToRect(video, rect, canvas)
-      : cropVideoToFrame(video, frameRef.current, canvas);
+    if (!rect) return cropVideoToFrame(video, frameRef.current, canvas);
+    /*
+     * Cu colturile, pagina se taie dupa ele si iese dreapta. Fara — cand masca
+     * n-a dat patru colturi curate — ramane taierea dreptunghiulara de pana
+     * acum, care e mai buna decat nimic.
+     */
+    const colturi = colturiRef.current;
+    if (colturi) {
+      const dreapta = cropVideoToQuad(video, colturi, canvas);
+      if (dreapta) return dreapta;
+    }
+    return cropVideoToRect(video, rect, canvas);
   }, [autoMode, rectForCapture]);
 
   const resetDetection = useCallback((cooldownMs = 1500) => {
     cooldownUntilRef.current = Date.now() + cooldownMs;
     stableSinceRef.current = 0;
+    colturiRef.current = null;
     lastRectRef.current = null;
     smoothRectRef.current = null;
     sharpPeakRef.current = 0;
@@ -197,9 +215,10 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         video.videoWidth, video.videoHeight,
         video.clientWidth, video.clientHeight,
       );
-      const { rect, sharpness } = analyzeFrame(video, work, view);
+      const { rect, colturi, sharpness } = analyzeFrame(video, work, view);
 
       if (!rect) {
+        colturiRef.current = null;
         lastRectRef.current = null;
         smoothRectRef.current = null;
         stableSinceRef.current = 0;
@@ -223,6 +242,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
           }
         : rect;
       smoothRectRef.current = smooth;
+      colturiRef.current = colturi;
       setDetected(smooth);
       setDetectedOnScreen(sourceRectToDisplay(
         smooth,

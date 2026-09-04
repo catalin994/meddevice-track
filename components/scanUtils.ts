@@ -5,6 +5,22 @@ export type Orientation = 'portrait' | 'landscape';
 /** Normalised rectangle (0..1) in source-video coordinates. */
 export interface DocRect { x: number; y: number; w: number; h: number }
 
+/** Un punct in aceleasi coordonate normalizate. */
+export interface Punct { x: number; y: number }
+
+/**
+ * Cele patru colturi ale foii, in ordinea: stanga-sus, dreapta-sus,
+ * dreapta-jos, stanga-jos.
+ *
+ * Dreptunghiul cu laturile drepte nu poate descrie o foaie asezata stramb, si
+ * asta se vedea: o pagina rotita cu mai mult de vreo cincisprezece grade nu era
+ * gasita deloc. Masura care o respingea era "cat din cutia ei umple foaia" —
+ * iar o foaie rotita nu umple niciodata cutia dreapta din jurul ei; la
+ * patruzeci si cinci de grade umple exact jumatate. Cu colturile, masura se ia
+ * fata de patrulaterul propriu, si rotatia nu mai conteaza.
+ */
+export type Colturi = [Punct, Punct, Punct, Punct];
+
 const DETECT_WIDTH = 160;
 // Wide enough to place an edge within a pixel, and the last width that still
 // costs almost nothing: past ~200 the per-frame time jumps four-fold.
@@ -54,6 +70,8 @@ export const sourceRectToDisplay = (
 export interface FrameAnalysis {
   /** The sheet, in normalised video coordinates, or null if none is convincing. */
   rect: DocRect | null;
+  /** Colturile foii, cand se pot citi. Cu ele, taierea o si indreapta. */
+  colturi: Colturi | null;
   /** Laplacian variance inside the sheet. Motion blur drives it toward zero. */
   sharpness: number;
   /** Share of the bounding box the sheet actually fills — low means we merged
@@ -119,6 +137,45 @@ const cleanMask = (mask: Uint8Array, w: number, h: number): Uint8Array => {
 };
 
 interface Blob { area: number; x0: number; x1: number; y0: number; y1: number }
+
+/**
+ * Cele patru colturi ale petei, cautate pe diagonale.
+ *
+ * Pentru un patrulater convex — si o foaie e asta, chiar vazuta pieziс —
+ * coltul din stanga-sus e punctul cu x+y cel mai mic, cel din dreapta-jos are
+ * x+y cel mai mare, iar celelalte doua ies din x-y. E o cautare intr-o singura
+ * trecere peste masca, si prinde deopotriva rotatia si inclinarea aparatului.
+ */
+const colturileMastii = (mask: Uint8Array, w: number, h: number): Colturi | null => {
+  let sMin = Infinity, sMax = -Infinity, dMin = Infinity, dMax = -Infinity;
+  let ss: Punct | null = null, sS: Punct | null = null, dd: Punct | null = null, dD: Punct | null = null;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x]) continue;
+      const suma = x + y, dif = x - y;
+      if (suma < sMin) { sMin = suma; ss = { x, y }; }
+      if (suma > sMax) { sMax = suma; sS = { x, y }; }
+      if (dif < dMin) { dMin = dif; dd = { x, y }; }
+      if (dif > dMax) { dMax = dif; dD = { x, y }; }
+    }
+  }
+  if (!ss || !sS || !dd || !dD) return null;
+  // stanga-sus, dreapta-sus, dreapta-jos, stanga-jos
+  return [ss, dD, sS, dd];
+};
+
+/** Aria unui patrulater, prin formula lantului. */
+const ariePatrulater = (c: Colturi): number => {
+  let a = 0;
+  for (let i = 0; i < 4; i++) {
+    const p = c[i], q = c[(i + 1) % 4];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a) / 2;
+};
+
+/** Cat de departe sunt doua puncte. */
+const dist = (a: Punct, b: Punct): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** The biggest connected run of set pixels, with its bounding box. */
 const largestBlob = (mask: Uint8Array, w: number, h: number): Blob => {
@@ -358,7 +415,7 @@ export const analyzeFrame = (
   /** Restricts the search to what the preview shows. Defaults to the whole frame. */
   view: DocRect = { x: 0, y: 0, w: 1, h: 1 },
 ): FrameAnalysis => {
-  const empty: FrameAnalysis = { rect: null, sharpness: 0, fill: 0 };
+  const empty: FrameAnalysis = { rect: null, colturi: null, sharpness: 0, fill: 0 };
   const srcW = video.videoWidth || (video as any).width;
   const srcH = video.videoHeight || (video as any).height;
   if (!srcW || !srcH) return empty;
@@ -403,7 +460,8 @@ export const analyzeFrame = (
   };
 
   let level = threshold;
-  let best = largestBlob(buildMask(level), w, h);
+  let masca = buildMask(level);
+  let best = largestBlob(masca, w, h);
 
   // A blob covering almost the whole frame means the split failed — paper on a
   // pale desk, where the sheet is barely brighter than what it lies on.
@@ -423,8 +481,10 @@ export const analyzeFrame = (
     if (next <= level) break;
     level = next;
 
-    const retry = largestBlob(buildMask(level), w, h);
+    const mascaNoua = buildMask(level);
+    const retry = largestBlob(mascaNoua, w, h);
     if (retry.area === 0) break;
+    masca = mascaNoua;
     best = retry;
   }
 
@@ -432,18 +492,46 @@ export const analyzeFrame = (
 
   const rw = (best.x1 - best.x0 + 1) / w;
   const rh = (best.y1 - best.y0 + 1) / h;
-  const fill = best.area / ((best.x1 - best.x0 + 1) * (best.y1 - best.y0 + 1));
 
-  // A sheet nearly fills its own bounding box. Much less means the blob is an
-  // odd shape — a desk edge, a shadow, a hand — not a page.
-  if (fill < 0.62) return { rect: null, sharpness: 0, fill };
+  /*
+   * Cat de plina e forma gasita — fata de patrulaterul ei, nu fata de cutia
+   * dreapta din jur.
+   *
+   * Aici era greseala care refuza foile asezate stramb. O foaie rotita nu umple
+   * niciodata cutia cu laturile drepte din jurul ei: la douazeci si cinci de
+   * grade umple 0.55, la patruzeci 0.49, iar pragul cerea 0.62 — deci pagina nu
+   * era gasita deloc, oricat de curat ar fi fost fotografiata. Fata de propriul
+   * patrulater, o foaie umple aproape tot, indiferent cum e intoarsa.
+   */
+  const colturiMasca = colturileMastii(masca, w, h);
+  const ariePatru = colturiMasca ? ariePatrulater(colturiMasca) : 0;
+  const arieCutie = (best.x1 - best.x0 + 1) * (best.y1 - best.y0 + 1);
+  const fill = ariePatru > 0
+    ? Math.min(1, best.area / ariePatru)
+    : best.area / arieCutie;
+
+  // Mai putin decat atat inseamna o forma care nu e foaie — o margine de birou,
+  // o umbra, o mana.
+  if (fill < 0.72) return { rect: null, colturi: null, sharpness: 0, fill };
 
   const area = rw * rh;
   // The old floor of 0.15 refused a page simply held further away.
-  if (area < 0.05 || area > 0.98) return { rect: null, sharpness: 0, fill };
+  if (area < 0.05 || area > 0.98) return { rect: null, colturi: null, sharpness: 0, fill };
 
-  const ratio = (rw * viewW) / (rh * viewH);
-  if (ratio < 0.3 || ratio > 3.4) return { rect: null, sharpness: 0, fill };
+  /*
+   * Proportia se ia acum pe laturile foii, nu pe cutia din jur: la o pagina
+   * rotita cu patruzeci si cinci de grade cutia e aproape patrata, si testul de
+   * proportie ar fi trecut orice.
+   */
+  if (colturiMasca) {
+    const latime = (dist(colturiMasca[0], colturiMasca[1]) + dist(colturiMasca[3], colturiMasca[2])) / 2;
+    const inaltime = (dist(colturiMasca[0], colturiMasca[3]) + dist(colturiMasca[1], colturiMasca[2])) / 2;
+    const prop = (latime / w * viewW) / Math.max(1e-6, inaltime / h * viewH);
+    if (prop < 0.3 || prop > 3.4) return { rect: null, colturi: null, sharpness: 0, fill };
+  } else {
+    const ratio = (rw * viewW) / (rh * viewH);
+    if (ratio < 0.3 || ratio > 3.4) return { rect: null, colturi: null, sharpness: 0, fill };
+  }
 
   // ── sharpness, measured inside the sheet only ──────────────────────────
   let lapSum = 0, lapSq = 0, lapN = 0;
@@ -467,8 +555,17 @@ export const analyzeFrame = (
     h: rh * view.h,
   };
 
+  // Colturile, din coordonatele mastii inapoi in cele ale senzorului.
+  const colturi: Colturi | null = colturiMasca
+    ? (colturiMasca.map(p => ({
+        x: view.x + ((p.x + 0.5) / w) * view.w,
+        y: view.y + ((p.y + 0.5) / h) * view.h,
+      })) as Colturi)
+    : null;
+
   return {
     rect: refineRect(video, srcW, srcH, coarse, view, work),
+    colturi,
     sharpness: variance,
     fill,
   };
@@ -481,6 +578,134 @@ export const rectIoU = (a: DocRect, b: DocRect): number => {
   const inter = ix * iy;
   const union = a.w * a.h + b.w * b.h - inter;
   return union > 0 ? inter / union : 0;
+};
+
+/**
+ * Rezolva sistemul de opt ecuatii care duce un patrulater intr-un dreptunghi.
+ *
+ * O foaie fotografiata de sus, dar nu perfect deasupra, iese pe senzor ca un
+ * patrulater oarecare: laturile de sus si de jos au lungimi diferite. Ca sa
+ * iasa o pagina dreapta, fiecare pixel din imaginea finala trebuie cautat
+ * inapoi in cadru — iar legatura dintre cele doua e o omografie, opt numere
+ * care se scot din potrivirea celor patru colturi cu cele patru colturi.
+ *
+ * Eliminare gaussiana cu pivot partial: opt necunoscute, se face o data pe
+ * pagina, si nu merita nici o biblioteca, nici o aproximatie.
+ */
+const omografie = (sursa: Punct[], tinta: Punct[]): number[] | null => {
+  const A: number[][] = [];
+  for (let i = 0; i < 4; i++) {
+    const { x, y } = sursa[i];
+    const { x: u, y: v } = tinta[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+  }
+  for (let col = 0; col < 8; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < 8; r++) if (Math.abs(A[r][col]) > Math.abs(A[pivot][col])) pivot = r;
+    if (Math.abs(A[pivot][col]) < 1e-9) return null;
+    [A[col], A[pivot]] = [A[pivot], A[col]];
+    const p = A[col][col];
+    for (let c = col; c <= 8; c++) A[col][c] /= p;
+    for (let r = 0; r < 8; r++) {
+      if (r === col) continue;
+      const k = A[r][col];
+      if (!k) continue;
+      for (let c = col; c <= 8; c++) A[r][c] -= k * A[col][c];
+    }
+  }
+  return [A[0][8], A[1][8], A[2][8], A[3][8], A[4][8], A[5][8], A[6][8], A[7][8], 1];
+};
+
+/**
+ * Taie foaia dupa colturile ei si o indreapta.
+ *
+ * Pana acum se taia un dreptunghi cu laturile drepte in jurul foii: pe o
+ * pagina asezata stramb asta insemna patru triunghiuri de birou in colturi si o
+ * pagina care ramanea stramba in fisier. Aici fiecare pixel al paginii finale
+ * se cauta inapoi in cadru prin omografie si se ia interpolat intre cei patru
+ * vecini — asa iese o pagina dreptunghiulara, dreapta, fara birou pe langa ea.
+ */
+export const cropVideoToQuad = (
+  video: HTMLVideoElement,
+  colturi: Colturi,
+  canvas: HTMLCanvasElement,
+): string => {
+  const srcW = video.videoWidth || (video as any).width;
+  const srcH = video.videoHeight || (video as any).height;
+  if (!srcW || !srcH) return '';
+
+  const px = colturi.map(c => ({ x: c.x * srcW, y: c.y * srcH }));
+
+  /*
+   * O margine mica in afara, pe diagonalele patrulaterului.
+   *
+   * Colturile se citesc pe o masca de o suta saizeci de pixeli latime, deci un
+   * pixel de acolo inseamna cativa pe senzor. Fara marginea asta, taierea intra
+   * cu un fir in pagina si mananca marginea randului de sus.
+   */
+  const cx = (px[0].x + px[1].x + px[2].x + px[3].x) / 4;
+  const cy = (px[0].y + px[1].y + px[2].y + px[3].y) / 4;
+  const larg = px.map(p => {
+    const dx = p.x - cx, dy = p.y - cy;
+    const l = Math.hypot(dx, dy) || 1;
+    return { x: p.x + (dx / l) * (l * 0.012 + 4), y: p.y + (dy / l) * (l * 0.012 + 4) };
+  });
+
+  // Marimea paginii finale: latura cea mai lunga de fiecare parte, ca sa nu se
+  // piarda detaliu pe partea mai apropiata de aparat.
+  const lat = Math.round(Math.max(dist(larg[0], larg[1]), dist(larg[3], larg[2])));
+  const inalt = Math.round(Math.max(dist(larg[0], larg[3]), dist(larg[1], larg[2])));
+  if (lat < 32 || inalt < 32) return '';
+
+  const H = omografie(
+    [{ x: 0, y: 0 }, { x: lat - 1, y: 0 }, { x: lat - 1, y: inalt - 1 }, { x: 0, y: inalt - 1 }],
+    larg,
+  );
+  if (!H) return '';
+
+  // Cadrul intreg, o singura data, ca sa se poata citi pixel cu pixel.
+  const brut = document.createElement('canvas');
+  brut.width = srcW; brut.height = srcH;
+  const bctx = brut.getContext('2d', { willReadFrequently: true });
+  if (!bctx) return '';
+  bctx.drawImage(video, 0, 0, srcW, srcH);
+  const sursa = bctx.getImageData(0, 0, srcW, srcH).data;
+
+  canvas.width = lat;
+  canvas.height = inalt;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const iesire = ctx.createImageData(lat, inalt);
+  const o = iesire.data;
+
+  for (let y = 0; y < inalt; y++) {
+    for (let x = 0; x < lat; x++) {
+      const den = H[6] * x + H[7] * y + H[8];
+      const sx = (H[0] * x + H[1] * y + H[2]) / den;
+      const sy = (H[3] * x + H[4] * y + H[5]) / den;
+      const i = (y * lat + x) * 4;
+
+      if (sx < 0 || sy < 0 || sx > srcW - 1 || sy > srcH - 1) {
+        o[i] = o[i + 1] = o[i + 2] = 255; o[i + 3] = 255;
+        continue;
+      }
+      // Interpolare intre cei patru vecini: fara ea, o pagina indreptata are
+      // marginile literelor zimtate.
+      const x0 = sx | 0, y0 = sy | 0;
+      const x1 = Math.min(srcW - 1, x0 + 1), y1 = Math.min(srcH - 1, y0 + 1);
+      const tx = sx - x0, ty = sy - y0;
+      const q00 = (y0 * srcW + x0) * 4, q10 = (y0 * srcW + x1) * 4;
+      const q01 = (y1 * srcW + x0) * 4, q11 = (y1 * srcW + x1) * 4;
+      for (let c = 0; c < 3; c++) {
+        const sus = sursa[q00 + c] * (1 - tx) + sursa[q10 + c] * tx;
+        const jos = sursa[q01 + c] * (1 - tx) + sursa[q11 + c] * tx;
+        o[i + c] = sus * (1 - ty) + jos * ty;
+      }
+      o[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(iesire, 0, 0);
+  return encodePage(canvas);
 };
 
 /** Captures exactly the given normalised region of the source video. */

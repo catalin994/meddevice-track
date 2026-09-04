@@ -75,6 +75,77 @@ const hartaLuminii = (
   return harta;
 };
 
+/**
+ * Ce patrate au hartie in ele, si care sunt numai cerneala.
+ *
+ * Un patrat cazut in mijlocul unei scheme tiparite plin sau al unei poze lipite
+ * n-are hartie deloc: cuantila lui e tot cerneala. Daca se imparte la ea, iese
+ * o inmultire cu douasprezece si blocul negru devine gri — masurat, un bloc de
+ * 14 iesea la 157.
+ *
+ * Un patrat e socotit hartie daca tine pasul cu cel mai luminos patrat din jurul
+ * lui. Vecinatatea se ia larga, cat o cincime de pagina: lumina se schimba incet,
+ * asa ca hartia din umbra tine pasul cu hartia luminata de langa ea, pe cand
+ * cerneala nu tine pasul cu nimic.
+ */
+const patrateCuHartie = (harta: Float32Array, gw: number, gh: number): Uint8Array => {
+  const r = Math.max(4, Math.ceil(Math.max(gw, gh) / 5));
+  const masca = new Uint8Array(gw * gh);
+  for (let y = 0; y < gh; y++) {
+    for (let x = 0; x < gw; x++) {
+      let max = 0;
+      for (let yy = Math.max(0, y - r); yy <= Math.min(gh - 1, y + r); yy++) {
+        for (let xx = Math.max(0, x - r); xx <= Math.min(gw - 1, x + r); xx++) {
+          const v = harta[yy * gw + xx];
+          if (v > max) max = v;
+        }
+      }
+      masca[y * gw + x] = harta[y * gw + x] >= max * 0.55 ? 1 : 0;
+    }
+  }
+  return masca;
+};
+
+/**
+ * Umple patratele fara hartie cu lumina din jur.
+ *
+ * Lumina e un lucru neted; sub un bloc de cerneala nu se vede, dar se ghiceste
+ * din marginile lui. Se lasa valorile bune sa se scurga inauntru, pas cu pas,
+ * pana acopera gaura — asa blocul se imparte la lumina care cade pe el, si
+ * ramane negru.
+ */
+const umpleGolurile = (harta: Float32Array, masca: Uint8Array, gw: number, gh: number): Float32Array => {
+  const out = Float32Array.from(harta);
+  const bun = Uint8Array.from(masca);
+  // Daca nu s-a gasit hartie nicaieri, nu e nimic de imprumutat.
+  if (!bun.some(v => v)) return out;
+
+  for (let pas = 0; pas < gw + gh; pas++) {
+    let mai = false;
+    const adaug: number[] = [];
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        const i = y * gw + x;
+        if (bun[i]) continue;
+        let s = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= gh) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= gw || bun[yy * gw + xx] !== 1) continue;
+            s += out[yy * gw + xx]; n++;
+          }
+        }
+        if (n > 0) { out[i] = s / n; adaug.push(i); mai = true; }
+      }
+    }
+    adaug.forEach(i => { bun[i] = 1; });
+    if (!mai) break;
+  }
+  return out;
+};
+
 /** Netezeste harta, ca trecerea de la un patrat la altul sa nu se vada. */
 const netezeste = (harta: Float32Array, gw: number, gh: number, treceri = 2): Float32Array => {
   let a: Float32Array = harta;
@@ -113,51 +184,56 @@ const laPunct = (harta: Float32Array, gw: number, gh: number, fx: number, fy: nu
 };
 
 /**
- * Cat din imagine e hartie.
+ * Daca ce s-a fotografiat e o pagina.
  *
- * Asta deosebeste o pagina de o poza, si e singurul lucru care conteaza aici:
- * o foaie e aproape numai fond luminos, cu cateva procente de cerneala pe el.
- * Un aparat fotografiat pentru fisa lui — carcasa gri pe un birou inchis, cu un
- * afisaj — n-are fond luminos aproape deloc.
+ * Se judeca dupa margini, nu dupa media imaginii. Ce ajunge aici e o pagina
+ * deja decupata — deci marginile cadrului sunt marginile foii, si acolo hartia
+ * e aproape intotdeauna goala. Pe poza unui aparat, marginile sunt biroul.
  *
- * Se ia nivelul celui mai luminos sfert din imagine ca reper si se numara cati
- * pixeli ajung macar pana la o treime din el. Pe o pagina umbrita, chiar si
- * coltul cel mai intunecat trece pragul: umbra injumatateste lumina, nu o
- * stinge. Pe poza aparatului, fundalul si afisajul raman mult sub el.
+ * A doua incercare masura cat din toata imaginea e luminos, si cadea exact pe
+ * paginile care aveau nevoie: un raport cu o schema tiparita plin sau cu o poza
+ * lipita are un sfert din suprafata intunecata, scadea sub prag si nu se
+ * indrepta deloc — masurat, o pagina cu un bloc negru mare iesea neatinsa,
+ * 178 si 131 inainte, 178 si 131 dupa. Marginile n-au patit nimic: si acolo, si
+ * pe o pagina curata, sunt tot hartie.
  *
- * Prima incercare masura altceva — cat de aproape e fiecare pixel de fondul din
- * patratul lui — si carcasa uniforma a aparatului trecea drept hartie tocmai
- * fiindca era uniforma. Masurat pe poza de proba, indreptarea scotea 41% din
- * pixeli complet negri sau complet albi.
+ * Prima incercare masura cat de aproape e fiecare pixel de fondul din patratul
+ * lui, si carcasa uniforma a unui aparat trecea drept hartie tocmai fiindca era
+ * uniforma.
+ *
+ * @returns cat din patratele de pe margine sunt hartie, si cat din toate
  */
-const parteDeHartie = (d: Uint8ClampedArray, w: number, h: number): number => {
-  const hist = new Uint32Array(256);
-  let n = 0;
-  // Din trei in trei pixeli pe fiecare directie: se cauta o proportie, nu un
-  // numar exact, si asta e de noua ori mai ieftin.
-  for (let y = 0; y < h; y += 3) {
-    for (let x = 0; x < w; x += 3) {
-      const i = (y * w + x) * 4;
-      hist[(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0]++;
-      n++;
+const catEHartie = (
+  harta: Float32Array, gw: number, gh: number,
+): { margine: number; tot: number } => {
+  const sortate = Array.from(harta).sort((a, b) => a - b);
+  const varf = sortate[Math.floor(sortate.length * 0.9)] || 1;
+  const prag = varf * 0.5;
+
+  let peMargine = 0, dinMargine = 0, peste = 0;
+  for (let y = 0; y < gh; y++) {
+    for (let x = 0; x < gw; x++) {
+      const bun = harta[y * gw + x] >= prag;
+      if (bun) peste++;
+      if (x === 0 || y === 0 || x === gw - 1 || y === gh - 1) {
+        dinMargine++;
+        if (bun) peMargine++;
+      }
     }
   }
-  if (n === 0) return 0;
-
-  let vazut = 0, luminos = 255;
-  for (let t = 255; t >= 0; t--) {
-    vazut += hist[t];
-    if (vazut >= n * 0.25) { luminos = t; break; }
-  }
-  const prag = Math.max(24, luminos / 3);
-
-  let peste = 0;
-  for (let t = Math.ceil(prag); t < 256; t++) peste += hist[t];
-  return peste / n;
+  return {
+    margine: dinMargine > 0 ? peMargine / dinMargine : 0,
+    tot: peste / (gw * gh),
+  };
 };
 
-/** Sub atat nu mai e o pagina de hartie, si nu se atinge nimic. */
-const HARTIE_MINIM = 0.7;
+/*
+ * Pragurile. Marginea cantareste mult, fiindca acolo raspunsul e limpede; a
+ * doua cifra e o plasa de siguranta pentru o poza care se nimereste sa aiba
+ * chenar luminos.
+ */
+const MARGINE_MINIM = 0.7;
+const TOT_MINIM = 0.45;
 
 /**
  * Indreapta lumina pe o pagina deja decupata. Lucreaza pe loc, in canvas.
@@ -176,18 +252,27 @@ export const indreaptaLumina = (canvas: HTMLCanvasElement): boolean => {
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
 
-  // Hartie sau nu — intrebarea se pune prima, ca sa nu se calculeze hartile
-  // luminii degeaba pentru o poza care oricum nu se atinge.
-  if (parteDeHartie(d, w, h) < HARTIE_MINIM) return false;
-
   const pas = Math.max(16, Math.round(Math.max(w, h) * PATRAT));
   const gw = Math.max(2, Math.ceil(w / pas));
   const gh = Math.max(2, Math.ceil(h / pas));
 
+  // Harta pe verde intai — cea mai apropiata de cum vede ochiul — ca sa se
+  // poata raspunde la intrebarea "e hartie?" inainte de restul muncii.
+  const hartaVerde = hartaLuminii(d, w, h, 1, gw, gh, pas, pas);
+  const cat = catEHartie(hartaVerde, gw, gh);
+  if (cat.margine < MARGINE_MINIM || cat.tot < TOT_MINIM) return false;
+
+  // Unde e hartie se hotaraste o data, pe verde, si se foloseste pentru toate
+  // trei canalele — altfel un bloc rosu ar fi socotit hartie pe rosu si cerneala
+  // pe albastru, si ar iesi colorat aiurea.
+  const cuHartie = patrateCuHartie(hartaVerde, gw, gh);
+
   // Cate o harta pe canal: umbra pleaca odata cu culoarea becului, si hartia
   // iese alba, nu galbena sub tungsten sau albastra la umbra de la fereastra.
-  const harti = [0, 1, 2].map(c =>
-    netezeste(hartaLuminii(d, w, h, c, gw, gh, pas, pas), gw, gh));
+  const harti = [0, 1, 2].map(c => netezeste(umpleGolurile(
+    c === 1 ? hartaVerde : hartaLuminii(d, w, h, c, gw, gh, pas, pas),
+    cuHartie, gw, gh,
+  ), gw, gh));
 
   /*
    * Intai impartirea, apoi masurarea negrului.
