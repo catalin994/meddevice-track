@@ -69,6 +69,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     isCNCAN: !!device.isCNCAN,
     cncanExpiry: device.cncanExpiry || '',
     warrantyExpiration: device.warrantyExpiration || '',
+    commissioningDate: device.commissioningDate || '',
     metrologyRequired: !!device.metrologyRequired,
     metrologyCertificate: device.metrologyCertificate || '',
     metrologyDate: device.metrologyDate || '',
@@ -99,6 +100,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         isCNCAN: !!device.isCNCAN,
         cncanExpiry: device.cncanExpiry || '',
         warrantyExpiration: device.warrantyExpiration || '',
+        commissioningDate: device.commissioningDate || '',
         metrologyRequired: !!device.metrologyRequired,
         metrologyCertificate: device.metrologyCertificate || '',
         metrologyDate: device.metrologyDate || '',
@@ -747,6 +749,15 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                                 aria-label="Data expirarii autorizatiei CNCAN"
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors disabled:opacity-40" />
                             </div>
+                            {/* Al treilea in grila de doua coloane, deci chiar
+                                sub garantie — de unde si curge garantia. */}
+                            <div className="space-y-1.5">
+                              <label className="tech-label ml-1">Pus in functiune</label>
+                              <input type="date" name="commissioningDate" value={editForm.commissioningDate}
+                                onChange={handleEditChange} aria-label="Data punerii in functiune"
+                                title="Cand a inceput aparatul sa fie folosit — de obicei dupa instalare si instruire, nu in ziua facturii"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -756,7 +767,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             gol={device.metrologyRequired ? 'Netrecut — aparatul e supus controlului metrologic' : 'Nu e supus controlului metrologic'}
                             greuCandLipseste={!!device.metrologyRequired}
                             detaliu={[device.metrologyCertificate, device.metrologyLab].filter(Boolean).join(' · ')} />
-                          <TermenRow eticheta="Garantie" data={device.warrantyExpiration} gol="Netrecuta" />
+                          {/* Cele doua stau impreuna, intr-o singura casuta a
+                              grilei: garantia curge de la punerea in functiune,
+                              si asezate una sub alta se citesc ca o pereche. */}
+                          <div className="space-y-3 self-start">
+                            <TermenRow eticheta="Garantie" data={device.warrantyExpiration} gol="Netrecuta" />
+                            <TermenRow eticheta="Pus in functiune" data={device.commissioningDate}
+                              gol="Netrecuta" trecut />
+                          </div>
                           {device.isCNCAN && (
                             <TermenRow eticheta="Autorizatie CNCAN" data={device.cncanExpiry} gol="Netrecuta" greuCandLipseste />
                           )}
@@ -1300,16 +1318,33 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
  * Data singura nu spune nimic: "12.03.2026" cere socoteala in cap de fiecare
  * data. Aici scrie si daca a trecut, si peste cat timp vine.
  */
-const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste, neconfirmat, notaNeconfirmat }: {
+const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste, neconfirmat, notaNeconfirmat, trecut }: {
   eticheta: string; data?: string; gol: string; detaliu?: string; greuCandLipseste?: boolean;
   /* Data exista, dar nimic n-o sustine — se arata, nu se numara. */
   neconfirmat?: boolean; notaNeconfirmat?: string;
+  /**
+   * O data care e trecuta prin firea ei, nu un termen.
+   *
+   * Punerea in functiune e intotdeauna in urma. Numarata ca termen, ar iesi
+   * rosie si ar scrie "expirat de patru sute de zile" pe un aparat perfect
+   * sanatos. Ce spune ea de fapt e de cat timp e aparatul in exploatare — si
+   * asta se citeste in ani, nu in zile.
+   */
+  trecut?: boolean;
 }) => {
   const zile = data && !Number.isNaN(Date.parse(data))
     ? Math.ceil((new Date(`${data}T00:00:00`).getTime()
       - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00').getTime()) / 86400000)
     : null;
-  const numara = zile !== null && !neconfirmat;
+  const numara = zile !== null && !neconfirmat && !trecut;
+  /** De cat timp, in cuvinte, pentru o data din urma. */
+  const vechime = (z: number) => {
+    const luni = Math.max(0, Math.round(z / 30.44));
+    if (luni < 1) return 'de zilele astea';
+    if (luni < 12) return `de ${luni} ${luni === 1 ? 'luna' : 'luni'}`;
+    const ani = Math.floor(luni / 12), rest = luni % 12;
+    return `de ${ani} ${ani === 1 ? 'an' : 'ani'}${rest ? ` si ${rest} ${rest === 1 ? 'luna' : 'luni'}` : ''}`;
+  };
   const ton = !numara
     ? (greuCandLipseste && zile === null ? 'bg-amber-50 border-amber-200 text-amber-800'
        : 'bg-slate-50 border-slate-200 text-slate-500')
@@ -1325,6 +1360,9 @@ const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste, neconfirmat
           <span className="text-[11px] font-bold ml-2 opacity-80">
             {zile! < 0 ? `expirat de ${-zile!} zile` : zile === 0 ? 'expira azi' : `peste ${zile} zile`}
           </span>
+        )}
+        {trecut && zile !== null && zile <= 0 && (
+          <span className="text-[11px] font-bold ml-2 opacity-80">in functiune {vechime(-zile)}</span>
         )}
       </p>
       {neconfirmat && notaNeconfirmat && (

@@ -35,6 +35,7 @@ export const ETICHETE: Record<string, string> = {
   category: 'Categorie',
   purchaseDate: 'Data achizitiei',
   warrantyExpiration: 'Expira garantia',
+  commissioningDate: 'Pus in functiune',
   notes: 'Observatii',
   location: 'Locatie',
   invoiceNumber: 'Numarul facturii',

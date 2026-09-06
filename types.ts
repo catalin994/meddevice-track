@@ -501,6 +501,16 @@ export interface MedicalDevice {
   department: string;
   purchaseDate: string;
   warrantyExpiration?: string;
+  /**
+   * Cand a fost pus aparatul in functiune.
+   *
+   * Nu se confunda cu data achizitiei: intre factura si prima folosire trec de
+   * obicei saptamani, uneori luni — pana se face instalarea, instruirea si
+   * receptia. Garantia curge de la punerea in functiune, nu de la cumparare, si
+   * tot de la ea se numara vechimea reala in exploatare, cea care conteaza cand
+   * se pune intrebarea daca aparatul mai merita reparat sau se caseaza.
+   */
+  commissioningDate?: string;
   status: DeviceStatus;
   isCNCAN?: boolean;
   /** Autorizatia CNCAN are termen; se reinnoieste. */
