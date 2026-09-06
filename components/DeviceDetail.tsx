@@ -64,6 +64,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     model: device.model,
     serialNumber: device.serialNumber,
     inventoryNumber: device.inventoryNumber || '',
+    smisCode: device.smisCode || '',
     department: device.department,
     status: device.status,
     isCNCAN: !!device.isCNCAN,
@@ -95,6 +96,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         model: device.model,
         serialNumber: device.serialNumber,
     inventoryNumber: device.inventoryNumber || '',
+        smisCode: device.smisCode || '',
         department: device.department,
         status: device.status,
         isCNCAN: !!device.isCNCAN,
@@ -572,6 +574,41 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors"
                              value={editForm.inventoryNumber || ''} onChange={handleEditChange} />
                         </div>
+                        {/*
+                          Codul SMIS, langa numarul de inventar: amandoua sunt
+                          coduri dupa care aparatul e cautat in alta evidenta.
+                          "SMIS" e scris de aplicatie, in caseta din stanga; in
+                          camp se tin doar cifrele, ca sa iasa la fel peste tot
+                          si sa se poata cauta dupa ele.
+                        */}
+                        <div className="space-y-1">
+                           <label className="tech-label ml-1">Cod SMIS</label>
+                           <div className="flex items-stretch gap-2">
+                             <span className="shrink-0 px-3.5 flex items-center bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-wide text-slate-500">
+                               SMIS
+                             </span>
+                             {/* Fara maxLength pe camp: browserul taie textul
+                                 inainte sa apuce sa iasa literele din el, si un
+                                 "SMIS 145321" lipit dintr-un document ramanea
+                                 "1" — primele sase caractere sunt "SMIS 1", din
+                                 care o singura cifra. Cele sase cifre se taie
+                                 mai jos, dupa ce s-au scos literele. */}
+                             <input name="smisCode" inputMode="numeric"
+                               placeholder="sase cifre, daca aparatul e dintr-un proiect"
+                               aria-label="Codul SMIS al proiectului"
+                               className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors"
+                               value={editForm.smisCode}
+                               onChange={e => setEditForm(p => ({ ...p, smisCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))} />
+                           </div>
+                           {/* Se spune, nu se opreste: un cod scurt se poate sa
+                               fie chiar asa, si o salvare refuzata pentru atat
+                               ar fi mai rea decat o cifra lipsa. */}
+                           {editForm.smisCode.length > 0 && editForm.smisCode.length < 6 && (
+                             <p className="text-[11px] font-bold text-amber-700 ml-1 mt-1">
+                               Codul SMIS are de obicei sase cifre; asta are {editForm.smisCode.length}.
+                             </p>
+                           )}
+                        </div>
                         <div className="space-y-1">
                            <label className="tech-label ml-1">Categorie</label>
                            <div className="relative">
@@ -632,6 +669,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 xl:gap-x-12">
                         <InfoRow label="Numar serie" value={device.serialNumber} badge />
                         <InfoRow label="Numar de inventar" value={device.inventoryNumber || '—'} badge={!!device.inventoryNumber} />
+                        {/* Numai la aparatele venite pe proiect. Pe restul, un
+                            rand gol pe fiecare fisa n-ar spune nimic. */}
+                        {device.smisCode && <InfoRow label="Cod SMIS" value={`SMIS ${device.smisCode}`} badge />}
                         <InfoRow label="Model" value={device.model} />
                         <InfoRow label="Departament" value={device.department} />
                         <InfoRow label="Categorie" value={device.category} />

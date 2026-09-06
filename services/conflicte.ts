@@ -33,6 +33,7 @@ export const ETICHETE: Record<string, string> = {
   department: 'Sectie',
   status: 'Stare',
   category: 'Categorie',
+  smisCode: 'Cod SMIS',
   purchaseDate: 'Data achizitiei',
   warrantyExpiration: 'Expira garantia',
   commissioningDate: 'Pus in functiune',

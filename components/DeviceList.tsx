@@ -1041,6 +1041,12 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       // a doua: pe eticheta generatorului scrie seria generatorului, nu a
       // aparatului. Cautata acolo, foaia de service se completeaza fara sa fie
       // desfacut fiecare aparat pe rand.
+      // Codul proiectului: la o raportare se cere lista aparatelor dintr-un
+      // proiect anume, si cautarea dupa cele sase cifre o scoate dintr-o data.
+      // Se cauta si cu "SMIS 123456" scris intreg, cum e trecut in hartii.
+      const smis = (d.smisCode || '').toLowerCase();
+      const smisIntreg = smis ? `smis ${smis}` : '';
+
       const parti = (d.components || [])
         .map(c => `${c.name || ''} ${c.serialNumber || ''} ${c.manufacturer || ''} ${c.model || ''}`)
         .join(' ').toLowerCase();
@@ -1053,6 +1059,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         model.includes(effectiveSearch) ||
         dept.includes(effectiveSearch) ||
         cat.includes(effectiveSearch) ||
+        smis.includes(effectiveSearch) ||
+        smisIntreg.includes(effectiveSearch) ||
         parti.includes(effectiveSearch);
       
       const matchStatus = filterStatus === 'ALL' || d.status === filterStatus;

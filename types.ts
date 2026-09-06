@@ -498,6 +498,19 @@ export interface MedicalDevice {
    * de serie, care lipseste de pe aproape o treime din ele.
    */
   inventoryNumber?: string;
+  /**
+   * Codul SMIS al proiectului prin care a fost cumparat aparatul.
+   *
+   * Aparatele venite pe fonduri europene se raporteaza si dupa codul
+   * proiectului, nu doar dupa numarul de inventar: la orice control sau
+   * raportare se cere lista aparatelor dintr-un proiect anume, si pana acum se
+   * facea de mana, dintr-un tabel tinut separat. Sunt sase cifre, si se repeta
+   * la toate aparatele din acelasi proiect — nu e un cod al aparatului, ci al
+   * proiectului din care face parte.
+   *
+   * Se tine doar cifrele; "SMIS" se scrie de aplicatie unde trebuie.
+   */
+  smisCode?: string;
   department: string;
   purchaseDate: string;
   warrantyExpiration?: string;
