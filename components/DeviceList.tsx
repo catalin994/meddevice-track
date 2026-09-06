@@ -1037,6 +1037,13 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       // Numarul de inventar e cel dupa care se cauta un aparat la o inventariere:
       // pe eticheta lipita de aparat scrie el, nu seria.
       const inv = (d.inventoryNumber || '').toLowerCase();
+      // Un aparat facut din doua obiecte are doua serii, si cea cautata poate fi
+      // a doua: pe eticheta generatorului scrie seria generatorului, nu a
+      // aparatului. Cautata acolo, foaia de service se completeaza fara sa fie
+      // desfacut fiecare aparat pe rand.
+      const parti = (d.components || [])
+        .map(c => `${c.name || ''} ${c.serialNumber || ''} ${c.manufacturer || ''} ${c.model || ''}`)
+        .join(' ').toLowerCase();
 
       const matchSearch = !effectiveSearch || 
         name.includes(effectiveSearch) || 
@@ -1045,7 +1052,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         mfr.includes(effectiveSearch) ||
         model.includes(effectiveSearch) ||
         dept.includes(effectiveSearch) ||
-        cat.includes(effectiveSearch);
+        cat.includes(effectiveSearch) ||
+        parti.includes(effectiveSearch);
       
       const matchStatus = filterStatus === 'ALL' || d.status === filterStatus;
       const matchDept = filterDept === 'ALL' || d.department === filterDept;

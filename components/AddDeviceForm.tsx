@@ -1,10 +1,11 @@
 
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import ConfirmDialog from './ConfirmDialog';
-import { MedicalDevice, DeviceStatus, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
+import { MedicalDevice, DeviceStatus, DeviceComponent, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
 import { CATEGORII_CU_METROLOGIE } from '../services/termene';
 import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert, AlertTriangle } from 'lucide-react';
 import DepartmentPicker from './DepartmentPicker';
+import { ElementeEditor } from './ElementeComponente';
 
 interface AddDeviceFormProps {
   devices: MedicalDevice[];
@@ -40,6 +41,15 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     notes: '',
     image: ''
   });
+
+  /*
+   * Elementele aparatului, cand e facut din mai multe bucati.
+   *
+   * Numai la aparatul singur. La generarea in serie, fiecare rand ar primi
+   * aceleasi elemente cu aceleasi serii — adica sapte aparate care sustin toate
+   * ca au acelasi generator.
+   */
+  const [elemente, setElemente] = useState<DeviceComponent[]>([]);
 
   const [batchData, setBatchData] = useState({
     quantity: 1,
@@ -162,12 +172,14 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
       maintenanceHistory: [],
       contracts: [],
       files: [],
-      components: []
+      // Numai cele completate: un rand adaugat din greseala si lasat gol n-are
+      // ce cauta in fisa.
+      components: elemente.filter(c => c.name.trim() || (c.serialNumber || '').trim()),
     };
     
     await onSave(newDevice);
     setIsSubmitting(false);
-  }, [formData, onSave, seriaLuata, inventarulLuat, intrebSeria]);
+  }, [formData, elemente, onSave, seriaLuata, inventarulLuat, intrebSeria]);
 
   const handleGenerateBatch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -310,6 +322,15 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
                 />
               </div>
             </div>
+
+            {/* Doar la aparatul singur: in serie, elementele ar fi copiate cu
+                tot cu serii pe fiecare rand generat. */}
+            {activeTab === 'single' && (
+              <div className="pt-6 border-t border-slate-100">
+                <ElementeEditor valoare={elemente} onChange={setElemente} />
+              </div>
+            )}
+
             <div className="flex justify-end gap-4 pt-6">
               <button type="button" onClick={onCancel} className="px-8 py-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-[13px]">Anuleaza</button>
               <button type="submit" className="px-12 py-4 bg-blue-600 text-white rounded-xl font-bold text-[13px] shadow-xl hover:bg-blue-700">Salveaza</button>

@@ -452,12 +452,30 @@ export interface DeviceFile {
   dateAdded: string;
 }
 
+/**
+ * O parte dintr-un aparat care sta pe o singura pozitie de inventar.
+ *
+ * Sunt aparate care in registrul de mijloace fixe au un singur numar, dar pe
+ * teren sunt doua obiecte: un aparat de radiologie cu generatorul si masa, un
+ * turn de endoscopie, un sterilizator cu generatorul lui de abur, un ecograf cu
+ * imprimanta. Fiecare parte are seria si modelul ei — si tocmai seria e ceruta
+ * cand se cheama service-ul sau se face inventarul — dar pozitia contabila e
+ * una singura si nu se poate desface.
+ *
+ * Se tin aici, in randul aparatului, nu ca aparate separate: doua randuri ar
+ * insemna doua numere de inventar, adica exact ce nu e adevarat.
+ */
 export interface DeviceComponent {
   id: string;
   name: string;
-  serialNumber: string;
+  /** Lipseste de pe multe placute; nu se cere. */
+  serialNumber?: string;
+  manufacturer?: string;
+  model?: string;
   status: DeviceStatus;
   installDate?: string;
+  /** Ce e de stiut despre partea asta anume. */
+  notes?: string;
 }
 
 export interface LocationLog {

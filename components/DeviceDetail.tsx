@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
+import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
 import Portal from './Portal';
+import { ElementeEditor, ElementeLista } from './ElementeComponente';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
 import { undeMaiEste, maiEFolosit, leagaFisierul } from '../services/fisierePartajate';
@@ -78,6 +79,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     files: device.files || [],
     purchaseDate: device.purchaseDate,
     nextMaintenanceDate: device.nextMaintenanceDate,
+    components: device.components || [],
     tags: device.tags || []
   });
 
@@ -107,6 +109,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         files: device.files || [],
         purchaseDate: device.purchaseDate,
         nextMaintenanceDate: device.nextMaintenanceDate,
+        components: device.components || [],
         tags: device.tags || []
       });
     }
@@ -648,6 +651,32 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                    )}
                    
+                   {/*
+                     Elementele din care e facut aparatul.
+
+                     Sunt aparate care in registrul de mijloace fixe au un
+                     singur numar, dar pe teren sunt doua obiecte: un aparat de
+                     radiologie cu generatorul si masa lui, un turn de
+                     endoscopie, un sterilizator cu generatorul de abur. Pana
+                     acum trebuia ales intre a le trece ca doua aparate — adica
+                     doua numere de inventar, ceea ce nu e adevarat si strica
+                     numaratoarea — si a scrie a doua serie intr-o nota, de unde
+                     n-o gaseste nimeni cand suna service-ul.
+                   */}
+                   <div className="pt-6 sm:pt-8 border-t border-slate-100">
+                      {isEditing ? (
+                        <ElementeEditor
+                          valoare={editForm.components}
+                          onChange={c => setEditForm(p => ({ ...p, components: c }))}
+                        />
+                      ) : (
+                        <div className="space-y-4">
+                          <label className="tech-label block">Elemente componente</label>
+                          <ElementeLista elemente={device.components || []} />
+                        </div>
+                      )}
+                   </div>
+
                    {/*
                      Termenele care nu se negociaza. Buletinul metrologic expirat
                      scoate aparatul din uz oricat de bine ar functiona, iar
