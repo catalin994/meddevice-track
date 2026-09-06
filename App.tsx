@@ -807,7 +807,27 @@ const App: React.FC = () => {
   const handleUpsertDevices = useCallback(async (data: MedicalDevice | MedicalDevice[]) => {
     const now = new Date().toISOString();
     const items = Array.isArray(data) ? data : [data];
-    const payload: MedicalDevice[] = items.map(d => ({ ...normalizeDevice(d), updated_at: now }));
+    /*
+     * Data introducerii se pune o singura data, la creare.
+     *
+     * Aici trec toate salvarile de aparate — formularul, importul din Excel,
+     * scanarea — si tot aici se stie daca aparatul exista deja.
+     *
+     * Se pune numai la unul chiar nou. Unul care exista isi pastreaza data, iar
+     * daca n-are niciuna — cum n-au aparatele introduse inainte sa existe campul
+     * — ramane tot fara: altfel o corectie de serie pe un aparat din 2011 i-ar
+     * scrie ziua de azi si l-ar trimite in capul listei de aparate noi. Pentru
+     * acelea, data se citeste din jurnal.
+     *
+     * Sincronizarea din cloud nu trece pe aici, deci un aparat coborat de pe alt
+     * telefon nu capata o data inventata.
+     */
+    const payload: MedicalDevice[] = items.map(d => {
+      const curat = normalizeDevice(d);
+      const vechi = devicesMap.get(curat.id);
+      const createdAt = vechi ? vechi.createdAt : (curat.createdAt || now);
+      return { ...curat, ...(createdAt ? { createdAt } : {}), updated_at: now };
+    });
     if (payload.length === 0) return;
 
     /*
@@ -1527,6 +1547,7 @@ const App: React.FC = () => {
                     referate={referate}
                     contracteRegistru={contracte}
                     canFinance={canFinance}
+                    auditEntries={auditLog}
                     onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }}
                     onOpenTasks={() => navigate('TASKS')}
                     onOpenFinance={tab => { navigate('FINANCE'); setTabFinanciar(tab); }}

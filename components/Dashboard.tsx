@@ -1,7 +1,7 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, referatTotal, normaliseDeviceStatus } from '../types';
-import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature } from 'lucide-react';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, referatTotal, normaliseDeviceStatus, AuditEntry } from '../types';
+import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature, PackagePlus } from 'lucide-react';
 import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, areDovadaVerificarii, mentenantaNeconfirmata, Termen, FelTermen } from '../services/termene';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
@@ -15,6 +15,8 @@ interface DashboardProps {
   contracteRegistru?: Contract[];
   /** Fara drept pe Financiar, cele doua sectiuni nu au ce cauta pe Panou. */
   canFinance?: boolean;
+  /** Jurnalul, pentru aparatele introduse inainte sa existe data de introducere. */
+  auditEntries?: AuditEntry[];
   onSelectDevice?: (id: string) => void;
   /** Ducerea la lista intreaga de tichete, cand cele de pe Panou nu ajung. */
   onOpenTasks?: () => void;
@@ -32,6 +34,18 @@ const zilePanaLa = (data?: string): number | null => {
 
 const lei = (n: number) => n.toLocaleString('ro-RO', { maximumFractionDigits: 0 });
 
+/** Cate zile au trecut de la o data, in cuvinte. */
+const deCand = (iso: string): string => {
+  const zile = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (zile <= 0) return 'azi';
+  if (zile === 1) return 'ieri';
+  if (zile < 7) return `acum ${zile} zile`;
+  if (zile < 14) return 'acum o saptamana';
+  if (zile < 31) return `acum ${Math.floor(zile / 7)} saptamani`;
+  if (zile < 62) return 'acum o luna';
+  return `acum ${Math.floor(zile / 30)} luni`;
+};
+
 /** Urgentele intai, si la aceeasi urgenta cel deschis mai de curand. */
 const RANG_PRIORITATE: Record<TaskPriority, number> = {
   [TaskPriority.CRITICAL]: 0,
@@ -45,7 +59,7 @@ const TICHETE_PE_PANOU = 8;
 
 const Dashboard: React.FC<DashboardProps> = ({
   devices, tasks, referate = [], contracteRegistru = [], canFinance = false,
-  onSelectDevice, onOpenTasks, onOpenFinance,
+  auditEntries = [], onSelectDevice, onOpenTasks, onOpenFinance,
 }) => {
   
   const statusData = useMemo(() => {
@@ -185,6 +199,40 @@ const Dashboard: React.FC<DashboardProps> = ({
       valoareActiva: [...active, ...apropiate].reduce((s, c) => s + (c.annualCost || 0), 0),
     };
   }, [contracte]);
+
+  /*
+   * Ultimele aparate introduse in evidenta.
+   *
+   * Data se ia de pe aparat, unde exista. Aparatele introduse inainte sa existe
+   * campul n-o au — pentru ele se cauta in jurnal intrarea de creare, care
+   * spune si cine le-a adaugat. Un aparat fara nici una nici alta nu se afiseaza
+   * cu o data inventata: pur si simplu nu apare aici, fiind oricum mai vechi
+   * decat oricare dintre cele care au una.
+   *
+   * Nu se ia data achizitiei: un aparat cumparat in 2011 si introdus in evidenta
+   * saptamana trecuta e exact ce se cauta aici, si dupa data achizitiei ar fi
+   * ultimul din lista.
+   */
+  const introduseRecent = useMemo(() => {
+    const dinJurnal = new Map<string, { data: string; cine?: string }>();
+    for (const e of auditEntries) {
+      if (e.action !== 'create' || e.entity !== 'device' || !e.entityId) continue;
+      const stiut = dinJurnal.get(e.entityId);
+      // Daca acelasi aparat are mai multe intrari de creare — o stergere si o
+      // punere la loc — conteaza cea dintai.
+      if (!stiut || e.timestamp < stiut.data) dinJurnal.set(e.entityId, { data: e.timestamp, cine: e.userName });
+    }
+    return devices
+      .map(d => {
+        const j = dinJurnal.get(d.id);
+        const data = d.createdAt || j?.data;
+        if (!data) return null;
+        return { device: d, data, cine: j?.cine as string | undefined };
+      })
+      .filter((x): x is { device: MedicalDevice; data: string; cine: string | undefined } => x !== null)
+      .sort((a, b) => b.data.localeCompare(a.data))
+      .slice(0, 8);
+  }, [devices, auditEntries]);
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -426,6 +474,63 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
       )}
+
+      {/*
+        Ce s-a adaugat de curand in evidenta.
+        Panoul spunea cate aparate sunt si care cer ceva, dar nu si care sunt
+        noi — asa ca dupa o zi de introdus aparate nu se putea vedea, dintr-o
+        privire, ce a intrat. Iar cand lucreaza doi oameni la aceeasi evidenta,
+        e singurul loc care arata ce a adaugat celalalt.
+      */}
+      <div className="hardware-card p-5 sm:p-8 rounded-3xl">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
+          <div>
+            <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Ultimele aparate introduse</h3>
+            <p className="text-[13px] font-semibold text-slate-500 mt-1">
+              {introduseRecent.length === 0
+                ? 'Nimic inregistrat inca'
+                : `Cele mai noi ${introduseRecent.length} intrari din evidenta`}
+            </p>
+          </div>
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><PackagePlus className="w-6 h-6" /></div>
+        </div>
+
+        {introduseRecent.length === 0 ? (
+          <p className="text-[13px] font-semibold text-slate-500 leading-relaxed">
+            Niciun aparat nu are inca data introducerii. Cele adaugate de acum incolo apar aici,
+            cu ziua in care au intrat si cine le-a adaugat.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
+            {introduseRecent.map(({ device, data, cine }) => (
+              <button
+                key={device.id}
+                onClick={() => onSelectDevice?.(device.id)}
+                className="text-left p-4 sm:p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-sm hover:shadow-slate-200/50 transition-all duration-300 active:scale-[0.98]"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-blue-600 whitespace-nowrap">
+                    {deCand(data)}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">
+                    {new Date(data).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' })}
+                  </span>
+                </div>
+                {/* Numele intreg, pe doua randuri daca trebuie: "EQ-90" singur nu
+                    spune nimanui despre ce aparat e vorba. */}
+                <p className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 break-words" title={device.name}>
+                  {device.name || device.model || 'Dispozitiv fara nume'}
+                </p>
+                <p className="text-xs font-semibold text-slate-500 mt-1 truncate">{device.department}</p>
+                <p className="text-[11px] font-semibold text-slate-400 mt-1.5 truncate">
+                  {device.inventoryNumber ? `Nr. inv. ${device.inventoryNumber}` : 'Fara numar de inventar'}
+                  {cine ? ` · ${cine}` : ''}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/*
         Hartia achizitiei, pe scurt.

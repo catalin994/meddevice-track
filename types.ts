@@ -514,6 +514,19 @@ export interface MedicalDevice {
   locationHistory?: LocationLog[];
   nextMaintenanceDate?: string;
   tags?: string[];
+  /**
+   * Cand a fost introdus aparatul in aplicatie.
+   *
+   * Nu se confunda cu data achizitiei: un aparat cumparat in 2011 poate fi
+   * introdus in evidenta saptamana trecuta, si tocmai asta se cauta cand cineva
+   * vrea sa vada ce s-a adaugat de curand. Se pune o singura data, la creare, si
+   * nu se mai atinge la editari — altfel o corectie de serie ar face aparatul sa
+   * para nou.
+   *
+   * Aparatele introduse inainte de campul asta n-o au. Pentru ele, data se
+   * citeste din jurnal, unde exista o intrare de creare.
+   */
+  createdAt?: string;
   updated_at?: string;
 }
 
