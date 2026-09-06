@@ -33,15 +33,21 @@ export const ElementeEditor: React.FC<Props> = ({ valoare, onChange }) => {
 
   return (
     <div className="space-y-4">
+      {/* Butonul e cel pe care aplicatia il foloseste deja pentru un rand adaugat
+          intr-un formular — acelasi ca "Adauga pozitie" din referat. Era negru
+          si plin, adica butonul de actiune principala, pus pe ceva marunt: intr-o
+          fisa unde "Salveaza" e albastru, doua butoane grele se bat intre ele. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="tech-label block">Elemente componente</label>
+        <label className="tech-label block">
+          Elemente componente{valoare.length > 1 && <span className="text-blue-600"> · {valoare.length}</span>}
+        </label>
         <button
           type="button"
           onClick={() => onChange([...valoare, {
             id: crypto.randomUUID(), name: '', serialNumber: '', manufacturer: '',
             model: '', status: DeviceStatus.ACTIVE,
           }])}
-          className="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-black transition active:scale-95 flex items-center gap-1.5"
+          className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center gap-2"
         >
           <Plus className="w-3.5 h-3.5" /> Adauga element
         </button>
