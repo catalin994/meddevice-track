@@ -1,10 +1,11 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check } from 'lucide-react';
+import { X, ScanLine, AlertCircle, CheckCircle, Loader2, RectangleVertical, RectangleHorizontal, Sparkles, Hand, RotateCcw, Check, Crop, RotateCw } from 'lucide-react';
 
 import Portal from './Portal';
+import AjusteazaMarginile from './AjusteazaMarginile';
 import useEscape from './useEscape';
-import { cropVideoToFrame, cropVideoToRect, cropVideoToQuad, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, FRAME_ASPECT, Orientation, DocRect, Colturi } from './scanUtils';
+import { cropVideoToFrame, cropVideoToRect, cropVideoToQuad, analyzeFrame, rectIoU, visibleSourceRect, sourceRectToDisplay, sourcePointToDisplay, FRAME_ASPECT, Orientation, DocRect, Colturi } from './scanUtils';
 
 interface CameraDocCaptureProps {
   title?: string;
@@ -30,11 +31,28 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
   // one over the preview (used for the outline). object-cover makes them differ.
   const [detected, setDetected] = useState<DocRect | null>(null);
   const [detectedOnScreen, setDetectedOnScreen] = useState<DocRect | null>(null);
+  /** Colturile foii, mutate unde se vad pe ecran, pentru conturul viu. */
+  const [colturiPeEcran, setColturiPeEcran] = useState<Colturi | null>(null);
   const [holdProgress, setHoldProgress] = useState(0); // 0..1 while framing settles
   const [isBlurry, setIsBlurry] = useState(false);
   const [justCaptured, setJustCaptured] = useState(false);
   // Auto-captured page awaiting the user's keep/retake decision
   const [pendingPage, setPendingPage] = useState<string | null>(null);
+  /*
+   * Cadrul intreg al fotografiei, tinut cat pagina asteapta o hotarare.
+   *
+   * Pagina care se vede in revizuire e deja taiata si indreptata — din ea nu se
+   * mai poate scoate un colt lasat pe dinafara. Ca sa se poata corecta
+   * marginile, trebuie pastrat ce a vazut camera, intreg: nu doar felia care a
+   * incaput pe ecran, fiindca senzorul prinde mai mult, si uneori tocmai acolo
+   * e coltul care lipseste.
+   *
+   * Sta unul singur, cel in asteptare, deci nu se aduna nimic in memorie.
+   */
+  const cadruBrutRef = useRef<HTMLCanvasElement | null>(null);
+  const [cadruBrut, setCadruBrut] = useState<string | null>(null);
+  const [colturiBrute, setColturiBrute] = useState<Colturi | null>(null);
+  const [ajustez, setAjustez] = useState(false);
   const workCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastRectRef = useRef<DocRect | null>(null);
   const smoothRectRef = useRef<DocRect | null>(null);
@@ -146,6 +164,28 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     return cropVideoToRect(video, rect, canvas);
   }, [autoMode, rectForCapture]);
 
+  /** Patrulaterul de pornire, cand n-au fost gasite colturi: putin in interior. */
+  const COLTURI_IMPLICITE: Colturi = [
+    { x: 0.12, y: 0.12 }, { x: 0.88, y: 0.12 }, { x: 0.88, y: 0.88 }, { x: 0.12, y: 0.88 },
+  ];
+
+  /** Tine minte cadrul intreg si colturile lui, pentru o eventuala corectie. */
+  const tineMinteCadrul = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) { setCadruBrut(null); setColturiBrute(null); return; }
+    if (!cadruBrutRef.current) cadruBrutRef.current = document.createElement('canvas');
+    const c = cadruBrutRef.current;
+    c.width = video.videoWidth;
+    c.height = video.videoHeight;
+    const ctx = c.getContext('2d');
+    if (!ctx) { setCadruBrut(null); return; }
+    ctx.drawImage(video, 0, 0);
+    // Calitate mica: e doar pentru ochi, in ecranul de corectie. Taierea de
+    // dupa se face din canvas, la rezolutia intreaga.
+    setCadruBrut(c.toDataURL('image/jpeg', 0.72));
+    setColturiBrute(colturiRef.current || COLTURI_IMPLICITE);
+  }, []);
+
   const resetDetection = useCallback((cooldownMs = 1500) => {
     cooldownUntilRef.current = Date.now() + cooldownMs;
     stableSinceRef.current = 0;
@@ -157,6 +197,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
     setIsBlurry(false);
     setDetected(null);
     setDetectedOnScreen(null);
+    setColturiPeEcran(null);
   }, []);
 
   // Manual shutter — commits straight away, the press is the confirmation
@@ -171,25 +212,65 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
 
   // Auto capture — hands the shot to the review step instead of committing it
   const captureForReview = useCallback(() => {
+    // Intai cadrul brut, apoi taierea: amandoua din aceeasi privire.
+    tineMinteCadrul();
     const dataUrl = grabFrame();
     if (!dataUrl) return;
     setPendingPage(dataUrl);
     setJustCaptured(true);
     setTimeout(() => setJustCaptured(false), 450);
     resetDetection(0);
-  }, [grabFrame, resetDetection]);
+  }, [grabFrame, resetDetection, tineMinteCadrul]);
 
   const keepPendingPage = useCallback(() => {
     if (!pendingPage) return;
     setPages(prev => [...prev, pendingPage]);
     setPendingPage(null);
+    setCadruBrut(null);
+    setColturiBrute(null);
     resetDetection(1500); // pause so turning the page doesn't trigger a shot
   }, [pendingPage, resetDetection]);
 
   const retakePendingPage = useCallback(() => {
     setPendingPage(null);
+    setCadruBrut(null);
+    setColturiBrute(null);
     resetDetection(700);
   }, [resetDetection]);
+
+  /** Taie din nou aceeasi fotografie, dupa colturile mutate de om. */
+  const taieDinNou = useCallback((noi: Colturi) => {
+    const brut = cadruBrutRef.current;
+    const canvas = canvasRef.current;
+    setAjustez(false);
+    if (!brut || !canvas) return;
+    const taiat = cropVideoToQuad(brut as any, noi, canvas);
+    if (taiat) { setPendingPage(taiat); setColturiBrute(noi); }
+  }, []);
+
+  /**
+   * Roteste pagina cu un sfert de tura.
+   *
+   * O foaie asezata pe lat, sau una prinsa cu telefonul intors, iese culcata —
+   * si pana acum singurul raspuns era sa fie fotografiata din nou. Se roteste
+   * imaginea gata taiata, nu fotografia: la ea se uita omul.
+   */
+  const rotestePagina = useCallback(() => {
+    if (!pendingPage) return;
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.height;
+      c.height = img.width;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.translate(c.width / 2, c.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      setPendingPage(c.toDataURL('image/jpeg', 0.9));
+    };
+    img.src = pendingPage;
+  }, [pendingPage]);
 
   // Detection loop — samples the frame a few times a second and auto-captures
   // once the same sheet has stayed put for a moment.
@@ -224,6 +305,7 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         stableSinceRef.current = 0;
         setDetected(null);
         setDetectedOnScreen(null);
+        setColturiPeEcran(null);
         setHoldProgress(0);
         setIsBlurry(false);
         return;
@@ -249,6 +331,20 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
         video.videoWidth, video.videoHeight,
         video.clientWidth, video.clientHeight,
       ));
+      /*
+       * Conturul se deseneaza pe colturile adevarate, nu pe cutia din jur.
+       *
+       * O foaie pusa strambat pe birou — adica orice foaie — nu e un
+       * dreptunghi pe ecran, iar chenarul drept din jurul ei cuprindea si o
+       * felie de masa in doua colturi. Se vedea ca aplicatia nu stie unde e
+       * foaia, desi stia: colturile erau deja calculate, doar ca nu le desena
+       * nimeni.
+       */
+      setColturiPeEcran(colturi
+        ? (colturi.map(c => sourcePointToDisplay(
+            c, video.videoWidth, video.videoHeight, video.clientWidth, video.clientHeight,
+          )) as Colturi)
+        : null);
 
       // Peak decays, so moving to a genuinely less detailed page re-baselines
       // instead of blocking capture forever.
@@ -351,7 +447,52 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
             {/* AUTO: live outline around the detected sheet */}
             {autoMode && (
               <div className="absolute inset-0 pointer-events-none">
-                {detectedOnScreen ? (
+                {colturiPeEcran ? (
+                  /*
+                   * Conturul urmareste foaia, nu cutia din jurul ei.
+                   *
+                   * Se deseneaza in coordonate de la zero la o suta, si se
+                   * intinde peste toata previzualizarea — asa poligonul nu are
+                   * nevoie sa stie cati pixeli are ecranul. Restul imaginii se
+                   * intuneca printr-o gaura taiata in dreptunghiul negru, exact
+                   * pe forma foii.
+                   */
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+                    className="absolute inset-0 w-full h-full transition-opacity duration-150"
+                    style={{ opacity: 0.55 + holdProgress * 0.45 }}>
+                    <defs>
+                      <mask id="gauraFoii">
+                        <rect x="0" y="0" width="100" height="100" fill="white" />
+                        <polygon fill="black" points={colturiPeEcran.map(c => `${c.x * 100},${c.y * 100}`).join(' ')} />
+                      </mask>
+                    </defs>
+                    <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.45)" mask="url(#gauraFoii)" />
+                    <polygon
+                      points={colturiPeEcran.map(c => `${c.x * 100},${c.y * 100}`).join(' ')}
+                      fill="rgba(52,211,153,0.12)" stroke="#34d399"
+                      strokeWidth="2.5" vectorEffect="non-scaling-stroke"
+                      strokeLinejoin="round" />
+                  </svg>
+                ) : null}
+                {colturiPeEcran ? (
+                  /*
+                   * Semnele din colturi sunt puse peste desen, nu in el.
+                   *
+                   * Desenul e intins pe forma previzualizarii, si intr-un desen
+                   * intins un cerc iese oval — se vedea limpede: patru bobite
+                   * turtite in loc de patru puncte. Puse ca elemente obisnuite,
+                   * raman rotunde oricat de lat ar fi ecranul.
+                   */
+                  <div className="absolute inset-0 transition-opacity duration-150"
+                    style={{ opacity: 0.55 + holdProgress * 0.45 }}>
+                    {colturiPeEcran.map((c, i) => (
+                      <div key={i}
+                        className="absolute w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white shadow"
+                        style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%`, transform: 'translate(-50%, -50%)' }} />
+                    ))}
+                  </div>
+                ) : detectedOnScreen ? (
+                  /* Fara patru colturi curate, tot chenarul drept de pana acum. */
                   <div
                     className="absolute border-4 rounded-lg transition-all duration-150 border-emerald-400"
                     style={{
@@ -362,16 +503,21 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                       boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
                       opacity: 0.4 + holdProgress * 0.6,
                     }}
-                  >
-                    {holdProgress > 0 && (
-                      <div className="absolute -bottom-1 left-0 h-1.5 bg-emerald-400 rounded-full transition-all duration-150" style={{ width: `${holdProgress * 100}%` }} />
-                    )}
-                  </div>
+                  />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="px-5 py-3 bg-black/60 rounded-2xl">
                       <p className="text-white/70 text-xs font-bold tracking-wide uppercase">Cauta documentul...</p>
                     </div>
+                  </div>
+                )}
+                {/* Cat mai e de tinut nemiscat. Statea lipita de chenarul
+                    drept; cu poligonul n-are de ce sa se agate, si oricum se
+                    citeste mai bine langa indicatie. */}
+                {holdProgress > 0 && (
+                  <div className="absolute bottom-48 left-1/2 -translate-x-1/2 w-40 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-400 rounded-full transition-all duration-150"
+                      style={{ width: `${holdProgress * 100}%` }} />
                   </div>
                 )}
                 <p className="absolute bottom-40 left-0 right-0 text-center text-white/80 text-[13px] font-bold tracking-normal px-6">
@@ -418,6 +564,23 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                 </div>
 
                 <div className="shrink-0 p-5 space-y-3">
+                  {/*
+                    Corectarea si rotirea, inaintea hotararii de a pastra.
+                    "Refa" era singurul raspuns cand taierea iesea stramb — adica
+                    fotografiaza din nou si spera; iar daca biroul e cel care
+                    incurca, a doua incercare iese la fel ca prima.
+                  */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setAjustez(true)} disabled={!cadruBrut}
+                      title={cadruBrut ? 'Trage colturile pe marginea foii' : 'Fotografia intreaga nu mai e disponibila'}
+                      className="flex items-center justify-center gap-2 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95 disabled:opacity-40">
+                      <Crop className="w-4 h-4" /> Marginile
+                    </button>
+                    <button onClick={rotestePagina}
+                      className="flex items-center justify-center gap-2 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95">
+                      <RotateCw className="w-4 h-4" /> Roteste
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={retakePendingPage}
                       className="flex items-center justify-center gap-2 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[13px] font-bold tracking-normal transition active:scale-95">
@@ -433,6 +596,15 @@ const CameraDocCapture: React.FC<CameraDocCaptureProps> = ({ title = 'Scaneaza D
                   </p>
                 </div>
               </div>
+            )}
+
+            {ajustez && cadruBrut && colturiBrute && (
+              <AjusteazaMarginile
+                imagine={cadruBrut}
+                colturi={colturiBrute}
+                onRenunta={() => setAjustez(false)}
+                onGata={taieDinNou}
+              />
             )}
 
             {pages.length > 0 && (

@@ -66,6 +66,21 @@ export const sourceRectToDisplay = (
   };
 };
 
+/**
+ * Un punct de pe senzor, mutat unde se vede el pe ecran.
+ *
+ * Previzualizarea umple caseta taind ce iese in afara, deci senzorul vede mai
+ * mult decat omul. Conturul desenat cu coordonatele senzorului ar cadea alaturi
+ * de foaie; trecut prin felia vizibila, cade pe ea.
+ */
+export const sourcePointToDisplay = (
+  p: Punct, srcW: number, srcH: number, displayW: number, displayH: number,
+): Punct => {
+  const view = visibleSourceRect(srcW, srcH, displayW, displayH);
+  if (!view.w || !view.h) return p;
+  return { x: (p.x - view.x) / view.w, y: (p.y - view.y) / view.h };
+};
+
 /** What one look at the camera frame tells us. */
 export interface FrameAnalysis {
   /** The sheet, in normalised video coordinates, or null if none is convincing. */
