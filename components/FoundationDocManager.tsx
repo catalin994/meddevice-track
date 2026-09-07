@@ -16,6 +16,9 @@ import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 import { fundamentareDocx, numeFisier } from '../services/documenteAchizitie';
 import { notify } from '../services/notices';
+import useTragere from './useTragere';
+import { citesteWord, eFisierWord } from '../services/docxCitit';
+import { citesteFundamentareDinWord } from '../services/achizitieWordParse';
 
 /**
  * Documentul de fundamentare, in forma pe care o cere legea.
@@ -341,17 +344,66 @@ const FoundationDocManager: React.FC<Props> = ({
     setEditez(true);
   }, []);
 
-  const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  /*
+   * Documentul primit, de oriunde vine: ales din fereastra sau tras peste caseta.
+   *
+   * Un .docx nu se ataseaza doar, se si citeste. Documentele de fundamentare
+   * sunt deja scrise pe formularul spitalului, si pana acum intrau in evidenta
+   * tastate a doua oara — numarul, compartimentul, descrierile si tot randul de
+   * valori din tabel. Se completeaza doar campurile goale: cine a inceput sa
+   * scrie ceva de mana nu vrea sa i se stearga.
+   */
+  const preiaDocumentul = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
+
+    if (eFisierWord(file) || /\.doc$/i.test(file.name)) {
+      try {
+        const doc = await citesteWord(file);
+        const c = citesteFundamentareDinWord(doc);
+        setForm(p => ({
+          ...p,
+          number: p.number || c.number,
+          date: c.date || p.date,
+          revision: p.revision || c.revision,
+          revisionDate: c.revisionDate || p.revisionDate,
+          compartment: p.compartment || c.compartment,
+          subject: p.subject || c.subject,
+          shortDescription: p.shortDescription || c.shortDescription,
+          description: p.description || c.description,
+          budgetArticle: p.budgetArticle || c.budgetArticle,
+          ssiCode: p.ssiCode || c.ssiCode,
+          program: p.program || c.program,
+          element: p.element || c.element,
+          parameters: p.parameters || c.parameters,
+          previousValue: p.previousValue || c.previousValue,
+          influence: p.influence || c.influence,
+          fileName: file.name,
+        }));
+        notify(c.gasite.length
+          ? `Din "${file.name}" s-au citit: ${c.gasite.join(', ')}. Verifica-le inainte sa salvezi.`
+          : `"${file.name}" s-a deschis, dar nu s-a recunoscut nimic din el. Completeaza de mana.`,
+          c.gasite.length ? 'success' : 'warning');
+      } catch (err: any) {
+        notify(err?.message || 'Documentul Word nu s-a putut citi.', 'error');
+      }
+      return;
+    }
+
     const dataUrl = await new Promise<string>(res => {
       const fr = new FileReader();
       fr.onload = () => res(fr.result as string);
       fr.readAsDataURL(file);
     });
     setForm(p => ({ ...p, fileUrl: dataUrl, fileName: file.name, filePath: undefined }));
-    e.target.value = '';
   }, []);
+
+  const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    await preiaDocumentul(file);
+  }, [preiaDocumentul]);
+
+  const tragere = useTragere(useCallback((fisiere: File[]) => { void preiaDocumentul(fisiere[0]); }, [preiaDocumentul]), true);
 
   const salveaza = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -916,19 +968,24 @@ const FoundationDocManager: React.FC<Props> = ({
                     className="camp min-h-[80px] resize-none" />
                 </Camp>
 
-                <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                <div {...tragere.proprietati}
+                  className={`p-5 rounded-2xl flex flex-wrap items-center justify-between gap-3 transition-colors ${
+ tragere.peDeasupra ? 'bg-blue-600 text-white ring-4 ring-blue-300' : 'bg-slate-900 text-white'
+                  }`}>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
                     <div className="min-w-0">
-                      <p className="text-xs font-black uppercase tracking-wide">Documentul scanat</p>
+                      <p className="text-xs font-black uppercase tracking-wide">Documentul</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
-                        {form.fileName || 'Ataseaza PDF-ul sau poza'}
+                        {form.fileName || (tragere.peDeasupra
+                          ? 'Da-i drumul aici'
+                          : 'Trage documentul Word si isi ia singur datele — sau ataseaza PDF-ul ori poza')}
                       </p>
                     </div>
                   </div>
                   <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 shrink-0 cursor-pointer">
                     <Upload className="w-4 h-4" /> Incarca
-                    <input type="file" accept="application/pdf,image/*" onChange={ataseaza} className="hidden" />
+                    <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
                   </label>
                 </div>
               </div>

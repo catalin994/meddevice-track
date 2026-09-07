@@ -9,6 +9,8 @@ import {
 } from '../types';
 import Portal from './Portal';
 import useTragere from './useTragere';
+import { citesteWord, eFisierWord } from '../services/docxCitit';
+import { citesteReferatDinWord } from '../services/achizitieWordParse';
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import DepartmentPicker from './DepartmentPicker';
@@ -191,9 +193,59 @@ const ReferatManager: React.FC<Props> = ({
      ajunge de multe ori fotografiat, nu scanat. */
   const preiaReferatul = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
+
+    /*
+     * Un referat scris in Word se citeste, nu doar se ataseaza.
+     *
+     * Referatele sunt deja scrise, pe formularul spitalului, si pana acum intrau
+     * in evidenta tastate a doua oara: antetul, obiectul, justificarea si
+     * fiecare pozitie cu cantitatea si pretul ei. Acum documentul tras peste
+     * caseta isi da singur datele, si ramane atasat ca orice alt fisier.
+     *
+     * Se completeaza doar campurile goale: cine a inceput sa scrie ceva de mana
+     * nu vrea sa i se stearga.
+     */
+    if (eFisierWord(file) || /\.doc$/i.test(file.name)) {
+      try {
+        const doc = await citesteWord(file);
+        const c = citesteReferatDinWord(doc);
+        setForm(p => ({
+          ...p,
+          number: p.number || c.number,
+          date: c.date || p.date,
+          issuedBy: p.issuedBy || c.issuedBy,
+          approvedBy: p.approvedBy || c.approvedBy,
+          subject: p.subject || c.subject,
+          justification: p.justification || c.justification,
+          budgetArticle: p.budgetArticle || c.budgetArticle,
+          offerProvider: p.offerProvider || c.offerProvider,
+          offerNumbers: p.offerNumbers || c.offerNumbers,
+          contactName: p.contactName || c.contactName,
+          contactRole: p.contactRole || c.contactRole,
+          contactEmail: p.contactEmail || c.contactEmail,
+          contactPhone: p.contactPhone || c.contactPhone,
+          fileName: file.name,
+        }));
+        // Pozitiile inlocuiesc randul gol de pornire, dar nu si un tabel inceput.
+        if (c.items.length) {
+          setPozitii(prev => {
+            const scrise = prev.filter(x => x.name.trim() || x.unitPrice);
+            return scrise.length ? [...scrise, ...c.items] : c.items;
+          });
+        }
+        notify(c.gasite.length
+          ? `Din "${file.name}" s-au citit: ${c.gasite.join(', ')}. Verifica-le inainte sa salvezi.`
+          : `"${file.name}" s-a deschis, dar nu s-a recunoscut nimic din el. Completeaza de mana.`,
+          c.gasite.length ? 'success' : 'warning');
+      } catch (err: any) {
+        notify(err?.message || 'Documentul Word nu s-a putut citi.', 'error');
+      }
+      return;
+    }
+
     const bun = file.type === 'application/pdf' || file.type.startsWith('image/')
       || /\.(pdf|png|jpe?g|webp|heic)$/i.test(file.name);
-    if (!bun) { notify(`"${file.name}" nu e nici PDF, nici poza.`, 'warning'); return; }
+    if (!bun) { notify(`"${file.name}" nu e nici PDF, nici poza, nici document Word.`, 'warning'); return; }
     const dataUrl = await new Promise<string>(res => {
       const fr = new FileReader();
       fr.onload = () => res(fr.result as string);
@@ -581,17 +633,17 @@ const ReferatManager: React.FC<Props> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
                     <div className="min-w-0">
-                      <p className="text-xs font-black uppercase tracking-wide">Referatul scanat</p>
+                      <p className="text-xs font-black uppercase tracking-wide">Referatul</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
                         {tragere.peDeasupra
                           ? 'Lasa referatul aici'
-                          : form.fileName || 'Trage aici PDF-ul semnat sau alege-l'}
+                          : form.fileName || 'Trage documentul Word si isi ia singur datele — sau PDF-ul semnat'}
                       </p>
                     </div>
                   </div>
                   <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 shrink-0 cursor-pointer">
                     <Upload className="w-4 h-4" /> Incarca
-                    <input type="file" accept="application/pdf,image/*" onChange={ataseaza} className="hidden" />
+                    <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
                   </label>
                 </div>
 
