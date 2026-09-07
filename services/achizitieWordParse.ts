@@ -293,6 +293,57 @@ export interface CampuriFundamentare {
   gasite: string[];
 }
 
+/**
+ * Randul de valori, cand documentul nu are tabele — adica dintr-un PDF.
+ *
+ * Dintr-un PDF nu ies celule, ies randuri de text: tot randul tabelului vine ca
+ * un sir, "Contract subsecvent Program A SSI-2211 1x 3.226,67 12.000,00 3.226,67
+ * 15.226,67". Coloanele nu se mai pot desparti dupa margini, dar ultimele trei
+ * numere de pe rand sunt intotdeauna aceleasi trei: valoarea precedenta,
+ * influenta si totalul actualizat — asa e facut formularul, iar ultima coloana e
+ * suma primelor doua.
+ *
+ * Parametrii se recunosc dupa forma lor ("1x 3.226,67"). Ce sta inaintea lor e
+ * elementul, programul si codul SSI, lipite; ultimele doua se desprind de la
+ * coada, fiindca au forma lor — siruri lungi de cifre si litere mari, cum e
+ * "0000000000" si "02F660601200109". Lipite, elementul iesea "Reparatie
+ * defibrilator 0000000000 02F660601200109" si ar fi ajuns asa in formular.
+ * Ce nu se recunoaste ramane gol, nu ghicit.
+ */
+const valoriDinText = (linii: string[]) => {
+  const iCap = linii.findIndex(l => simplu(l).includes('element de fundamentare'));
+  if (iCap === -1) return null;
+  for (let k = iCap + 1; k < Math.min(linii.length, iCap + 6); k++) {
+    const l = linii[k].trim();
+    if (!l) continue;
+    if (/^[\d\s=+x]*$/.test(l)) continue;             // randul care numeroteaza coloanele
+    if (simplu(l).startsWith('total')) continue;
+    const numere = l.match(/\d[\d.,]*/g) || [];
+    if (numere.length < 3) continue;
+    const [pv, inf, act] = numere.slice(-3).map(numar);
+    // Ultima coloana e suma primelor doua; daca nu se potriveste, randul citit
+    // nu e cel de valori si nu se ia nimic din el.
+    if (Math.abs(pv + inf - act) > 0.05) continue;
+    const mp = l.match(/\d+\s*x\s*[\d.,]+/i);
+    const inainte = (mp ? l.slice(0, mp.index) : '').replace(/\s{2,}/g, ' ').trim();
+
+    // Codul SSI si programul se desprind de la coada, dupa forma lor.
+    const bucati = inainte.split(/\s+/);
+    let ssiCode = '', program = '';
+    const eCod = (x: string) => x.length >= 8 && /\d/.test(x) && /^[0-9A-Za-z]+$/.test(x);
+    if (bucati.length > 1 && eCod(bucati[bucati.length - 1])) ssiCode = bucati.pop()!;
+    if (bucati.length > 1 && eCod(bucati[bucati.length - 1])) program = bucati.pop()!;
+
+    return {
+      element: bucati.join(' ').trim(),
+      program, ssiCode,
+      parameters: mp ? mp[0].trim() : '',
+      previousValue: pv, influence: inf, amount: act,
+    };
+  }
+  return null;
+};
+
 export const citesteFundamentareDinWord = (doc: DocumentWord): CampuriFundamentare => {
   const P = doc.paragrafe;
   const gasite: string[] = [];
@@ -365,6 +416,18 @@ export const citesteFundamentareDinWord = (doc: DocumentWord): CampuriFundamenta
       break;
     }
     if (element || amount) gasite.push('tabelul de valori');
+  }
+  // Fara tabele — cazul unui PDF — valorile se scot din randul de text.
+  if (!amount && !element) {
+    const v = valoriDinText(doc.paragrafe);
+    if (v) {
+      element = element || v.element;
+      program = program || v.program;
+      ssiCode = ssiCode || v.ssiCode;
+      parameters = parameters || v.parameters;
+      previousValue = v.previousValue; influence = v.influence; amount = v.amount;
+      gasite.push('valorile');
+    }
   }
 
   return {

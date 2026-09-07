@@ -19,6 +19,7 @@ import { notify } from '../services/notices';
 import useTragere from './useTragere';
 import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteFundamentareDinWord } from '../services/achizitieWordParse';
+import { citesteFundamentarePdf } from '../services/achizitiePdf';
 
 /**
  * Documentul de fundamentare, in forma pe care o cere legea.
@@ -344,6 +345,20 @@ const FoundationDocManager: React.FC<Props> = ({
     setEditez(true);
   }, []);
 
+  /** Cat se citeste dintr-un PDF — OCR-ul dureaza si trebuie sa se vada. */
+  const [citesc, setCitesc] = useState('');
+
+  /** Acelasi mesaj, indiferent din ce fel de fisier s-a citit. */
+  const spuneCeSaCitit = useCallback((nume: string, gasite: string[], prinOcr = false) => {
+    if (!gasite.length) {
+      notify(`"${nume}" s-a atasat, dar nu s-a recunoscut nimic din el. Completeaza de mana.`, 'warning');
+      return;
+    }
+    notify(`Din "${nume}" s-au citit: ${gasite.join(', ')}.`
+      + (prinOcr ? ' Documentul e o scanare, deci citirea e mai putin sigura —' : '')
+      + ' Verifica inainte sa salvezi.', 'success');
+  }, []);
+
   /*
    * Documentul primit, de oriunde vine: ales din fereastra sau tras peste caseta.
    *
@@ -355,6 +370,20 @@ const FoundationDocManager: React.FC<Props> = ({
    */
   const preiaDocumentul = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
+
+    /*
+     * Fisierul se pastreaza intotdeauna, si cand din el s-au citit date.
+     *
+     * La prima varianta, un .docx isi dadea campurile dar nu se atasa: in
+     * formular ramanea numele lui, fara nimic in spate. Documentul din care s-a
+     * completat inregistrarea e tocmai cel care trebuie tinut langa ea.
+     */
+    const dataUrl = await new Promise<string>(res => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result as string);
+      fr.readAsDataURL(file);
+    });
+    setForm(p => ({ ...p, fileUrl: dataUrl, fileName: file.name, filePath: undefined }));
 
     if (eFisierWord(file) || /\.doc$/i.test(file.name)) {
       try {
@@ -377,24 +406,51 @@ const FoundationDocManager: React.FC<Props> = ({
           parameters: p.parameters || c.parameters,
           previousValue: p.previousValue || c.previousValue,
           influence: p.influence || c.influence,
-          fileName: file.name,
         }));
-        notify(c.gasite.length
-          ? `Din "${file.name}" s-au citit: ${c.gasite.join(', ')}. Verifica-le inainte sa salvezi.`
-          : `"${file.name}" s-a deschis, dar nu s-a recunoscut nimic din el. Completeaza de mana.`,
-          c.gasite.length ? 'success' : 'warning');
+        spuneCeSaCitit(file.name, c.gasite);
       } catch (err: any) {
         notify(err?.message || 'Documentul Word nu s-a putut citi.', 'error');
       }
       return;
     }
 
-    const dataUrl = await new Promise<string>(res => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result as string);
-      fr.readAsDataURL(file);
-    });
-    setForm(p => ({ ...p, fileUrl: dataUrl, fileName: file.name, filePath: undefined }));
+    /*
+     * Un PDF se citeste la fel, doar ca de acolo ies randuri de text, nu
+     * paragrafe si tabele. Cand pagina n-are text — adica documentul semnat a
+     * fost scanat — se trece pe recunoasterea din imagine, care dureaza si iese
+     * mai putin sigura; se spune si una, si alta.
+     */
+    const ePdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (ePdf) {
+      setCitesc('Se citeste documentul...');
+      try {
+        const c = await citesteFundamentarePdf(file, (pagina, dinTotal, procent) =>
+          setCitesc(`Se citeste de pe scanare — pagina ${pagina} din ${dinTotal}, ${Math.round(procent)}%`));
+        setForm(p => ({
+          ...p,
+          number: p.number || c.number,
+          date: c.date || p.date,
+          revision: p.revision || c.revision,
+          revisionDate: c.revisionDate || p.revisionDate,
+          compartment: p.compartment || c.compartment,
+          subject: p.subject || c.subject,
+          shortDescription: p.shortDescription || c.shortDescription,
+          description: p.description || c.description,
+          budgetArticle: p.budgetArticle || c.budgetArticle,
+          ssiCode: p.ssiCode || c.ssiCode,
+          program: p.program || c.program,
+          element: p.element || c.element,
+          parameters: p.parameters || c.parameters,
+          previousValue: p.previousValue || c.previousValue,
+          influence: p.influence || c.influence,
+        }));
+        spuneCeSaCitit(file.name, c.gasite, c.prinOcr);
+      } catch (err: any) {
+        notify(err?.message || 'PDF-ul nu s-a putut citi. A ramas atasat.', 'warning');
+      } finally {
+        setCitesc('');
+      }
+    }
   }, []);
 
   const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -973,13 +1029,15 @@ const FoundationDocManager: React.FC<Props> = ({
  tragere.peDeasupra ? 'bg-blue-600 text-white ring-4 ring-blue-300' : 'bg-slate-900 text-white'
                   }`}>
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2.5 bg-blue-600 rounded-xl shrink-0"><Paperclip className="w-5 h-5" /></div>
+                    <div className="p-2.5 bg-blue-600 rounded-xl shrink-0">
+                      {citesc ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+                    </div>
                     <div className="min-w-0">
                       <p className="text-xs font-black uppercase tracking-wide">Documentul</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
-                        {form.fileName || (tragere.peDeasupra
+                        {citesc || form.fileName || (tragere.peDeasupra
                           ? 'Da-i drumul aici'
-                          : 'Trage documentul Word si isi ia singur datele — sau ataseaza PDF-ul ori poza')}
+                          : 'Trage documentul, Word sau PDF, si isi ia singur datele')}
                       </p>
                     </div>
                   </div>
