@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   FileSignature, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Building2, CheckCircle, FileDown,
+  Paperclip, Building2, CheckCircle, FileDown, Eye,
 } from 'lucide-react';
 import {
   MedicalDevice, Referat, ReferatItem, ReferatStatus, REFERAT_STATUS_RO,
-  FoundationDoc, referatTotal, getUniqueDepartments,
+  FoundationDoc, DeviceFile, referatTotal, getUniqueDepartments,
 } from '../types';
 import Portal from './Portal';
+const FileViewer = React.lazy(() => import('./FileViewer'));
 import useTragere from './useTragere';
 import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteReferatDinWord, CampuriReferat } from '../services/achizitieWordParse';
@@ -105,6 +106,35 @@ const descarcaPdf = async (r: Referat) => {
   }
 };
 
+/**
+ * Documentul atasat, in forma pe care o cere vizualizatorul.
+ *
+ * Pana acum documentul se putea numai descarca: ca sa vezi daca referatul din
+ * evidenta e chiar cel semnat, trebuia scos pe disc si deschis cu alta
+ * aplicatie. Acelasi vizualizator il arata si in fisa unui aparat, si la
+ * contracte — n-avea rost sa lipseasca tocmai de la referate.
+ */
+const documentulReferatului = (r: {
+  number?: string; filePath?: string; fileUrl?: string; fileName?: string; date?: string;
+}): DeviceFile | null => {
+  if (!r.filePath && !r.fileUrl) return null;
+  return {
+    id: `REF-${r.number || 'doc'}`,
+    name: r.fileName || `Referat ${r.number || ''}.pdf`.replace(/\s+/g, ' ').trim(),
+    type: 'achizitie',
+    path: r.filePath,
+    url: r.fileUrl,
+    dateAdded: r.date || '',
+  };
+};
+
+/** Descarcarea pornita din vizualizator. */
+const descarcaFisierul = async (f: DeviceFile) => {
+  const sursa = await resolveSource({ path: f.path, url: f.url });
+  if (sursa.blob || sursa.dataUrl) await saveFileAs(f.name, sursa.blob || sursa.dataUrl!);
+  else notify(sursa.error || 'Fisierul nu a putut fi descarcat.', 'warning');
+};
+
 interface Props {
   referate: Referat[];
   devices: MedicalDevice[];
@@ -130,7 +160,15 @@ const ReferatManager: React.FC<Props> = ({
   const [cautaDispozitiv, setCautaDispozitiv] = useState('');
   const [deSters, setDeSters] = useState<Referat | null>(null);
   const [seSalveaza, setSeSalveaza] = useState(false);
-  useEscape(() => setEditez(false), editez);
+  /** Documentul deschis la vedere, din lista sau din formular. */
+  const [vad, setVad] = useState<DeviceFile | null>(null);
+  /*
+   * Cat timp documentul e deschis la vedere, Escape il inchide numai pe el.
+   *
+   * Fara asta, apasarea ajungea la amandoua deodata: se inchidea si
+   * vizualizatorul, si formularul de sub el — adica tocmai ce completai.
+   */
+  useEscape(() => setEditez(false), editez && !vad);
 
   const departamente = useMemo(() => getUniqueDepartments(devices), [devices]);
   const dispozitiveDupaId = useMemo(() => new Map(devices.map(d => [d.id, d])), [devices]);
@@ -470,6 +508,13 @@ const ReferatManager: React.FC<Props> = ({
                     <FileDown className="w-4 h-4" />
                   </button>
                   {(r.filePath || r.fileUrl) && (
+                    <button onClick={() => setVad(documentulReferatului(r))}
+                      className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition"
+                      title="Vezi documentul" aria-label={`Vezi documentul referatului ${r.number}`}>
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
+                  {(r.filePath || r.fileUrl) && (
                     <button onClick={() => descarcaPdf(r)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul scanat" aria-label={`Descarca scanul referatului ${r.number}`}>
                       <Download className="w-4 h-4" />
                     </button>
@@ -678,10 +723,22 @@ const ReferatManager: React.FC<Props> = ({
                       </p>
                     </div>
                   </div>
-                  <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 shrink-0 cursor-pointer">
-                    <Upload className="w-4 h-4" /> Incarca
-                    <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
-                  </label>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Dupa ce documentul si-a dat datele, se vede pe loc — asa
+                        se verifica ce a intrat in campuri fara sa fie scos pe
+                        disc si deschis cu alta aplicatie. */}
+                    {(form.fileUrl || form.filePath) && (
+                      <button type="button"
+                        onClick={() => setVad(documentulReferatului({ ...form, number: form.number || 'nou' }))}
+                        className="px-5 py-3 bg-white/10 text-white rounded-xl text-[11px] font-bold hover:bg-white/20 transition flex items-center gap-2">
+                        <Eye className="w-4 h-4" /> Vezi
+                      </button>
+                    )}
+                    <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 cursor-pointer">
+                      <Upload className="w-4 h-4" /> Incarca
+                      <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
+                    </label>
+                  </div>
                 </div>
 
                 {/* dispozitivele vizate */}
@@ -775,6 +832,12 @@ const ReferatManager: React.FC<Props> = ({
         onCancel={() => setDeSters(null)}
         onConfirm={() => { if (deSters) onDelete(deSters.id); setDeSters(null); }}
       />
+
+      {vad && (
+        <React.Suspense fallback={null}>
+          <FileViewer file={vad} onDownload={descarcaFisierul} onClose={() => setVad(null)} />
+        </React.Suspense>
+      )}
 
       <style>{`.camp{width:100%;padding:0.85rem 1.1rem;background:#f8fafc;border:2px solid #e2e8f0;border-radius:1rem;font-size:0.9rem;font-weight:600;outline:none}.camp:focus{border-color:#3b82f6}`}</style>
     </div>

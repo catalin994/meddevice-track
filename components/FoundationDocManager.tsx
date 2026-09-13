@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FolderOpen, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Link2, Unlink, FileDown, CalendarClock,
+  Paperclip, Link2, Unlink, FileDown, CalendarClock, Eye,
 } from 'lucide-react';
 import {
-  FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat,
+  FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat, DeviceFile,
   normaliseFoundationType, lunaRo, lunaAcum, lunaUrmatoare, luniIntre, schimbaLuna,
 } from '../types';
 import Portal from './Portal';
+const FileViewer = React.lazy(() => import('./FileViewer'));
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import Pager, { usePagination, PageSizePicker } from './Pager';
@@ -190,6 +191,33 @@ const descarcaPdf = async (d: FoundationDoc) => {
   }
 };
 
+/**
+ * Documentul atasat, in forma pe care o cere vizualizatorul.
+ *
+ * Pana acum se putea numai descarca: ca sa vezi daca documentul din evidenta e
+ * chiar cel semnat, trebuia scos pe disc si deschis cu alta aplicatie.
+ */
+const documentulFundamentarii = (d: {
+  number?: string; filePath?: string; fileUrl?: string; fileName?: string; date?: string;
+}): DeviceFile | null => {
+  if (!d.filePath && !d.fileUrl) return null;
+  return {
+    id: `DF-${d.number || 'doc'}`,
+    name: d.fileName || `Document ${d.number || ''}.pdf`.replace(/\s+/g, ' ').trim(),
+    type: 'achizitie',
+    path: d.filePath,
+    url: d.fileUrl,
+    dateAdded: d.date || '',
+  };
+};
+
+/** Descarcarea pornita din vizualizator. */
+const descarcaFisierul = async (f: DeviceFile) => {
+  const sursa = await resolveSource({ path: f.path, url: f.url });
+  if (sursa.blob || sursa.dataUrl) await saveFileAs(f.name, sursa.blob || sursa.dataUrl!);
+  else notify(sursa.error || 'Fisierul nu a putut fi descarcat.', 'warning');
+};
+
 interface Props {
   docs: FoundationDoc[];
   referate: Referat[];
@@ -215,7 +243,16 @@ const FoundationDocManager: React.FC<Props> = ({
   const [frazaAtinsa, setFrazaAtinsa] = useState(false);
   /** La fel, data reviziei o urmeaza pe cea a documentului pana e schimbata. */
   const [dataRevizieiAtinsa, setDataRevizieiAtinsa] = useState(false);
-  useEscape(() => setEditez(false), editez);
+  /** Documentul deschis la vedere, din lista sau din formular. */
+  const [vad, setVad] = useState<DeviceFile | null>(null);
+
+  /*
+   * Cat timp documentul e deschis la vedere, Escape il inchide numai pe el.
+   *
+   * Fara asta, apasarea ajungea la amandoua deodata: se inchidea si
+   * vizualizatorul, si formularul de sub el — adica tocmai ce completai.
+   */
+  useEscape(() => setEditez(false), editez && !vad);
 
   const referateDupaId = useMemo(() => new Map(referate.map(r => [r.id, r])), [referate]);
   const referatFiltrat = filtruReferat ? referateDupaId.get(filtruReferat) : null;
@@ -741,6 +778,13 @@ const FoundationDocManager: React.FC<Props> = ({
                     <FileDown className="w-4 h-4" />
                   </button>
                   {(d.filePath || d.fileUrl) && (
+                    <button onClick={() => setVad(documentulFundamentarii(d))}
+                      className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition"
+                      title="Vezi documentul" aria-label="Vezi documentul">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
+                  {(d.filePath || d.fileUrl) && (
                     <button onClick={() => descarcaPdf(d)} className="p-3 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition" title="Descarca documentul scanat" aria-label="Descarca scanul documentului">
                       <Download className="w-4 h-4" />
                     </button>
@@ -1041,10 +1085,22 @@ const FoundationDocManager: React.FC<Props> = ({
                       </p>
                     </div>
                   </div>
-                  <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 shrink-0 cursor-pointer">
-                    <Upload className="w-4 h-4" /> Incarca
-                    <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
-                  </label>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Dupa ce documentul si-a dat datele, se vede pe loc — asa
+                        se verifica ce a intrat in campuri fara sa fie scos pe
+                        disc si deschis cu alta aplicatie. */}
+                    {(form.fileUrl || form.filePath) && (
+                      <button type="button"
+                        onClick={() => setVad(documentulFundamentarii({ ...form, number: form.number || 'nou' }))}
+                        className="px-5 py-3 bg-white/10 text-white rounded-xl text-[11px] font-bold hover:bg-white/20 transition flex items-center gap-2">
+                        <Eye className="w-4 h-4" /> Vezi
+                      </button>
+                    )}
+                    <label className="px-5 py-3 bg-white text-slate-900 rounded-xl text-[11px] font-bold hover:bg-blue-50 transition flex items-center gap-2 cursor-pointer">
+                      <Upload className="w-4 h-4" /> Incarca
+                      <input type="file" accept="application/pdf,image/*,.docx" onChange={ataseaza} className="hidden" />
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -1076,6 +1132,12 @@ const FoundationDocManager: React.FC<Props> = ({
         onCancel={() => setDeSters(null)}
         onConfirm={() => { if (deSters) onDelete(deSters.id); setDeSters(null); }}
       />
+
+      {vad && (
+        <React.Suspense fallback={null}>
+          <FileViewer file={vad} onDownload={descarcaFisierul} onClose={() => setVad(null)} />
+        </React.Suspense>
+      )}
 
       <style>{`.camp{width:100%;padding:0.85rem 1.1rem;background:#f8fafc;border:2px solid #e2e8f0;border-radius:1rem;font-size:0.9rem;font-weight:600;outline:none}.camp:focus{border-color:#3b82f6}`}</style>
     </div>

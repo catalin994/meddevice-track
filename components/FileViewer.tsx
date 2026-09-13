@@ -33,6 +33,18 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
   const [blob, setBlob] = useState<Blob | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  /*
+   * Textul unui document Word, cand fisierul e .docx.
+   *
+   * Browserul nu stie sa arate un Word, si pana acum pentru el se dadea doar un
+   * buton de descarcare — adica, ca sa vezi ce ai tras in formular, trebuia sa
+   * deschizi fisierul in alta aplicatie. Aplicatia stie insa sa-l citeasca:
+   * aceeasi desfacere care scoate datele din referat scoate si paragrafele cu
+   * tabelele lui. Nu e hartia cu sigla si stilurile ei, e ce scrie in ea — dar
+   * asta e tocmai ce se verifica atunci cand tocmai ai completat un formular
+   * dintr-un document.
+   */
+  const [wordDoc, setWordDoc] = useState<{ paragrafe: string[]; tabele: string[][][] } | null>(null);
 
   // Stored files come from Storage (or the local cache); legacy ones are inline.
   // Everything downstream works from one Blob, whichever way it arrived.
@@ -67,6 +79,13 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
       if (data && (data.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
         setPdfData(await data.arrayBuffer().catch(() => null));
       }
+      if (data && /\.docx$/i.test(file.name)) {
+        try {
+          const { citesteWord } = await import('../services/docxCitit');
+          const d = await citesteWord(new File([data], file.name));
+          if (!cancelled) setWordDoc({ paragrafe: d.paragrafe, tabele: d.tabele });
+        } catch { /* ramane cartonasul de descarcare */ }
+      }
       setLoading(false);
     })();
 
@@ -95,7 +114,8 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
 
   // PDFs are rasterised by pdf.js (works identically on every browser), images
   // render directly. Anything else falls back to the download card.
-  const canPreview = !failed && !loading && ((isImage && !!blobUrl) || (isPdf && !!pdfData));
+  const canPreview = !failed && !loading
+    && ((isImage && !!blobUrl) || (isPdf && !!pdfData) || !!wordDoc);
 
   return (
     <Portal>
@@ -145,6 +165,35 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose, onDownload }) =>
           ) : canPreview ? (
             isImage ? (
               <img src={blobUrl!} alt={file.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onError={() => setFailed(true)} />
+            ) : wordDoc ? (
+              /* Documentul Word, ca text si tabele. Pe fond alb si cu o latime de
+                 pagina, ca sa se citeasca la fel ca pe hartie. */
+              <div className="w-full max-w-3xl mx-auto my-2 bg-white rounded-xl shadow-2xl p-6 sm:p-10 space-y-3 text-slate-900">
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 pb-2 border-b border-slate-100">
+                  Documentul Word, citit ca text — formatarea si sigla nu se vad
+                </p>
+                {wordDoc.paragrafe.map((t, i) => (
+                  <p key={`p${i}`} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words">{t}</p>
+                ))}
+                {wordDoc.tabele.map((tab, i) => (
+                  <div key={`t${i}`} className="overflow-x-auto">
+                    <table className="w-full text-[12px] border-collapse">
+                      <tbody>
+                        {tab.map((rand, r) => (
+                          <tr key={r}>
+                            {rand.map((cel, c) => (
+                              <td key={c} className="border border-slate-200 px-2 py-1.5 align-top">{cel}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+                {wordDoc.paragrafe.length === 0 && wordDoc.tabele.length === 0 && (
+                  <p className="text-[13px] text-slate-500">Documentul nu are text in el.</p>
+                )}
+              </div>
             ) : (
               <React.Suspense fallback={<Loader2 className="w-8 h-8 text-white animate-spin" />}>
                 <PdfCanvasViewer data={pdfData!} onFail={() => setFailed(true)} />
