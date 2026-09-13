@@ -8,6 +8,7 @@ import {
   normaliseFoundationType, lunaRo, lunaAcum, lunaUrmatoare, luniIntre, schimbaLuna,
 } from '../types';
 import Portal from './Portal';
+import { AlegeReferat } from './LegaturaReferat';
 const FileViewer = React.lazy(() => import('./FileViewer'));
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
@@ -245,6 +246,8 @@ const FoundationDocManager: React.FC<Props> = ({
   const [dataRevizieiAtinsa, setDataRevizieiAtinsa] = useState(false);
   /** Documentul deschis la vedere, din lista sau din formular. */
   const [vad, setVad] = useState<DeviceFile | null>(null);
+  /** Documentul caruia i se alege referatul, direct din lista. */
+  const [leg, setLeg] = useState<FoundationDoc | null>(null);
 
   /*
    * Cat timp documentul e deschis la vedere, Escape il inchide numai pe el.
@@ -739,16 +742,23 @@ const FoundationDocManager: React.FC<Props> = ({
                           {d.periodMonth ? lunaRo(d.periodMonth) : 'lunar'}
                         </span>
                       )}
-                      {ref ? (
-                        <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-[11px] font-bold flex items-center gap-1">
-                          <Link2 className="w-3 h-3" />{ref.number}
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
-                              title="Documentul nu e legat de niciun referat">
-                          <Unlink className="w-3 h-3" />Fara referat
-                        </span>
-                      )}
+                      {/*
+                        Insigna e un buton, nu o eticheta.
+                        Legatura se putea pune dintr-un singur loc — lista
+                        derulanta din capul formularului — deci un document care
+                        scria "Fara referat" era o fundatura: trebuia deschis la
+                        editare ca sa fie legat. Acum se leaga de unde se vede ca
+                        lipseste, si se si schimba de unde se vede ca e pusa.
+                      */}
+                      <button type="button" onClick={() => setLeg(d)}
+                        title={ref ? `Legat de referatul ${ref.number} — apasa ca sa schimbi` : 'Apasa ca sa-l legi de un referat'}
+                        className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1 border transition ${
+ ref ? 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100'
+      : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                        }`}>
+                        {ref ? <><Link2 className="w-3 h-3" />{ref.number}</>
+                             : <><Unlink className="w-3 h-3" />Fara referat</>}
+                      </button>
                     </div>
                     {d.subject && <p className="text-[15px] font-bold text-slate-800 mt-1 break-words">{d.subject}</p>}
                     <p className="text-xs font-bold text-slate-500 mt-1">
@@ -1132,6 +1142,23 @@ const FoundationDocManager: React.FC<Props> = ({
         onCancel={() => setDeSters(null)}
         onConfirm={() => { if (deSters) onDelete(deSters.id); setDeSters(null); }}
       />
+
+      {leg && (
+        <AlegeReferat
+          referate={referate}
+          valoare={leg.referatId}
+          numeDocument={[leg.number, leg.subject].filter(Boolean).join(' · ')}
+          onAlege={id => {
+            // Se salveaza pe loc: fereastra asta e chiar fapta, nu un pas catre ea.
+            onUpsert({ ...leg, referatId: id || undefined, updated_at: new Date().toISOString() });
+            notify(id
+              ? `Documentul a fost legat de referatul ${referateDupaId.get(id)?.number || id}.`
+              : 'Documentul nu mai e legat de niciun referat.', 'success');
+            setLeg(null);
+          }}
+          onInchide={() => setLeg(null)}
+        />
+      )}
 
       {vad && (
         <React.Suspense fallback={null}>

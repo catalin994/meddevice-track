@@ -1130,6 +1130,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             onDelete={onDeleteReferat}
             canDelete={canDelete}
             onShowDocs={(id) => { setDosarReferat(id); setTab('FUNDAMENTARE'); }}
+            onLeagaDoc={onUpsertFoundationDoc}
           />
         </Suspense>
       )}

@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   FileSignature, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Building2, CheckCircle, FileDown, Eye,
+  Paperclip, Building2, CheckCircle, FileDown, Eye, Link2,
 } from 'lucide-react';
 import {
   MedicalDevice, Referat, ReferatItem, ReferatStatus, REFERAT_STATUS_RO,
   FoundationDoc, DeviceFile, referatTotal, getUniqueDepartments,
 } from '../types';
 import Portal from './Portal';
+import { AlegeDocumente } from './LegaturaReferat';
 const FileViewer = React.lazy(() => import('./FileViewer'));
 import useTragere from './useTragere';
 import { citesteWord, eFisierWord } from '../services/docxCitit';
@@ -144,10 +145,12 @@ interface Props {
   canDelete: boolean;
   /** Deschide tab-ul de documente, filtrat pe referatul cerut. */
   onShowDocs: (referatId: string) => void;
+  /** Salveaza un document de fundamentare — pentru legarea lui de referat. */
+  onLeagaDoc?: (d: FoundationDoc) => void;
 }
 
 const ReferatManager: React.FC<Props> = ({
-  referate, devices, foundationDocs, onUpsert, onDelete, canDelete, onShowDocs,
+  referate, devices, foundationDocs, onUpsert, onDelete, canDelete, onShowDocs, onLeagaDoc,
 }) => {
   const [cauta, setCauta] = useState('');
   const [filtruStatus, setFiltruStatus] = useState<'ALL' | ReferatStatus>('ALL');
@@ -162,6 +165,8 @@ const ReferatManager: React.FC<Props> = ({
   const [seSalveaza, setSeSalveaza] = useState(false);
   /** Documentul deschis la vedere, din lista sau din formular. */
   const [vad, setVad] = useState<DeviceFile | null>(null);
+  /** Referatul caruia i se aleg documentele de fundamentare. */
+  const [legDocs, setLegDocs] = useState<Referat | null>(null);
   /*
    * Cat timp documentul e deschis la vedere, Escape il inchide numai pe el.
    *
@@ -472,6 +477,20 @@ const ReferatManager: React.FC<Props> = ({
                           title="Vezi documentele de fundamentare ale acestui referat"
                         >
                           <Paperclip className="w-3 h-3" />{nrDocs} document{nrDocs === 1 ? '' : 'e'}
+                        </button>
+                      )}
+                      {/*
+                        Legatura se putea pune numai dinspre document. Dar munca
+                        vine si invers: uneori aduni la urma documentele unui
+                        dosar, si atunci vrei sa pornesti de la referat.
+                      */}
+                      {onLeagaDoc && (
+                        <button
+                          onClick={() => setLegDocs(r)}
+                          className="px-2.5 py-0.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:border-slate-300 hover:text-slate-900 transition"
+                          title="Alege documentele de fundamentare care sustin referatul"
+                        >
+                          <Link2 className="w-3 h-3" />{nrDocs > 0 ? 'Schimba' : 'Leaga documente'}
                         </button>
                       )}
                     </div>
@@ -832,6 +851,20 @@ const ReferatManager: React.FC<Props> = ({
         onCancel={() => setDeSters(null)}
         onConfirm={() => { if (deSters) onDelete(deSters.id); setDeSters(null); }}
       />
+
+      {legDocs && onLeagaDoc && (
+        <AlegeDocumente
+          docs={foundationDocs}
+          referat={legDocs}
+          onSchimba={(d, legat) => {
+            // Se salveaza pe loc, si fereastra ramane deschisa: de obicei se
+            // bifeaza mai multe documente odata.
+            onLeagaDoc({ ...d, referatId: legat ? legDocs.id : undefined,
+                         updated_at: new Date().toISOString() });
+          }}
+          onInchide={() => setLegDocs(null)}
+        />
+      )}
 
       {vad && (
         <React.Suspense fallback={null}>
