@@ -131,6 +131,81 @@ const paragrafulDeDupa = (paragrafe: string[], etichete: string[]): string => {
   return '';
 };
 
+/*
+ * ── citirea din randuri de text, adica dintr-un PDF ──
+ *
+ * Dintr-un Word ies paragrafe intregi: eticheta si valoarea stau impreuna, si se
+ * pot citi una langa alta. Dintr-un PDF ies randuri asa cum incap pe hartie, si
+ * atunci nimic nu mai sta intreg. Pe documentul adevarat al spitalului:
+ *
+ *   titlul e taiat in doua, "... serie SN-4471-" si "0088" pe randul urmator;
+ *   eticheta punctului 2 se rupe ea insasi — "2. Descrierea pe scurt a
+ *     obiectului documentului de fundamentare/motivul" pe un rand, valoarea
+ *     abia pe urmatoarele doua;
+ *   descrierea de la punctul 3 tine trei randuri;
+ *   capul tabelului de valori e spart pe sase randuri, cu cuvintele coloanelor
+ *     amestecate intre ele.
+ *
+ * Deci randurile se lipesc intr-un bloc, si din blocul asta se taie eticheta de
+ * la inceput — oricat de rupta ar fi fost scrisa. Blocul se opreste la primul
+ * rand care incepe un alt punct al formularului.
+ */
+
+/** Randurile care incep alta sectiune, deci opresc valoarea dinaintea lor. */
+const ALT_PUNCT = /^\s*(?:\d+\s*\.\s|Sec[țt]iunea\b|\[\s*\]|F\.\s*0?1\/|Ed\.\s|TOTAL\b|Articolul\s+bugetar|Pagina\s+\d|Num[ăa]r\s+unic|Nr\.\s*(?:unic|de\s+[îi]nregistrare)|Emis\s+de|Aprobat\s+de|Data\s*:)/i;
+
+/**
+ * Randurile de la un punct incolo, lipite intr-un sir.
+ *
+ * Un cuvant taiat de sfarsitul randului se lipeste la loc fara spatiu: hartia
+ * scrie "SN-4471-" si "0088", iar aparatul are seria SN-4471-0088, nu "SN-4471- 0088".
+ */
+const blocDeLa = (linii: string[], i: number, maxim = 8): string => {
+  let out = linii[i] || '';
+  for (let k = i + 1; k < Math.min(linii.length, i + maxim); k++) {
+    const l = (linii[k] || '').trim();
+    if (!l || ALT_PUNCT.test(l)) break;
+    out = /-$/.test(out.trim()) ? out.trim() + l : out.trim() + ' ' + l;
+  }
+  return out.replace(/\s+/g, ' ').trim();
+};
+
+/**
+ * Valoarea dintr-un bloc, dupa ce i se taie eticheta.
+ *
+ * Se incearca etichetele de la cea mai lunga la cea mai scurta, si se taie cea
+ * mai lunga care se potriveste: asa "Descrierea pe scurt a obiectului
+ * documentului de fundamentare/motivul revizuirii" nu lasa in urma ei jumatate
+ * de eticheta, cum se intampla cand se cauta doar "Descrierea pe scurt".
+ *
+ * Spatiile se string la unul singur inainte de potrivire, iar diacriticele se
+ * scot fara sa schimbe lungimea sirului — asa taietura cade unde trebuie si in
+ * textul cu diacritice.
+ */
+const faraEticheta = (bloc: string, etichete: string[]): string => {
+  const b = bloc.replace(/\s+/g, ' ');
+  const bs = simplu(b);
+  let taie = -1;
+  for (const e of [...etichete].sort((x, y) => y.length - x.length)) {
+    const es = simplu(e.replace(/\s+/g, ' '));
+    const k = bs.indexOf(es);
+    // Eticheta trebuie sa fie la inceput, cel mult dupa un numar de punct.
+    if (k !== -1 && k <= 6) { taie = k + es.length; break; }
+  }
+  if (taie === -1) return '';
+  return b.slice(taie).replace(/^[\s:.\-–—\/]+/, '').trim();
+};
+
+/** Blocul de sub o eticheta, cand documentul e un sir de randuri. */
+const dupaEtichetaInText = (linii: string[], etichete: string[]): string => {
+  for (let i = 0; i < linii.length; i++) {
+    if (!etichete.some(e => simplu(linii[i]).includes(simplu(e.split('/')[0].trim().slice(0, 24))))) continue;
+    const v = faraEticheta(blocDeLa(linii, i), etichete);
+    if (v) return v;
+  }
+  return '';
+};
+
 /** Cate coloane are randul cel mai lat — capul de tabel poate fi mai scurt. */
 const latimea = (t: Tabel) => t.reduce((m, r) => Math.max(m, r.length), 0);
 
@@ -294,6 +369,21 @@ export interface CampuriFundamentare {
 }
 
 /**
+ * Sumele dintr-un rand, asa cum le scrie formularul.
+ *
+ * "-12 480,50" are minus in fata si spatiu la mii — pe hartia spitalului asa
+ * sunt scrise stornarile. Cautate cu un tipar care incepe la prima cifra, ieseau
+ * doua numere din unul singur, 12 si 480,50, si tabelul nu se mai lega.
+ *
+ * Anii se sar: "18402/07.09.2026" dintr-o trimitere la alt document nu e o suma.
+ */
+const sumeleDin = (rand: string): number[] => {
+  const fara = rand.replace(/\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}\b/g, ' ');
+  const gasite = fara.match(/-?\d{1,3}(?:[  .]\d{3})*,\d{2}|-?\d+(?:,\d{1,2})?/g) || [];
+  return gasite.map(numar);
+};
+
+/**
  * Randul de valori, cand documentul nu are tabele — adica dintr-un PDF.
  *
  * Dintr-un PDF nu ies celule, ies randuri de text: tot randul tabelului vine ca
@@ -312,15 +402,14 @@ export interface CampuriFundamentare {
  */
 const valoriDinText = (linii: string[]) => {
   const iCap = linii.findIndex(l => simplu(l).includes('element de fundamentare'));
-  if (iCap === -1) return null;
-  for (let k = iCap + 1; k < Math.min(linii.length, iCap + 6); k++) {
+  for (let k = iCap + 1; iCap !== -1 && k < Math.min(linii.length, iCap + 6); k++) {
     const l = linii[k].trim();
     if (!l) continue;
     if (/^[\d\s=+x]*$/.test(l)) continue;             // randul care numeroteaza coloanele
     if (simplu(l).startsWith('total')) continue;
-    const numere = l.match(/\d[\d.,]*/g) || [];
+    const numere = sumeleDin(l);
     if (numere.length < 3) continue;
-    const [pv, inf, act] = numere.slice(-3).map(numar);
+    const [pv, inf, act] = numere.slice(-3);
     // Ultima coloana e suma primelor doua; daca nu se potriveste, randul citit
     // nu e cel de valori si nu se ia nimic din el.
     if (Math.abs(pv + inf - act) > 0.05) continue;
@@ -341,11 +430,63 @@ const valoriDinText = (linii: string[]) => {
       previousValue: pv, influence: inf, amount: act,
     };
   }
+
+  /*
+   * Randul TOTAL, cand capul tabelului n-a putut fi gasit.
+   *
+   * Pe hartia adevarata capul se rupe pe sase randuri si cuvintele coloanelor se
+   * amesteca intre ele — "Element de Progra Parametrii de revizie Influențe +/–
+   * totală" — asa ca nu mai ramane nimic dupa care sa fie cautat. Randul TOTAL
+   * insa incepe cu un cuvant care nu se rupe, iar dupa el vin exact cele trei
+   * sume. Se aduna de pe el si de pe randurile urmatoare, fiindca si ele se rup:
+   * "TOTAL X X X 0" pe un rand, "-12 480,50 -12 480,50" pe celalalt.
+   *
+   * De aici ies numai sumele. Elementul, programul si codul SSI stau in randul
+   * de deasupra, taiat si el in bucati amestecate intre coloane, si n-au cum sa
+   * fie despartite cu temei — raman de scris de mana, goale, nu ghicite.
+   */
+  const iTotal = linii.findIndex(l => /^\s*TOTAL\b/i.test(l));
+  if (iTotal !== -1) {
+    const sume: number[] = [];
+    for (let k = iTotal; k < Math.min(linii.length, iTotal + 4) && sume.length < 3; k++) {
+      sume.push(...sumeleDin(linii[k]));
+    }
+    if (sume.length >= 3) {
+      const [pv, inf, act] = sume.slice(0, 3);
+      if (Math.abs(pv + inf - act) <= 0.05) {
+        return { element: '', program: '', ssiCode: '', parameters: '',
+                 previousValue: pv, influence: inf, amount: act };
+      }
+    }
+  }
   return null;
 };
 
+/** Etichetele intregi ale formularului, pentru taiat de la inceputul blocului. */
+const ET_SCURT = [
+  '2. Descrierea pe scurt a obiectului documentului de fundamentare/motivul revizuirii',
+  '2. Descrierea pe scurt a obiectului documentului de fundamentare / motivul revizuirii',
+  'Descrierea pe scurt a obiectului documentului de fundamentare/motivul revizuirii',
+  'Descrierea pe scurt a obiectului documentului de fundamentare/motivul',
+  'Descrierea pe scurt a obiectului documentului de fundamentare',
+  'Descrierea pe scurt',
+];
+const ET_LARG = [
+  '3. Descrierea pe larg a starii de fapt si de drept',
+  '3. Descrierea pe larg a stării de fapt şi de drept',
+  'Descrierea pe larg a starii de fapt si de drept',
+  'Descrierea pe larg',
+];
+const ET_COMPARTIMENT = ['1. Compartiment de specialitate', 'Compartiment de specialitate'];
+
 export const citesteFundamentareDinWord = (doc: DocumentWord): CampuriFundamentare => {
   const P = doc.paragrafe;
+  /*
+   * Fara tabele inseamna ca documentul a venit ca randuri, dintr-un PDF — si
+   * acolo etichetele si valorile se rup unde se termina hartia, deci se citesc
+   * pe blocuri. Dintr-un Word, paragrafele vin intregi si nu e nevoie.
+   */
+  const eText = doc.tabele.length === 0;
   const gasite: string[] = [];
   const noteaza = (nume: string, v: unknown) => {
     if (v && v !== 0) gasite.push(nume);
@@ -365,7 +506,9 @@ export const citesteFundamentareDinWord = (doc: DocumentWord): CampuriFundamenta
       const t = P[k].trim();
       if (!t) continue;
       if (simplu(t).startsWith('numar unic') || simplu(t).startsWith('sectiunea')) break;
-      subject = t;
+      // Pe hartie titlul se rupe unde se termina randul: "... serie SN-4471-" si
+      // "0088" dedesubt. Lipit la loc, iese seria intreaga.
+      subject = eText ? blocDeLa(P, k) : t;
       break;
     }
   }
@@ -382,15 +525,15 @@ export const citesteFundamentareDinWord = (doc: DocumentWord): CampuriFundamenta
   const dateleDinRand = randNr.match(/\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}\b/g) || [];
   const revisionDate = dateleDinRand[1] ? dataISO(dateleDinRand[1]) : date;
 
-  const compartment = noteaza('compartimentul', dupaEticheta(P, [
-    '1. Compartiment de specialitate', 'Compartiment de specialitate',
-  ])) || '';
-  const shortDescription = noteaza('descrierea pe scurt', dupaEticheta(P, [
-    'motivul revizuirii', '2. Descrierea pe scurt',
-  ])) || '';
-  const description = noteaza('descrierea pe larg', paragrafulDeDupa(P, [
-    '3. Descrierea pe larg', 'starii de fapt si de drept', 'stării de fapt şi de drept',
-  ])) || '';
+  const compartment = noteaza('compartimentul', eText
+    ? dupaEtichetaInText(P, ET_COMPARTIMENT)
+    : dupaEticheta(P, ET_COMPARTIMENT)) || '';
+  const shortDescription = noteaza('descrierea pe scurt', eText
+    ? dupaEtichetaInText(P, ET_SCURT)
+    : dupaEticheta(P, ['motivul revizuirii', '2. Descrierea pe scurt'])) || '';
+  const description = noteaza('descrierea pe larg', eText
+    ? dupaEtichetaInText(P, ET_LARG)
+    : paragrafulDeDupa(P, ['3. Descrierea pe larg', 'starii de fapt si de drept', 'stării de fapt şi de drept'])) || '';
   const budgetArticle = noteaza('articolul bugetar', dupaEticheta(P, [
     'Articolul bugetar aferent achiziţiei este', 'Articolul bugetar aferent achizitiei este', 'Articolul bugetar',
   ])) || '';

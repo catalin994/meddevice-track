@@ -10,7 +10,8 @@ import {
 import Portal from './Portal';
 import useTragere from './useTragere';
 import { citesteWord, eFisierWord } from '../services/docxCitit';
-import { citesteReferatDinWord } from '../services/achizitieWordParse';
+import { citesteReferatDinWord, CampuriReferat } from '../services/achizitieWordParse';
+import { citesteReferatPdf } from '../services/achizitiePdf';
 import useEscape from './useEscape';
 import ConfirmDialog from './ConfirmDialog';
 import DepartmentPicker from './DepartmentPicker';
@@ -191,6 +192,43 @@ const ReferatManager: React.FC<Props> = ({
   /* Referatul semnat, indiferent de unde vine fisierul: ales din fereastra sau
      tras cu mouse-ul peste caseta. Se primeste si o poza — un referat semnat
      ajunge de multe ori fotografiat, nu scanat. */
+  /** Cat se citeste dintr-un PDF — recunoasterea din imagine dureaza. */
+  const [citesc, setCitesc] = useState('');
+
+  /** Ce s-a citit, pus in campurile ramase goale, si spus pe ecran. */
+  const pune = useCallback((c: CampuriReferat, nume: string, prinOcr = false) => {
+    setForm(p => ({
+      ...p,
+      number: p.number || c.number,
+      date: c.date || p.date,
+      issuedBy: p.issuedBy || c.issuedBy,
+      approvedBy: p.approvedBy || c.approvedBy,
+      subject: p.subject || c.subject,
+      justification: p.justification || c.justification,
+      budgetArticle: p.budgetArticle || c.budgetArticle,
+      offerProvider: p.offerProvider || c.offerProvider,
+      offerNumbers: p.offerNumbers || c.offerNumbers,
+      contactName: p.contactName || c.contactName,
+      contactRole: p.contactRole || c.contactRole,
+      contactEmail: p.contactEmail || c.contactEmail,
+      contactPhone: p.contactPhone || c.contactPhone,
+    }));
+    // Pozitiile inlocuiesc randul gol de pornire, dar nu si un tabel inceput.
+    if (c.items.length) {
+      setPozitii(prev => {
+        const scrise = prev.filter(x => x.name.trim() || x.unitPrice);
+        return scrise.length ? [...scrise, ...c.items] : c.items;
+      });
+    }
+    if (!c.gasite.length) {
+      notify(`"${nume}" s-a atasat, dar nu s-a recunoscut nimic din el. Completeaza de mana.`, 'warning');
+      return;
+    }
+    notify(`Din "${nume}" s-au citit: ${c.gasite.join(', ')}.`
+      + (prinOcr ? ' Documentul e o scanare, deci citirea e mai putin sigura —' : '')
+      + ' Verifica inainte sa salvezi.', 'success');
+  }, []);
+
   const preiaReferatul = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
 
@@ -207,36 +245,13 @@ const ReferatManager: React.FC<Props> = ({
      */
     if (eFisierWord(file) || /\.doc$/i.test(file.name)) {
       try {
-        const doc = await citesteWord(file);
-        const c = citesteReferatDinWord(doc);
-        setForm(p => ({
-          ...p,
-          number: p.number || c.number,
-          date: c.date || p.date,
-          issuedBy: p.issuedBy || c.issuedBy,
-          approvedBy: p.approvedBy || c.approvedBy,
-          subject: p.subject || c.subject,
-          justification: p.justification || c.justification,
-          budgetArticle: p.budgetArticle || c.budgetArticle,
-          offerProvider: p.offerProvider || c.offerProvider,
-          offerNumbers: p.offerNumbers || c.offerNumbers,
-          contactName: p.contactName || c.contactName,
-          contactRole: p.contactRole || c.contactRole,
-          contactEmail: p.contactEmail || c.contactEmail,
-          contactPhone: p.contactPhone || c.contactPhone,
-          fileName: file.name,
-        }));
-        // Pozitiile inlocuiesc randul gol de pornire, dar nu si un tabel inceput.
-        if (c.items.length) {
-          setPozitii(prev => {
-            const scrise = prev.filter(x => x.name.trim() || x.unitPrice);
-            return scrise.length ? [...scrise, ...c.items] : c.items;
-          });
-        }
-        notify(c.gasite.length
-          ? `Din "${file.name}" s-au citit: ${c.gasite.join(', ')}. Verifica-le inainte sa salvezi.`
-          : `"${file.name}" s-a deschis, dar nu s-a recunoscut nimic din el. Completeaza de mana.`,
-          c.gasite.length ? 'success' : 'warning');
+        const fisierUrl = await new Promise<string>(res => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result as string);
+          fr.readAsDataURL(file);
+        });
+        setForm(p => ({ ...p, fileUrl: fisierUrl, fileName: file.name, filePath: undefined }));
+        pune(citesteReferatDinWord(await citesteWord(file)), file.name);
       } catch (err: any) {
         notify(err?.message || 'Documentul Word nu s-a putut citi.', 'error');
       }
@@ -252,7 +267,29 @@ const ReferatManager: React.FC<Props> = ({
       fr.readAsDataURL(file);
     });
     setForm(p => ({ ...p, fileUrl: dataUrl, fileName: file.name, filePath: undefined }));
-  }, []);
+
+    /*
+     * Un referat in PDF se citeste la fel ca unul in Word.
+     *
+     * Multe referate nu mai exista decat scoase la imprimanta si semnate, adica
+     * PDF; de acolo ies randuri de text, nu paragrafe si tabele, dar etichetele
+     * sunt aceleasi. Cand pagina n-are text — documentul semnat a fost scanat —
+     * se trece pe recunoasterea din imagine, care dureaza si iese mai putin
+     * sigura; se spune si una, si alta. Fisierul ramane atasat oricum.
+     */
+    const ePdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (!ePdf) return;
+    setCitesc('Se citeste referatul...');
+    try {
+      const c = await citesteReferatPdf(file, (pagina, dinTotal, procent) =>
+        setCitesc(`Se citeste de pe scanare — pagina ${pagina} din ${dinTotal}, ${Math.round(procent)}%`));
+      pune(c, file.name, c.prinOcr);
+    } catch (err: any) {
+      notify(err?.message || 'PDF-ul nu s-a putut citi. A ramas atasat.', 'warning');
+    } finally {
+      setCitesc('');
+    }
+  }, [pune]);
 
   const ataseaza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -635,9 +672,9 @@ const ReferatManager: React.FC<Props> = ({
                     <div className="min-w-0">
                       <p className="text-xs font-black uppercase tracking-wide">Referatul</p>
                       <p className="text-[11px] text-white/50 font-bold mt-0.5 truncate">
-                        {tragere.peDeasupra
+                        {citesc || (tragere.peDeasupra
                           ? 'Lasa referatul aici'
-                          : form.fileName || 'Trage documentul Word si isi ia singur datele — sau PDF-ul semnat'}
+                          : form.fileName || 'Trage referatul, Word sau PDF, si isi ia singur datele')}
                       </p>
                     </div>
                   </div>
