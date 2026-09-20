@@ -1573,6 +1573,7 @@ const App: React.FC = () => {
                     onUpsertReferat={handleUpsertReferat}
                     onUpsertFoundationDoc={handleUpsertFoundationDoc}
                     onUpsertInvoice={handleUpsertInvoice}
+                    contracte={contracte}
                   />
                 )}
                 {/* A scanned QR pointing at an unknown id used to render nothing at all */}

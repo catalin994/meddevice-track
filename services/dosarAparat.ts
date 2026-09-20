@@ -1,4 +1,4 @@
-import { MedicalDevice, Referat, FoundationDoc, Invoice, ReferatStatus, referatTotal } from '../types';
+import { MedicalDevice, Referat, FoundationDoc, Invoice, Contract, ReferatStatus, referatTotal } from '../types';
 
 /**
  * Hartia unui aparat: referatele care l-au cerut si documentele care le sustin.
@@ -195,4 +195,30 @@ export const baniiAparatului = (
   }
 
   return { estimat, angajat, cateReferate: dosar.referate.length, cateDocumente: dosar.fundamentari.length };
+};
+
+/**
+ * Contractele care acopera un aparat, din amandoua locurile.
+ *
+ * Un contract poate sta in randul aparatului, pus acolo de pe fisa lui, sau in
+ * registrul propriu de contracte, cu aparatele acoperite trecute pe el. Pana
+ * acum cartonasul de costuri le numara numai pe primele — deci un contract de
+ * mentenanta trecut in registru pe treizeci de aparate nu se vedea pe niciunul
+ * dintre ele.
+ *
+ * Acelasi contract poate fi si intr-un loc, si in celalalt; se pastreaza o
+ * singura data, dupa numarul lui, fiindca dupa numar il stie si omul.
+ */
+export const contracteleAparatului = (
+  device: MedicalDevice,
+  registru: Contract[] = [],
+): Contract[] => {
+  const dupaCheie = new Map<string, Contract>();
+  const cheia = (c: Contract) => (c.contractNumber || '').trim().toLowerCase() || c.id;
+  for (const c of device.contracts || []) dupaCheie.set(cheia(c), c);
+  for (const c of registru) {
+    if (!(c.deviceIds || []).includes(device.id)) continue;
+    if (!dupaCheie.has(cheia(c))) dupaCheie.set(cheia(c), c);
+  }
+  return [...dupaCheie.values()].sort((a, b) => (b.endDate || '').localeCompare(a.endDate || ''));
 };

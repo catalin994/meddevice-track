@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
+import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
-import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului } from '../services/dosarAparat';
+import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
@@ -41,10 +41,12 @@ interface DeviceDetailProps {
   onUpsertReferat?: (r: Referat) => void;
   onUpsertFoundationDoc?: (d: FoundationDoc) => void;
   onUpsertInvoice?: (f: Invoice) => void;
+  /** Registrul de contracte: un contract poate acoperi aparatul si de acolo. */
+  contracte?: Contract[];
   canDelete?: boolean;
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], onUpsertReferat, onUpsertFoundationDoc, onUpsertInvoice, canDelete = true }) => {
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], onUpsertReferat, onUpsertFoundationDoc, onUpsertInvoice, contracte = [], canDelete = true }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
   const [tagInput, setTagInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -908,7 +910,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 )}
 
                 {/* Cost of ownership */}
-                <DeviceCostCard device={device} invoices={invoices} bani={bani} dosar={dosar} />
+                <DeviceCostCard device={device} invoices={invoices} bani={bani} dosar={dosar} contracte={contracte} />
 
                 {/*
                   Istoricul, pe scurt, chiar pe pagina pe care se intra.
@@ -1819,11 +1821,12 @@ const InfoRow = React.memo(({ label, value, badge }: any) => (
   </div>
 ));
 
-const DeviceCostCard = React.memo(({ device, invoices, bani, dosar }: {
-  device: MedicalDevice; invoices: Invoice[]; bani?: BaniiAparatului; dosar?: DosarulAparatului;
+const DeviceCostCard = React.memo(({ device, invoices, bani, dosar, contracte = [] }: {
+  device: MedicalDevice; invoices: Invoice[]; bani?: BaniiAparatului;
+  dosar?: DosarulAparatului; contracte?: Contract[];
 }) => {
   const deviceInvoices = invoices.filter(inv => (inv.deviceIds || []).includes(device.id));
-  const contracts = device.contracts || [];
+  const contracts = contracteleAparatului(device, contracte);
   /*
    * Ce rand e desfacut.
    *
@@ -1832,8 +1835,8 @@ const DeviceCostCard = React.memo(({ device, invoices, bani, dosar }: {
    * raspunsul statea sub alt tab. Acum randul se apasa si se desface sub el,
    * fara sa se piarda locul din pagina.
    */
-  const [desfacut, setDesfacut] = useState<'facturi' | 'referate' | 'documente' | null>(null);
-  const comuta = (care: 'facturi' | 'referate' | 'documente') =>
+  const [desfacut, setDesfacut] = useState<'facturi' | 'referate' | 'documente' | 'contracte' | null>(null);
+  const comuta = (care: 'facturi' | 'referate' | 'documente' | 'contracte') =>
     setDesfacut(p => (p === care ? null : care));
 
   // Sum invoice costs grouped by currency; each invoice's cost is split across its devices
@@ -1904,12 +1907,52 @@ const DeviceCostCard = React.memo(({ device, invoices, bani, dosar }: {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="w-4 h-4 text-slate-500" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Contracte / an ({contracts.length})</span>
-          </div>
-          <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
+        <div>
+          <button type="button" onClick={() => comuta('contracte')} disabled={contracts.length === 0}
+            aria-expanded={desfacut === 'contracte'}
+            className={`w-full flex items-center justify-between p-4 rounded-2xl transition ${
+ contracts.length === 0 ? 'bg-slate-50 cursor-default'
+ : desfacut === 'contracte' ? 'bg-slate-100' : 'bg-slate-50 hover:bg-slate-100'
+            }`}>
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-4 h-4 text-slate-500" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Contracte / an ({contracts.length})</span>
+              {contracts.length > 0 && (
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${desfacut === 'contracte' ? 'rotate-180' : ''}`} />
+              )}
+            </div>
+            <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
+          </button>
+          {desfacut === 'contracte' && (
+            <div className="mt-2 space-y-1.5 px-1">
+              {contracts.map(c => {
+                const zile = c.endDate && !Number.isNaN(Date.parse(c.endDate))
+                  ? Math.ceil((new Date(`${c.endDate}T00:00:00`).getTime() - Date.now()) / 86400000)
+                  : null;
+                return (
+                  <div key={c.id || c.contractNumber} className="py-1.5 border-b border-slate-100 last:border-b-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[12px] font-black text-slate-800 shrink-0">{c.contractNumber || 'fara numar'}</span>
+                      <span className="text-[12px] font-black text-slate-900 ml-auto shrink-0">
+                        {c.annualCost ? `${fmt(c.annualCost)} / an` : '—'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 break-words">
+                      {[c.provider, c.endDate && `pana la ${c.endDate}`].filter(Boolean).join(' · ')}
+                    </p>
+                    {/* Contractul expirat nu se ascunde, se spune: un aparat pe
+                        care crezi ca-l acopera un contract mort e mai rau decat
+                        unul despre care stii ca nu e acoperit. */}
+                    {zile !== null && zile < 0 && (
+                      <p className="text-[10px] font-black uppercase tracking-wide text-red-600">
+                        expirat de {-zile} zile
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/*
