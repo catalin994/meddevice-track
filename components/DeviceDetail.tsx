@@ -124,6 +124,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     }
   }, [device, isEditing]);
 
+  /** Ce s-a schimbat la aparatul asta, cel mai nou primul. */
+  const modificari = useMemo(
+    () => auditEntries.filter(e => e.entity === 'device' && e.entityId === device.id),
+    [auditEntries, device.id]);
+
   /** Hartia aparatului: referatele care il numesc si documentele care le sustin. */
   const dosar = useMemo(
     () => dosarulAparatului(device.id, referate, foundationDocs),
@@ -879,6 +884,76 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
                 {/* Cost of ownership */}
                 <DeviceCostCard device={device} invoices={invoices} />
+
+                {/*
+                  Istoricul, pe scurt, chiar pe pagina pe care se intra.
+                  Aparatul se deschide pe datele tehnice, iar hartia lui si ce
+                  s-a schimbat la el stateau sub un tab pe care trebuia apasat —
+                  deci nu se vedeau cand deschideai aparatul, adica tocmai cand
+                  intrebi "ce e cu asta?". Aici e raspunsul scurt; cel intreg e
+                  la o apasare.
+                */}
+                <div className="hardware-card p-4 sm:p-6 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-slate-500">Istoric</h3>
+                    </div>
+                    <button onClick={() => setActiveTab('audit')}
+                      className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wide hover:bg-slate-100 hover:text-slate-900 transition shrink-0">
+                      Vezi tot
+                    </button>
+                  </div>
+
+                  {/* Hartia: de obicei un referat, doua — incape intreaga. */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Dosarul achizitiei</p>
+                    {dosar.referate.length === 0 ? (
+                      <p className="text-[12px] font-semibold text-slate-500">Nu e pe niciun referat.</p>
+                    ) : dosar.referate.slice(0, 3).map(r => {
+                      const cate = dosar.fundamentari.filter(d => d.referatId === r.id).length;
+                      return (
+                        <button key={r.id} onClick={() => setActiveTab('audit')}
+                          className="w-full text-left p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white hover:shadow-sm transition">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <FileSignature className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="text-[12px] font-black text-slate-900">{r.number || 'fara numar'}</span>
+                            <span className="text-[10px] font-bold text-slate-500">{r.date}</span>
+                          </div>
+                          <p className="text-[12px] font-bold text-slate-700 mt-0.5 line-clamp-2 break-words">{r.subject || '—'}</p>
+                          <p className={`text-[10px] font-bold mt-0.5 ${cate ? 'text-slate-500' : 'text-amber-700'}`}>
+                            {cate ? `${cate} ${cate === 1 ? 'document' : 'documente'}` : 'fara document de fundamentare'}
+                          </p>
+                        </button>
+                      );
+                    })}
+                    {dosar.referate.length > 3 && (
+                      <p className="text-[11px] font-bold text-slate-500">si inca {dosar.referate.length - 3}</p>
+                    )}
+                  </div>
+
+                  {/* Ultimele trei modificari; restul, sub tabul de istoric. */}
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Ultimele modificari</p>
+                    {modificari.length === 0 ? (
+                      <p className="text-[12px] font-semibold text-slate-500">Nicio modificare inregistrata.</p>
+                    ) : modificari.slice(0, 3).map(e => (
+                      <div key={e.id} className="flex items-start gap-2.5">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
+ e.action === 'delete' ? 'bg-red-500' : e.action === 'create' ? 'bg-emerald-500' : 'bg-blue-500'
+                        }`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-bold text-slate-700 leading-snug">
+                            {e.action === 'create' ? 'Creat' : e.action === 'delete' ? 'Sters' : 'Modificat'} de {e.userName}
+                          </p>
+                          <p className="text-[10px] font-mono font-bold text-slate-400">
+                            {new Date(e.timestamp).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
            </div>
         )}
@@ -1363,7 +1438,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 </div>
               </div>
               {(() => {
-                const deviceAudit = auditEntries.filter(e => e.entity === 'device' && e.entityId === device.id);
+                const deviceAudit = modificari;
                 if (deviceAudit.length === 0) {
                   return <p className="py-12 text-center text-[13px] font-bold text-slate-500 tracking-normal">Nicio modificare inregistrata pentru acest dispozitiv</p>;
                 }
