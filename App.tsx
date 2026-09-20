@@ -1546,6 +1546,7 @@ const App: React.FC = () => {
                     tasks={tasks}
                     referate={referate}
                     contracteRegistru={contracte}
+                    foundationDocs={foundationDocs}
                     canFinance={canFinance}
                     auditEntries={auditLog}
                     onSelectDevice={id => { const d = devices.find(x => x.id === id); if (d) handleSelectDevice(d); }}
@@ -1567,6 +1568,8 @@ const App: React.FC = () => {
                     isStandalone={isStandalone}
                     invoices={invoices}
                     auditEntries={auditLog}
+                    referate={referate}
+                    foundationDocs={foundationDocs}
                   />
                 )}
                 {/* A scanned QR pointing at an unknown id used to render nothing at all */}

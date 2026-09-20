@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
+import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
+import { dosarulAparatului, stadiulReferatului } from '../services/dosarAparat';
 import Portal from './Portal';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
 import { saveFileAs } from '../services/fileService';
@@ -14,7 +15,7 @@ import ConfirmDialog from './ConfirmDialog';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
-  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt
+  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt, FileSignature, FolderOpen
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
@@ -31,10 +32,14 @@ interface DeviceDetailProps {
   isStandalone?: boolean;
   invoices?: Invoice[];
   auditEntries?: AuditEntry[];
+  /** Referatele si documentele intregii evidente — din ele se scoate dosarul
+   *  aparatului, in tabul de istoric. */
+  referate?: Referat[];
+  foundationDocs?: FoundationDoc[];
   canDelete?: boolean;
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], canDelete = true }) => {
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], canDelete = true }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
   const [tagInput, setTagInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -118,6 +123,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       });
     }
   }, [device, isEditing]);
+
+  /** Hartia aparatului: referatele care il numesc si documentele care le sustin. */
+  const dosar = useMemo(
+    () => dosarulAparatului(device.id, referate, foundationDocs),
+    [device.id, referate, foundationDocs]);
 
   const allAvailableDepartments = useMemo(() => {
     return getUniqueDepartments(allDevices);
@@ -1267,7 +1277,83 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         )}
 
         {activeTab === 'audit' && (
-          <div className="max-w-4xl mx-auto py-2 sm:py-6 animate-slide-up">
+          <div className="max-w-4xl mx-auto py-2 sm:py-6 space-y-5 sm:space-y-8 animate-slide-up">
+            {/*
+              Hartia aparatului, inaintea istoricului de modificari.
+              Referatul stie pentru ce aparate a fost scris, iar documentul de
+              fundamentare stie referatul pe care il sustine — deci drumul de la
+              aparat la hartia lui trece prin referat, si tocmai de asta nu se
+              vedea nicaieri. Pana acum, ca sa afli pe ce referat a intrat un
+              aparat, trebuia cautat de mana in Financiar, numar cu numar.
+            */}
+            <div className="hardware-card p-4 sm:p-10 rounded-3xl">
+              <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="p-2.5 sm:p-3 shrink-0 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-2xl shadow-sm">
+                  <FileSignature className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-xl font-black tracking-tight text-slate-900">Dosarul achizitiei</h3>
+                  <p className="tech-label mt-1">Referatele care au cerut aparatul si documentele care le sustin</p>
+                </div>
+              </div>
+
+              {dosar.referate.length === 0 ? (
+                <p className="py-10 text-center text-[13px] font-bold text-slate-500 tracking-normal">
+                  Aparatul nu e trecut pe niciun referat.
+                  <span className="block text-[11px] font-semibold text-slate-400 mt-1">
+                    Se leaga din Financiar, alegand aparatul pe referat.
+                  </span>
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {dosar.referate.map(r => {
+                    const ale = dosar.fundamentari.filter(d => d.referatId === r.id);
+                    return (
+                      <div key={r.id} className="p-4 sm:p-5 bg-slate-50 border border-slate-100 rounded-2xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <FileSignature className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <span className="text-[13px] font-black text-slate-900">{r.number || 'fara numar'}</span>
+                          <span className="text-[11px] font-bold text-slate-500">{r.date}</span>
+                          <span className={`px-2.5 py-0.5 rounded-lg border text-[10px] font-black uppercase tracking-wide ${
+ stadiulReferatului(r) === 'gata' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+ : stadiulReferatului(r) === 'oprit' ? 'bg-red-50 text-red-700 border-red-200'
+ : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {REFERAT_STATUS_RO[r.status] || r.status}
+                          </span>
+                        </div>
+                        <p className="text-[14px] font-bold text-slate-800 mt-1.5 break-words">{r.subject || '—'}</p>
+                        <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                          {[r.issuedBy, r.department, r.budgetArticle && `art. ${r.budgetArticle}`].filter(Boolean).join(' · ')}
+                        </p>
+
+                        {/* Documentele care sustin referatul, sub el: asa se vede
+                            dintr-o privire care referat are hartia completa. */}
+                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                          {ale.length === 0 ? (
+                            <p className="text-[11px] font-bold text-amber-700">
+                              Niciun document de fundamentare pe acest referat.
+                            </p>
+                          ) : ale.map(d => (
+                            <div key={d.id} className="flex flex-wrap items-center gap-2">
+                              <FolderOpen className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span className="text-[12px] font-black text-slate-800">{d.number || 'fara numar'}</span>
+                              <span className="text-[11px] font-bold text-slate-500">
+                                {FOUNDATION_DOC_RO[normaliseFoundationType(d.type)]} · {d.date}
+                              </span>
+                              <span className="text-[12px] font-semibold text-slate-600 break-words min-w-0">
+                                {d.subject || d.element || ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="hardware-card p-4 sm:p-10 rounded-3xl">
               <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <div className="p-2.5 sm:p-3 shrink-0 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl shadow-sm"><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>

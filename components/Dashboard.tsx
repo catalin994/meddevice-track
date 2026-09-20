@@ -1,8 +1,9 @@
 
 import React, { useMemo, Suspense, lazy } from 'react';
-import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, referatTotal, normaliseDeviceStatus, AuditEntry } from '../types';
-import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature, PackagePlus } from 'lucide-react';
+import { MedicalDevice, DeviceStatus, MedicalTask, TaskStatus, TaskPriority, DEVICE_STATUS_RO, TASK_PRIORITY_RO, TASK_STATUS_RO, Contract, Referat, ReferatStatus, REFERAT_STATUS_RO, FoundationDoc, referatTotal, normaliseDeviceStatus, AuditEntry } from '../types';
+import { Activity, AlertTriangle, CheckCircle, Wrench, CheckSquare, Clock, ShieldCheck, CalendarClock, FileSignature, PackagePlus, FolderOpen } from 'lucide-react';
 import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecunoscuta, areDovadaVerificarii, mentenantaNeconfirmata, Termen, FelTermen } from '../services/termene';
+import { situatiaHartiilor } from '../services/dosarAparat';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
@@ -13,6 +14,8 @@ interface DashboardProps {
   referate?: Referat[];
   /** Contractele din registrul propriu; cele de pe aparate se adauga la ele. */
   contracteRegistru?: Contract[];
+  /** Documentele de fundamentare, pentru situatia hartiilor pe aparate. */
+  foundationDocs?: FoundationDoc[];
   /** Fara drept pe Financiar, cele doua sectiuni nu au ce cauta pe Panou. */
   canFinance?: boolean;
   /** Jurnalul, pentru aparatele introduse inainte sa existe data de introducere. */
@@ -58,7 +61,7 @@ const RANG_PRIORITATE: Record<TaskPriority, number> = {
 const TICHETE_PE_PANOU = 8;
 
 const Dashboard: React.FC<DashboardProps> = ({
-  devices, tasks, referate = [], contracteRegistru = [], canFinance = false,
+  devices, tasks, referate = [], contracteRegistru = [], foundationDocs = [], canFinance = false,
   auditEntries = [], onSelectDevice, onOpenTasks, onOpenFinance,
 }) => {
   
@@ -233,6 +236,18 @@ const Dashboard: React.FC<DashboardProps> = ({
       .sort((a, b) => b.data.localeCompare(a.data))
       .slice(0, 8);
   }, [devices, auditEntries]);
+
+  /*
+   * Cate aparate au hartia lor, si cate n-au.
+   *
+   * Referatul stie pentru ce aparate a fost scris; documentul de fundamentare
+   * stie referatul pe care il sustine. Deci un aparat are dosarul complet cand e
+   * pe un referat care are cel putin un document — si asta nu se putea vedea
+   * nicaieri, nici pe aparat, nici la un loc.
+   */
+  const hartii = useMemo(
+    () => situatiaHartiilor(devices, referate, foundationDocs),
+    [devices, referate, foundationDocs]);
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -531,6 +546,97 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/*
+        Ce aparate au hartia lor si ce aparate n-au.
+        Referatul si documentul de fundamentare se vedeau numai in Financiar, si
+        numai unul cate unul. La un control se cere insa invers: pentru aparatul
+        asta, unde e hartia? Aici se vede de partea cealalta, pe aparate.
+      */}
+      {canFinance && (hartii.cuAmandoua.length > 0 || hartii.doarReferat.length > 0) && (
+        <div className="hardware-card p-5 sm:p-8 rounded-3xl">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-5 sm:mb-6">
+            <div>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Aparate cu dosar de achizitie</h3>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">
+                Referatul care le-a cerut si documentul care il sustine
+              </p>
+            </div>
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><FolderOpen className="w-6 h-6" /></div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
+            <div className="p-4 sm:p-5 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700 opacity-80">Dosar complet</p>
+              <p className="text-2xl font-black text-emerald-800 mt-0.5">{hartii.cuAmandoua.length}</p>
+              <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">referat si document</p>
+            </div>
+            <div className="p-4 sm:p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+              <p className="text-[10px] font-black uppercase tracking-wide text-amber-700 opacity-80">Fara document</p>
+              <p className="text-2xl font-black text-amber-800 mt-0.5">{hartii.doarReferat.length}</p>
+              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">au referat, dar nimic care sa-l sustina</p>
+            </div>
+            <div className="p-4 sm:p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Fara hartie</p>
+              <p className="text-2xl font-black text-slate-700 mt-0.5">{hartii.faraNimic}</p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-0.5">nu sunt pe niciun referat</p>
+            </div>
+          </div>
+
+          {/*
+            Cele fara document primele: alea cer ceva de facut. Cele cu dosarul
+            intreg vin dupa, ca sa se vada ca sunt in regula — si tot de aici se
+            deschide fisa, unde scrie pe ce referat a intrat aparatul.
+          */}
+          {hartii.doarReferat.length > 0 && (
+            <div className="space-y-2 mb-4">
+              <p className="text-[11px] font-black uppercase tracking-wide text-amber-700">
+                Au referat, dar nu si document
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {hartii.doarReferat.slice(0, 8).map(d => (
+                  <button key={d.id} onClick={() => onSelectDevice?.(d.id)}
+                    className="text-left p-3.5 bg-amber-50 border border-amber-200 rounded-2xl hover:bg-amber-100 transition active:scale-[0.98]">
+                    <p className="text-[13px] font-bold text-amber-900 leading-snug line-clamp-2 break-words">{d.name}</p>
+                    <p className="text-[11px] font-semibold text-amber-700 mt-0.5 truncate">
+                      {[d.department, d.inventoryNumber && `nr. inv. ${d.inventoryNumber}`].filter(Boolean).join(' · ')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {hartii.doarReferat.length > 8 && (
+                <p className="text-[11px] font-bold text-amber-700">
+                  si inca {hartii.doarReferat.length - 8}
+                </p>
+              )}
+            </div>
+          )}
+
+          {hartii.cuAmandoua.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-wide text-emerald-700">
+                Cu dosarul intreg
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {hartii.cuAmandoua.slice(0, 6).map(d => (
+                  <button key={d.id} onClick={() => onSelectDevice?.(d.id)}
+                    className="text-left p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:shadow-sm transition active:scale-[0.98]">
+                    <p className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2 break-words">{d.name}</p>
+                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5 truncate">
+                      {[d.department, d.inventoryNumber && `nr. inv. ${d.inventoryNumber}`].filter(Boolean).join(' · ')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {hartii.cuAmandoua.length > 6 && (
+                <p className="text-[11px] font-bold text-slate-500">
+                  si inca {hartii.cuAmandoua.length - 6}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/*
         Hartia achizitiei, pe scurt.
