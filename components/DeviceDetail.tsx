@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
-import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului } from '../services/dosarAparat';
+import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
@@ -908,7 +908,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 )}
 
                 {/* Cost of ownership */}
-                <DeviceCostCard device={device} invoices={invoices} bani={bani} />
+                <DeviceCostCard device={device} invoices={invoices} bani={bani} dosar={dosar} />
 
                 {/*
                   Istoricul, pe scurt, chiar pe pagina pe care se intra.
@@ -1819,11 +1819,22 @@ const InfoRow = React.memo(({ label, value, badge }: any) => (
   </div>
 ));
 
-const DeviceCostCard = React.memo(({ device, invoices, bani }: {
-  device: MedicalDevice; invoices: Invoice[]; bani?: BaniiAparatului;
+const DeviceCostCard = React.memo(({ device, invoices, bani, dosar }: {
+  device: MedicalDevice; invoices: Invoice[]; bani?: BaniiAparatului; dosar?: DosarulAparatului;
 }) => {
   const deviceInvoices = invoices.filter(inv => (inv.deviceIds || []).includes(device.id));
   const contracts = device.contracts || [];
+  /*
+   * Ce rand e desfacut.
+   *
+   * Randurile aratau numai cate hartii sunt si cat fac la un loc — "Facturi (3)"
+   * si o suma. Dar intrebarea care urmeaza e intotdeauna "care trei?", si
+   * raspunsul statea sub alt tab. Acum randul se apasa si se desface sub el,
+   * fara sa se piarda locul din pagina.
+   */
+  const [desfacut, setDesfacut] = useState<'facturi' | 'referate' | 'documente' | null>(null);
+  const comuta = (care: 'facturi' | 'referate' | 'documente') =>
+    setDesfacut(p => (p === care ? null : care));
 
   // Sum invoice costs grouped by currency; each invoice's cost is split across its devices
   const byCurrency = new Map<string, number>();
@@ -1841,20 +1852,57 @@ const DeviceCostCard = React.memo(({ device, invoices, bani }: {
         <h3 className="text-sm font-black tracking-tight text-slate-900">Costuri Asociate</h3>
       </div>
       <div className="space-y-3">
-        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <Receipt className="w-4 h-4 text-slate-500" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Facturi ({deviceInvoices.length})</span>
-          </div>
-          <div className="text-right">
-            {byCurrency.size === 0 ? (
-              <span className="text-sm font-black text-slate-500">—</span>
-            ) : (
-              Array.from(byCurrency.entries()).map(([cur, total]) => (
-                <p key={cur} className="text-sm font-black text-slate-900">{fmt(total)} <span className="text-[10px] text-slate-500">{cur}</span></p>
-              ))
-            )}
-          </div>
+        <div>
+          <button type="button" onClick={() => comuta('facturi')} disabled={deviceInvoices.length === 0}
+            aria-expanded={desfacut === 'facturi'}
+            className={`w-full flex items-center justify-between p-4 rounded-2xl transition ${
+ deviceInvoices.length === 0 ? 'bg-slate-50 cursor-default'
+ : desfacut === 'facturi' ? 'bg-slate-100' : 'bg-slate-50 hover:bg-slate-100'
+            }`}>
+            <div className="flex items-center gap-3">
+              <Receipt className="w-4 h-4 text-slate-500" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">Facturi ({deviceInvoices.length})</span>
+              {deviceInvoices.length > 0 && (
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${desfacut === 'facturi' ? 'rotate-180' : ''}`} />
+              )}
+            </div>
+            <div className="text-right">
+              {byCurrency.size === 0 ? (
+                <span className="text-sm font-black text-slate-500">—</span>
+              ) : (
+                Array.from(byCurrency.entries()).map(([cur, total]) => (
+                  <p key={cur} className="text-sm font-black text-slate-900">{fmt(total)} <span className="text-[10px] text-slate-500">{cur}</span></p>
+                ))
+              )}
+            </div>
+          </button>
+          {desfacut === 'facturi' && (
+            <div className="mt-2 space-y-1.5 px-1">
+              {/* Numarul si suma pe un rand, furnizorul si data pe al doilea:
+                  coloana e ingusta, si pe un singur rand furnizorul iesea taiat
+                  dupa patru litere. */}
+              {deviceInvoices.map(f => (
+                <div key={f.id} className="py-1.5 border-b border-slate-100 last:border-b-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[12px] font-black text-slate-800 shrink-0">{f.invoiceNumber || 'fara numar'}</span>
+                    <span className="text-[12px] font-black text-slate-900 ml-auto shrink-0">
+                      {fmt(f.amount || 0)} {f.currency || 'RON'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-semibold text-slate-500 break-words">
+                    {[f.supplier, f.issueDate].filter(Boolean).join(' · ')}
+                  </p>
+                  {/* Cat ii revine aparatului din ea, cand factura e pe mai
+                      multe: altfel cifra de sus n-ar da suma randurilor. */}
+                  {(f.deviceIds || []).length > 1 && (
+                    <p className="text-[10px] font-bold text-slate-500">
+                      {fmt((f.amount || 0) / (f.deviceIds || []).length)} {f.currency || 'RON'} pe aparatul asta
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
           <div className="flex items-center gap-3">
@@ -1872,37 +1920,86 @@ const DeviceCostCard = React.memo(({ device, invoices, bani }: {
         */}
         {bani && (bani.cateReferate > 0 || bani.cateDocumente > 0) && (
           <>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <FileSignature className="w-4 h-4 text-slate-500" />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
-                  Estimat, referate ({bani.cateReferate})
-                </span>
-              </div>
-              <div className="text-right">
-                {bani.estimat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
-                  : [...bani.estimat.entries()].map(([cur, t]) => (
-                    <p key={cur} className="text-sm font-black text-slate-900">
-                      {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
-                    </p>
+            <div>
+              <button type="button" onClick={() => comuta('referate')} disabled={bani.cateReferate === 0}
+                aria-expanded={desfacut === 'referate'}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl transition ${
+ bani.cateReferate === 0 ? 'bg-slate-50 cursor-default'
+ : desfacut === 'referate' ? 'bg-slate-100' : 'bg-slate-50 hover:bg-slate-100'
+                }`}>
+                <div className="flex items-center gap-3">
+                  <FileSignature className="w-4 h-4 text-slate-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                    Estimat, referate ({bani.cateReferate})
+                  </span>
+                  {bani.cateReferate > 0 && (
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${desfacut === 'referate' ? 'rotate-180' : ''}`} />
+                  )}
+                </div>
+                <div className="text-right">
+                  {bani.estimat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
+                    : [...bani.estimat.entries()].map(([cur, t]) => (
+                      <p key={cur} className="text-sm font-black text-slate-900">
+                        {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
+                      </p>
+                    ))}
+                </div>
+              </button>
+              {desfacut === 'referate' && dosar && (
+                <div className="mt-2 space-y-1.5 px-1">
+                  {dosar.referate.map(r => (
+                    <div key={r.id} className="py-1.5 border-b border-slate-100 last:border-b-0">
+                      <span className="text-[12px] font-black text-slate-800">{r.number || 'fara numar'}</span>
+                      <p className="text-[11px] font-semibold text-slate-500 break-words">
+                        {[r.subject, r.date].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
                   ))}
-              </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <FolderOpen className="w-4 h-4 text-slate-500" />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
-                  Angajat, fundamentari ({bani.cateDocumente})
-                </span>
-              </div>
-              <div className="text-right">
-                {bani.angajat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
-                  : [...bani.angajat.entries()].map(([cur, t]) => (
-                    <p key={cur} className={`text-sm font-black ${t < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                      {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
-                    </p>
+            <div>
+              <button type="button" onClick={() => comuta('documente')} disabled={bani.cateDocumente === 0}
+                aria-expanded={desfacut === 'documente'}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl transition ${
+ bani.cateDocumente === 0 ? 'bg-slate-50 cursor-default'
+ : desfacut === 'documente' ? 'bg-slate-100' : 'bg-slate-50 hover:bg-slate-100'
+                }`}>
+                <div className="flex items-center gap-3">
+                  <FolderOpen className="w-4 h-4 text-slate-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                    Angajat, fundamentari ({bani.cateDocumente})
+                  </span>
+                  {bani.cateDocumente > 0 && (
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${desfacut === 'documente' ? 'rotate-180' : ''}`} />
+                  )}
+                </div>
+                <div className="text-right">
+                  {bani.angajat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
+                    : [...bani.angajat.entries()].map(([cur, t]) => (
+                      <p key={cur} className={`text-sm font-black ${t < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                        {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
+                      </p>
+                    ))}
+                </div>
+              </button>
+              {desfacut === 'documente' && dosar && (
+                <div className="mt-2 space-y-1.5 px-1">
+                  {dosar.fundamentari.map(d => (
+                    <div key={d.id} className="py-1.5 border-b border-slate-100 last:border-b-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[12px] font-black text-slate-800 shrink-0">{d.number || 'fara numar'}</span>
+                        <span className={`text-[12px] font-black ml-auto shrink-0 ${(d.amount || 0) < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                          {fmt(d.amount || 0)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-semibold text-slate-500 break-words">
+                        {[d.subject || d.element, d.date].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
                   ))}
-              </div>
+                </div>
+              )}
             </div>
             {/* Cand hartia priveste mai multe aparate, suma se imparte egal
                 intre ele — se spune, ca sa nu para o cifra mai exacta decat e. */}
