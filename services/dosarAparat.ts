@@ -1,4 +1,4 @@
-import { MedicalDevice, Referat, FoundationDoc, ReferatStatus, referatTotal } from '../types';
+import { MedicalDevice, Referat, FoundationDoc, Invoice, ReferatStatus, referatTotal } from '../types';
 
 /**
  * Hartia unui aparat: referatele care l-au cerut si documentele care le sustin.
@@ -20,6 +20,8 @@ export interface DosarulAparatului {
   referate: Referat[];
   /** Documentele care sustin acele referate, cel mai nou primul. */
   fundamentari: FoundationDoc[];
+  /** Facturile pe care e trecut aparatul, cea mai noua prima. */
+  facturi: Invoice[];
 }
 
 const dupaData = <T extends { date?: string }>(a: T, b: T) =>
@@ -30,6 +32,7 @@ export const dosarulAparatului = (
   deviceId: string,
   referate: Referat[],
   fundamentari: FoundationDoc[],
+  facturi: Invoice[] = [],
 ): DosarulAparatului => {
   const aleLui = referate.filter(r => (r.deviceIds || []).includes(deviceId)).sort(dupaData);
   const ids = new Set(aleLui.map(r => r.id));
@@ -39,11 +42,20 @@ export const dosarulAparatului = (
    * de la niciun referat — alocarile lunare pe un contract subsecvent — si care
    * altfel n-ar avea cum sa fie legate de aparat.
    */
+  /*
+   * Factura sta la capatul aceluiasi drum: referatul cere, documentul angajeaza,
+   * factura plateste. Ea stie de mult pentru ce aparate a fost emisa — campul
+   * exista si cartonasul de costuri il foloseste — dar in dosarul aparatului nu
+   * aparea, desi e ultima hartie din sirul lor.
+   */
   return {
     referate: aleLui,
     fundamentari: fundamentari
       .filter(d => (d.referatId && ids.has(d.referatId)) || (d.deviceIds || []).includes(deviceId))
       .sort(dupaData),
+    facturi: facturi
+      .filter(f => (f.deviceIds || []).includes(deviceId))
+      .sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || '')),
   };
 };
 
@@ -126,6 +138,16 @@ export interface BaniiAparatului {
   cateReferate: number;
   cateDocumente: number;
 }
+
+/** Ce s-a platit pe aparat, dupa facturile lui, pe moneda. */
+export const platitulAparatului = (facturi: Invoice[]): PeMoneda => {
+  const m: PeMoneda = new Map();
+  for (const f of facturi) {
+    const cate = Math.max(1, (f.deviceIds || []).length);
+    adauga(m, f.currency || 'RON', (f.amount || 0) / cate);
+  }
+  return m;
+};
 
 /**
  * Cat costa aparatul dupa hartiile lui.

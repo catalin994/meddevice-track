@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Search, X, Link2, Unlink, Check, FileSignature, FolderOpen } from 'lucide-react';
+import { Search, X, Link2, Unlink, Check, FileSignature, FolderOpen, Receipt } from 'lucide-react';
 import Portal from './Portal';
 import useEscape from './useEscape';
-import { Referat, FoundationDoc, MedicalDevice, FOUNDATION_DOC_RO, normaliseFoundationType } from '../types';
+import { Referat, FoundationDoc, MedicalDevice, Invoice, FOUNDATION_DOC_RO, normaliseFoundationType } from '../types';
 
 /**
  * Legatura dintre un document de fundamentare si referatul pe care il sustine.
@@ -234,10 +234,13 @@ interface AlegeHartiileProps {
   device: MedicalDevice;
   referate: Referat[];
   docs: FoundationDoc[];
+  facturi?: Invoice[];
   /** Pune sau scoate aparatul din lista celor numite de referat. */
   onSchimbaReferat: (r: Referat, legat: boolean) => void;
   /** La fel, pentru un document legat de-a dreptul de aparat. */
   onSchimbaDocument: (d: FoundationDoc, legat: boolean) => void;
+  /** Si pentru o factura: aceeasi legatura, la capatul celalalt al drumului. */
+  onSchimbaFactura?: (f: Invoice, legat: boolean) => void;
   onInchide: () => void;
 }
 
@@ -254,10 +257,10 @@ interface AlegeHartiileProps {
  * acelasi lucru. Se vad insa, ca sa se stie ca sunt deja acolo.
  */
 export const AlegeHartiile: React.FC<AlegeHartiileProps> = ({
-  device, referate, docs, onSchimbaReferat, onSchimbaDocument, onInchide,
+  device, referate, docs, facturi = [], onSchimbaReferat, onSchimbaDocument, onSchimbaFactura, onInchide,
 }) => {
   const [q, setQ] = useState('');
-  const [fila, setFila] = useState<'referate' | 'documente'>('referate');
+  const [fila, setFila] = useState<'referate' | 'documente' | 'facturi'>('referate');
   useEscape(onInchide);
 
   const alLui = (r: Referat) => (r.deviceIds || []).includes(device.id);
@@ -282,7 +285,17 @@ export const AlegeHartiile: React.FC<AlegeHartiileProps> = ({
       .sort((a, b) => rang(a) - rang(b) || (b.date || '').localeCompare(a.date || ''));
   }, [docs, q, device.id, idsAleLui]);
 
-  const filaBtn = (care: 'referate' | 'documente', text: string, n: number) => (
+  const facturiGasite = useMemo(() => {
+    const s = q.toLowerCase().trim();
+    const alLui = (f: Invoice) => (f.deviceIds || []).includes(device.id);
+    return [...facturi]
+      .filter(f => !s || cauta(f.invoiceNumber || '', s) || cauta(f.supplier || '', s)
+        || cauta(f.description || '', s))
+      .sort((a, b) => (alLui(b) ? 1 : 0) - (alLui(a) ? 1 : 0)
+        || (b.issueDate || '').localeCompare(a.issueDate || ''));
+  }, [facturi, q, device.id]);
+
+  const filaBtn = (care: 'referate' | 'documente' | 'facturi', text: string, n: number) => (
     <button onClick={() => setFila(care)}
       className={`flex-1 px-4 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-wide transition ${
  fila === care ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -312,6 +325,8 @@ export const AlegeHartiile: React.FC<AlegeHartiileProps> = ({
             <div className="flex gap-2">
               {filaBtn('referate', 'Referate', idsAleLui.size)}
               {filaBtn('documente', 'Documente', docs.filter(d => (d.deviceIds || []).includes(device.id)).length)}
+              {onSchimbaFactura && filaBtn('facturi', 'Facturi',
+                facturi.filter(f => (f.deviceIds || []).includes(device.id)).length)}
             </div>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -324,7 +339,46 @@ export const AlegeHartiile: React.FC<AlegeHartiileProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 sm:px-6 pb-5 sm:pb-6 space-y-2">
-            {fila === 'referate' ? (
+            {fila === 'facturi' ? (
+              facturiGasite.length === 0 ? (
+                <p className="text-[13px] font-semibold text-slate-500 p-4">
+                  {facturi.length === 0 ? 'Nu e nicio factura in evidenta.' : 'Nicio factura nu se potriveste.'}
+                </p>
+              ) : facturiGasite.map(f => {
+                const ales = (f.deviceIds || []).includes(device.id);
+                const peCate = (f.deviceIds || []).length;
+                return (
+                  <button key={f.id} onClick={() => onSchimbaFactura?.(f, !ales)}
+                    className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+ ales ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                    }`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Receipt className="w-4 h-4 shrink-0" />
+                      <span className="text-[13px] font-black">{f.invoiceNumber || 'fara numar'}</span>
+                      <span className={`text-[11px] font-bold ${ales ? 'text-white/70' : 'text-slate-500'}`}>
+                        {f.issueDate}
+                      </span>
+                      {/* Cate aparate imparte factura: suma ei se imparte intre
+                          ele, deci se vede de la inceput pe cati se intinde. */}
+                      {peCate > 1 && (
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wide ${
+ ales ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          pe {peCate} aparate
+                        </span>
+                      )}
+                      {ales && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                    </div>
+                    <p className={`text-[13px] font-bold mt-1 break-words ${ales ? 'text-white' : 'text-slate-800'}`}>
+                      {f.supplier || '—'}
+                      <span className={`ml-2 font-black ${ales ? 'text-white' : 'text-slate-900'}`}>
+                        {(f.amount || 0).toLocaleString('ro-RO', { maximumFractionDigits: 2 })} {f.currency || 'RON'}
+                      </span>
+                    </p>
+                  </button>
+                );
+              })
+            ) : fila === 'referate' ? (
               referateGasite.length === 0 ? (
                 <p className="text-[13px] font-semibold text-slate-500 p-4">
                   {referate.length === 0 ? 'Nu e niciun referat in evidenta.' : 'Niciun referat nu se potriveste.'}

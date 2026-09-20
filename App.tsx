@@ -1572,6 +1572,7 @@ const App: React.FC = () => {
                     foundationDocs={foundationDocs}
                     onUpsertReferat={handleUpsertReferat}
                     onUpsertFoundationDoc={handleUpsertFoundationDoc}
+                    onUpsertInvoice={handleUpsertInvoice}
                   />
                 )}
                 {/* A scanned QR pointing at an unknown id used to render nothing at all */}

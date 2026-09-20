@@ -40,10 +40,11 @@ interface DeviceDetailProps {
   /** Salveaza un referat sau un document — pentru legarea lor de aparat. */
   onUpsertReferat?: (r: Referat) => void;
   onUpsertFoundationDoc?: (d: FoundationDoc) => void;
+  onUpsertInvoice?: (f: Invoice) => void;
   canDelete?: boolean;
 }
 
-const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], onUpsertReferat, onUpsertFoundationDoc, canDelete = true }) => {
+const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], onUpsertReferat, onUpsertFoundationDoc, onUpsertInvoice, canDelete = true }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
   const [tagInput, setTagInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -138,8 +139,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
 
   /** Hartia aparatului: referatele care il numesc si documentele care le sustin. */
   const dosar = useMemo(
-    () => dosarulAparatului(device.id, referate, foundationDocs),
-    [device.id, referate, foundationDocs]);
+    () => dosarulAparatului(device.id, referate, foundationDocs, invoices),
+    [device.id, referate, foundationDocs, invoices]);
 
   /** Cat spun hartiile ca a costat aparatul. */
   const bani = useMemo(
@@ -932,10 +933,10 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   {/* Hartia: de obicei un referat, doua — incape intreaga. */}
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">Dosarul achizitiei</p>
-                    {dosar.referate.length === 0 && dosar.fundamentari.length === 0 ? (
+                    {dosar.referate.length === 0 && dosar.fundamentari.length === 0 && dosar.facturi.length === 0 ? (
                       <div className="space-y-2">
                         <p className="text-[12px] font-semibold text-slate-500">Nicio hartie legata de aparat.</p>
-                        {(onUpsertReferat || onUpsertFoundationDoc) && (
+                        {(onUpsertReferat || onUpsertFoundationDoc || onUpsertInvoice) && (
                           <button onClick={() => setLegHartii(true)}
                             className="px-3.5 py-2 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center gap-1.5">
                             <Link2 className="w-3 h-3" /> Leaga hartii
@@ -1421,7 +1422,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   bifau aparatele — desi intrebarea vine de cele mai multe ori
                   invers: uite aparatul, unde e hartia lui?
                 */}
-                {(onUpsertReferat || onUpsertFoundationDoc) && (
+                {(onUpsertReferat || onUpsertFoundationDoc || onUpsertInvoice) && (
                   <button onClick={() => setLegHartii(true)}
                     className="shrink-0 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center gap-2">
                     <Link2 className="w-3.5 h-3.5" /> Leaga hartii
@@ -1429,7 +1430,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 )}
               </div>
 
-              {dosar.referate.length === 0 && deADreptul.length === 0 ? (
+              {dosar.referate.length === 0 && deADreptul.length === 0 && dosar.facturi.length === 0 ? (
                 <p className="py-10 text-center text-[13px] font-bold text-slate-500 tracking-normal">
                   Aparatul nu e trecut pe niciun referat si n-are niciun document.
                   <span className="block text-[11px] font-semibold text-slate-400 mt-1">
@@ -1482,6 +1483,36 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       </div>
                     );
                   })}
+
+                  {/* Facturile, la capatul drumului: referatul cere, documentul
+                      angajeaza, factura plateste. */}
+                  {dosar.facturi.length > 0 && (
+                    <div className="p-4 sm:p-5 bg-slate-50 border border-slate-100 rounded-2xl">
+                      <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+                        Facturi
+                      </p>
+                      <div className="mt-2.5 space-y-2">
+                        {dosar.facturi.map(f => (
+                          <div key={f.id} className="flex flex-wrap items-center gap-2">
+                            <Receipt className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="text-[12px] font-black text-slate-800">{f.invoiceNumber || 'fara numar'}</span>
+                            <span className="text-[11px] font-bold text-slate-500">{f.issueDate}</span>
+                            <span className="text-[12px] font-semibold text-slate-600 break-words min-w-0">
+                              {f.supplier || ''}
+                            </span>
+                            <span className="text-[12px] font-black text-slate-900 ml-auto whitespace-nowrap">
+                              {(f.amount || 0).toLocaleString('ro-RO', { maximumFractionDigits: 2 })} {f.currency || 'RON'}
+                              {(f.deviceIds || []).length > 1 && (
+                                <span className="text-[10px] font-bold text-slate-500">
+                                  {' '}· pe {(f.deviceIds || []).length} aparate
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Documentele legate de-a dreptul: cele care nu pornesc de la
                       niciun referat, cum sunt alocarile lunare pe un contract. */}
@@ -1558,6 +1589,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           device={device}
           referate={referate}
           docs={foundationDocs}
+          facturi={invoices}
           onSchimbaReferat={(r, legat) => {
             // Se salveaza pe loc, si fereastra ramane deschisa: de obicei se
             // bifeaza mai multe hartii odata.
@@ -1571,6 +1603,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             onUpsertFoundationDoc?.({ ...d, deviceIds: ids.size ? [...ids] : undefined,
                                       updated_at: new Date().toISOString() });
           }}
+          onSchimbaFactura={onUpsertInvoice ? (f, legat) => {
+            const ids = new Set(f.deviceIds || []);
+            if (legat) ids.add(device.id); else ids.delete(device.id);
+            onUpsertInvoice({ ...f, deviceIds: [...ids], updated_at: new Date().toISOString() });
+          } : undefined}
           onInchide={() => setLegHartii(false)}
         />
       )}
