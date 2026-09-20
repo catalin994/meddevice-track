@@ -1931,15 +1931,28 @@ const DeviceCostCard = React.memo(({ device, invoices, bani, dosar, contracte = 
                   : null;
                 return (
                   <div key={c.id || c.contractNumber} className="py-1.5 border-b border-slate-100 last:border-b-0">
+                    {/* Numarul scris ca atare, nu doar pus acolo: pe hartie se
+                        cheama "Nr. ctr.", si dupa el se cauta contractul. */}
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[12px] font-black text-slate-800 shrink-0">{c.contractNumber || 'fara numar'}</span>
+                      <span className="text-[12px] font-black text-slate-800 shrink-0">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Nr. ctr. </span>
+                        {c.contractNumber || 'fara numar'}
+                      </span>
                       <span className="text-[12px] font-black text-slate-900 ml-auto shrink-0">
                         {c.annualCost ? `${fmt(c.annualCost)} / an` : '—'}
                       </span>
                     </div>
-                    <p className="text-[11px] font-semibold text-slate-500 break-words">
-                      {[c.provider, c.endDate && `pana la ${c.endDate}`].filter(Boolean).join(' · ')}
-                    </p>
+                    {/* Perioada intreaga, nu doar capatul ei: un contract inceput
+                        anul trecut si unul inceput luna trecuta se termina la fel
+                        de departe, dar nu inseamna acelasi lucru. */}
+                    {(c.startDate || c.endDate) && (
+                      <p className="text-[11px] font-bold text-slate-600">
+                        Valabil {[c.startDate, c.endDate].filter(Boolean).join(' — ')}
+                      </p>
+                    )}
+                    {c.provider && (
+                      <p className="text-[11px] font-semibold text-slate-500 break-words">{c.provider}</p>
+                    )}
                     {/* Contractul expirat nu se ascunde, se spune: un aparat pe
                         care crezi ca-l acopera un contract mort e mai rau decat
                         unul despre care stii ca nu e acoperit. */}
