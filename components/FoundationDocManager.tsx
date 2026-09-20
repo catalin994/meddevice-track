@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FolderOpen, Plus, Search, X, Pencil, Trash2, Download, Upload, Loader2,
-  Paperclip, Link2, Unlink, FileDown, CalendarClock, Eye,
+  Paperclip, Link2, Unlink, FileDown, CalendarClock, Eye, CheckCircle, Box,
 } from 'lucide-react';
 import {
-  FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat, DeviceFile,
+  FoundationDoc, FoundationDocType, FOUNDATION_DOC_RO, Referat, DeviceFile, MedicalDevice,
   normaliseFoundationType, lunaRo, lunaAcum, lunaUrmatoare, luniIntre, schimbaLuna,
 } from '../types';
 import Portal from './Portal';
@@ -222,6 +222,8 @@ const descarcaFisierul = async (f: DeviceFile) => {
 interface Props {
   docs: FoundationDoc[];
   referate: Referat[];
+  /** Inventarul, ca documentul sa poata numi aparatele la care se refera. */
+  devices?: MedicalDevice[];
   onUpsert: (d: FoundationDoc) => void;
   onDelete: (id: string) => void;
   canDelete: boolean;
@@ -231,7 +233,7 @@ interface Props {
 }
 
 const FoundationDocManager: React.FC<Props> = ({
-  docs, referate, onUpsert, onDelete, canDelete, filtruReferat, onClearFiltruReferat,
+  docs, referate, devices = [], onUpsert, onDelete, canDelete, filtruReferat, onClearFiltruReferat,
 }) => {
   const [cauta, setCauta] = useState('');
   const [filtruTip, setFiltruTip] = useState<'ALL' | FoundationDocType>('ALL');
@@ -246,6 +248,9 @@ const FoundationDocManager: React.FC<Props> = ({
   const [dataRevizieiAtinsa, setDataRevizieiAtinsa] = useState(false);
   /** Documentul deschis la vedere, din lista sau din formular. */
   const [vad, setVad] = useState<DeviceFile | null>(null);
+  /** Aparatele la care se refera documentul, si cautarea din lista lor. */
+  const [dispozitive, setDispozitive] = useState<string[]>([]);
+  const [cautaDispozitiv, setCautaDispozitiv] = useState('');
   /** Documentul caruia i se alege referatul, direct din lista. */
   const [leg, setLeg] = useState<FoundationDoc | null>(null);
 
@@ -289,6 +294,8 @@ const FoundationDocManager: React.FC<Props> = ({
 
   const deschideNou = useCallback(() => {
     setForm({ ...gol(), referatId: filtruReferat || '' });
+    setDispozitive([]);
+    setCautaDispozitiv('');
     setFrazaAtinsa(false); setDataRevizieiAtinsa(false);
     setIdEditat(null); setEditez(true);
   }, [filtruReferat]);
@@ -314,12 +321,28 @@ const FoundationDocManager: React.FC<Props> = ({
       recurring: !!d.recurring, seriesId: d.seriesId || '', periodMonth: d.periodMonth || lunaAcum(),
       notes: d.notes || '', filePath: d.filePath, fileUrl: d.fileUrl || '', fileName: d.fileName || '',
     });
+    setDispozitive(d.deviceIds || []);
+    setCautaDispozitiv('');
     // Fraza scrisa deja nu se mai rescrie de la sine cand se schimba firma.
     setFrazaAtinsa(!!d.reference);
     setDataRevizieiAtinsa(!!d.revisionDate && d.revisionDate !== d.date);
     setIdEditat(d.id);
     setEditez(true);
   }, []);
+
+  /*
+   * Aparatele din lista: cele alese raman la vedere oricat de ingusta ar fi
+   * cautarea, altfel ar parea ca au disparut cand scrii in caseta.
+   */
+  const dispozitiveFiltrate = useMemo(() => {
+    const q = cautaDispozitiv.toLowerCase().trim();
+    const potrivit = (d: MedicalDevice) => !q
+      || (d.name || '').toLowerCase().includes(q)
+      || (d.serialNumber || '').toLowerCase().includes(q)
+      || (d.inventoryNumber || '').toLowerCase().includes(q)
+      || (d.department || '').toLowerCase().includes(q);
+    return devices.filter(d => dispozitive.includes(d.id) || potrivit(d)).slice(0, 80);
+  }, [devices, cautaDispozitiv, dispozitive]);
 
   const serii = useMemo(() => seriiRestante(docs), [docs]);
   const deFacut = useMemo(() => serii.filter(s => s.restante.length > 0), [serii]);
@@ -524,6 +547,7 @@ const FoundationDocManager: React.FC<Props> = ({
     onUpsert({
       id,
       referatId: form.referatId || undefined,
+      deviceIds: dispozitive.length ? dispozitive : undefined,
       type: form.type,
       number: form.number.trim() || undefined,
       date: form.date,
@@ -851,6 +875,48 @@ const FoundationDocManager: React.FC<Props> = ({
                     ))}
                   </select>
                 </Camp>
+
+                {/*
+                  Aparatele la care se refera documentul.
+                  De obicei drumul de la aparat la document trece prin referat.
+                  Dar nu toate documentele pornesc de la un referat — alocarile
+                  lunare pe un contract subsecvent n-au niciunul — si atunci
+                  aparatul n-avea cum sa ajunga la hartia lui.
+                */}
+                {devices.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">
+                      Aparate la care se refera
+                      {dispozitive.length > 0 && <span className="text-blue-600"> · {dispozitive.length} alese</span>}
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input value={cautaDispozitiv} onChange={e => setCautaDispozitiv(e.target.value)}
+                        placeholder="Cauta dupa nume, serie, numar de inventar sau sectie..."
+                        aria-label="Cauta aparate" className="camp" style={{ paddingLeft: '2.75rem' }} />
+                    </div>
+                    <div className="max-h-52 overflow-y-auto custom-scrollbar border-2 border-slate-100 rounded-2xl divide-y divide-slate-50">
+                      {dispozitiveFiltrate.length === 0 ? (
+                        <p className="px-4 py-3 text-[12px] font-semibold text-slate-500">
+                          {cautaDispozitiv ? 'Niciun aparat nu se potriveste.' : 'Nu e niciun aparat in evidenta.'}
+                        </p>
+                      ) : dispozitiveFiltrate.map(d => {
+                        const ales = dispozitive.includes(d.id);
+                        return (
+                          <button key={d.id} type="button"
+                            onClick={() => setDispozitive(p => ales ? p.filter(x => x !== d.id) : [...p, d.id])}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition ${ales ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                            <CheckCircle className={`w-4 h-4 shrink-0 ${ales ? 'text-blue-600' : 'text-slate-200'}`} />
+                            <span className="flex-1 min-w-0 truncate text-[13px] font-bold text-slate-800">{d.name}</span>
+                            <span className="text-[11px] font-mono font-bold text-slate-500 shrink-0">
+                              {d.inventoryNumber || d.serialNumber}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Camp eticheta="Tipul documentului" obligatoriu>

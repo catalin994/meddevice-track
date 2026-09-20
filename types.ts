@@ -308,6 +308,16 @@ export interface FoundationDoc {
   /** Referatul pe care il sustine. Gol la cele care nu pornesc de la unul,
    *  cum sunt alocarile lunare pe un contract subsecvent. */
   referatId?: string;
+  /**
+   * Aparatele la care se refera documentul, cand se stie.
+   *
+   * De obicei drumul de la aparat la document trece prin referat: referatul
+   * numeste aparatele, documentul sustine referatul. Dar nu toate documentele
+   * pornesc de la un referat — alocarile lunare pe un contract subsecvent nu au
+   * niciunul — si atunci aparatul n-avea cum sa fie legat de hartia lui. Aici se
+   * leaga de-a dreptul, la fel cum se leaga si contractul, si comanda.
+   */
+  deviceIds?: string[];
   type: FoundationDocType;
   /** "Numar unic de inregistrare: 17835/31.07.2026" — partea de numar. */
   number?: string;

@@ -1570,6 +1570,8 @@ const App: React.FC = () => {
                     auditEntries={auditLog}
                     referate={referate}
                     foundationDocs={foundationDocs}
+                    onUpsertReferat={handleUpsertReferat}
+                    onUpsertFoundationDoc={handleUpsertFoundationDoc}
                   />
                 )}
                 {/* A scanned QR pointing at an unknown id used to render nothing at all */}

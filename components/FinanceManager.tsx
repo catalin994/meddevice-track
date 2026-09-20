@@ -1141,6 +1141,7 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
           <FoundationDocManager
             docs={foundationDocs}
             referate={referate}
+            devices={devices}
             onUpsert={onUpsertFoundationDoc}
             onDelete={onDeleteFoundationDoc}
             canDelete={canDelete}
