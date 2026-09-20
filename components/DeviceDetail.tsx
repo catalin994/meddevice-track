@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
-import { dosarulAparatului, stadiulReferatului } from '../services/dosarAparat';
+import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
@@ -140,6 +140,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const dosar = useMemo(
     () => dosarulAparatului(device.id, referate, foundationDocs),
     [device.id, referate, foundationDocs]);
+
+  /** Cat spun hartiile ca a costat aparatul. */
+  const bani = useMemo(
+    () => baniiAparatului(device.id, dosar, referate),
+    [device.id, dosar, referate]);
 
   /*
    * Documentele legate de-a dreptul de aparat, nu prin vreun referat al lui.
@@ -902,7 +907,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                 )}
 
                 {/* Cost of ownership */}
-                <DeviceCostCard device={device} invoices={invoices} />
+                <DeviceCostCard device={device} invoices={invoices} bani={bani} />
 
                 {/*
                   Istoricul, pe scurt, chiar pe pagina pe care se intra.
@@ -1777,7 +1782,9 @@ const InfoRow = React.memo(({ label, value, badge }: any) => (
   </div>
 ));
 
-const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice; invoices: Invoice[] }) => {
+const DeviceCostCard = React.memo(({ device, invoices, bani }: {
+  device: MedicalDevice; invoices: Invoice[]; bani?: BaniiAparatului;
+}) => {
   const deviceInvoices = invoices.filter(inv => (inv.deviceIds || []).includes(device.id));
   const contracts = device.contracts || [];
 
@@ -1819,6 +1826,54 @@ const DeviceCostCard = React.memo(({ device, invoices }: { device: MedicalDevice
           </div>
           <span className="text-sm font-black text-slate-900">{contractsAnnual > 0 ? fmt(contractsAnnual) : '—'}</span>
         </div>
+
+        {/*
+          Banii din hartii, pe doua randuri.
+          Referatul spune cat s-a estimat, documentul de fundamentare cat s-a
+          angajat: sunt aceiasi bani vazuti in doua momente ale aceleiasi
+          achizitii, si adunati ar iesi de doua ori cat trebuie.
+        */}
+        {bani && (bani.cateReferate > 0 || bani.cateDocumente > 0) && (
+          <>
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <FileSignature className="w-4 h-4 text-slate-500" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                  Estimat, referate ({bani.cateReferate})
+                </span>
+              </div>
+              <div className="text-right">
+                {bani.estimat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
+                  : [...bani.estimat.entries()].map(([cur, t]) => (
+                    <p key={cur} className="text-sm font-black text-slate-900">
+                      {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
+                    </p>
+                  ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <FolderOpen className="w-4 h-4 text-slate-500" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                  Angajat, fundamentari ({bani.cateDocumente})
+                </span>
+              </div>
+              <div className="text-right">
+                {bani.angajat.size === 0 ? <span className="text-sm font-black text-slate-500">—</span>
+                  : [...bani.angajat.entries()].map(([cur, t]) => (
+                    <p key={cur} className={`text-sm font-black ${t < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                      {fmt(t)} <span className="text-[10px] text-slate-500">{cur}</span>
+                    </p>
+                  ))}
+              </div>
+            </div>
+            {/* Cand hartia priveste mai multe aparate, suma se imparte egal
+                intre ele — se spune, ca sa nu para o cifra mai exacta decat e. */}
+            <p className="text-[10px] font-semibold text-slate-400 leading-relaxed px-1">
+              Cand o hartie priveste mai multe aparate, suma ei se imparte in parti egale intre ele.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { MedicalDevice, Referat, FoundationDoc, ReferatStatus } from '../types';
+import { MedicalDevice, Referat, FoundationDoc, ReferatStatus, referatTotal } from '../types';
 
 /**
  * Hartia unui aparat: referatele care l-au cerut si documentele care le sustin.
@@ -107,3 +107,70 @@ export const stadiulReferatului = (r: Referat): 'gata' | 'in lucru' | 'oprit' =>
   r.status === ReferatStatus.CLOSED || r.status === ReferatStatus.APPROVED ? 'gata'
   : r.status === ReferatStatus.REJECTED ? 'oprit'
   : 'in lucru';
+
+/* ─────────────────────────── banii din hartii ─────────────────────────── */
+
+/** Cati bani, pe ce moneda. */
+export type PeMoneda = Map<string, number>;
+
+const adauga = (m: PeMoneda, moneda: string, cat: number) => {
+  if (!cat) return;
+  m.set(moneda || 'RON', (m.get(moneda || 'RON') || 0) + cat);
+};
+
+export interface BaniiAparatului {
+  /** Cat s-a estimat in referatele care il numesc. */
+  estimat: PeMoneda;
+  /** Cat s-a angajat prin documentele de fundamentare. */
+  angajat: PeMoneda;
+  cateReferate: number;
+  cateDocumente: number;
+}
+
+/**
+ * Cat costa aparatul dupa hartiile lui.
+ *
+ * Doua sume, nu una. Referatul spune cat s-a estimat ca va costa; documentul de
+ * fundamentare spune cat s-a angajat de fapt. Sunt aceiasi bani vazuti de doua
+ * ori, in doua momente ale aceleiasi achizitii, si adunati ar iesi de doua ori
+ * cat trebuie. Asa ca se tin despartite, la fel cum facturile si contractele
+ * stau pe randuri diferite in cartonasul de costuri.
+ *
+ * Cand o hartie priveste mai multe aparate, suma ei se imparte in parti egale
+ * intre ele — aceeasi socoteala pe care o face de mult cartonasul pentru o
+ * factura cu mai multe aparate pe ea. Nu e adevarul exact: un referat cu sapte
+ * injectomate si o reparatie nu se imparte egal. Dar e o socoteala limpede, una
+ * singura in toata aplicatia, si nu pretinde mai multa precizie decat are.
+ *
+ * Stornarile ies negative, si asa si trebuie: ele scad din ce s-a angajat.
+ */
+export const baniiAparatului = (
+  deviceId: string,
+  dosar: DosarulAparatului,
+  referate: Referat[],
+): BaniiAparatului => {
+  const estimat: PeMoneda = new Map();
+  const angajat: PeMoneda = new Map();
+
+  for (const r of dosar.referate) {
+    const cate = Math.max(1, (r.deviceIds || []).length);
+    adauga(estimat, r.currency, referatTotal(r.items) / cate);
+  }
+
+  const referateDupaId = new Map(referate.map(r => [r.id, r]));
+  for (const d of dosar.fundamentari) {
+    /*
+     * Peste cate aparate se imparte documentul: cele numite de el, cand le are,
+     * altfel cele ale referatului pe care il sustine. Un document legat de-a
+     * dreptul de un aparat nu se imparte cu aparatele referatului, fiindca nu
+     * trece prin el.
+     */
+    const aleLui = d.deviceIds?.length
+      ? d.deviceIds
+      : (d.referatId ? referateDupaId.get(d.referatId)?.deviceIds : undefined) || [];
+    const cate = Math.max(1, aleLui.length);
+    adauga(angajat, d.currency || 'RON', (d.amount || 0) / cate);
+  }
+
+  return { estimat, angajat, cateReferate: dosar.referate.length, cateDocumente: dosar.fundamentari.length };
+};
