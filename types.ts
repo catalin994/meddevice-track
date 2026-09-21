@@ -469,6 +469,14 @@ export interface DeviceFile {
   url?: string;
   size?: number;
   dateAdded: string;
+  /**
+   * Ziua pana la care tine hartia, cand are un termen: "2027-01-14".
+   *
+   * Buletinul de verificare metrologica, autorizatia, avizul. Data statea numai
+   * pe hartia scanata — ca s-o afli, trebuia deschis documentul. Goala inseamna
+   * "fara termen", nu "expirat".
+   */
+  validUntil?: string;
 }
 
 /**

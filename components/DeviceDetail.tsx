@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
+import { valabilitatea, ultimaCuTermen } from '../services/valabilitate';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
@@ -46,6 +47,22 @@ interface DeviceDetailProps {
   canDelete?: boolean;
 }
 
+/**
+ * Buletinul incarcat muta si termenul aparatului.
+ *
+ * Data asta era ceruta in doua locuri: o data pe fisa, la "Termene si
+ * conformitate", si o data — acum — pe hartia din care vine. Scrise de mana in
+ * amandoua, se despart: pe Panou apare un termen, in dosar altul, si cel de pe
+ * Panou e cel dupa care suna cineva. Asa ca buletinul o duce cu el.
+ *
+ * Numai buletinele. Un contract sau un aviz au si ele termen, dar n-au ce cauta
+ * in randul metrologiei.
+ */
+const dinBuletin = (f: { type: DeviceFile['type']; validUntil?: string }) =>
+  f.type === 'metrologie' && f.validUntil
+    ? { metrologyRequired: true, metrologyExpiry: f.validUntil }
+    : {};
+
 const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices = [], onUpdate, onDelete, onBack, onAddTask, isStandalone = false, invoices = [], auditEntries = [], referate = [], foundationDocs = [], onUpsertReferat, onUpsertFoundationDoc, onUpsertInvoice, contracte = [], canDelete = true }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'docs' | 'tasks' | 'qr' | 'audit'>('overview');
   const [tagInput, setTagInput] = useState('');
@@ -60,6 +77,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
+  /*
+   * Termenul hartiei care urmeaza sa fie incarcata. Se scrie inainte, langa
+   * tipul documentului, fiindca atunci il are omul sub ochi: se uita pe buletin
+   * si il scrie. Cerut dupa incarcare, s-ar amana si nu s-ar mai scrie.
+   */
+  const [uploadValid, setUploadValid] = useState('');
   const [showDocCapture, setShowDocCapture] = useState(false);
   const [viewingFile, setViewingFile] = useState<DeviceFile | null>(null);
   /** Fisierul pentru care se aleg celelalte aparate, si alegerea de acum. */
@@ -261,13 +284,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       // Marimea se retinea doar la incarcarea din fisier, nu si la scanare —
       // adica tocmai la documentele mari. Fara ea, socoteala spatiului le sare.
       size: Math.round((pdfDataUrl.length - (pdfDataUrl.indexOf(',') + 1)) * 0.75),
-      dateAdded: new Date().toISOString().split('T')[0]
+      dateAdded: new Date().toISOString().split('T')[0],
+      ...(uploadValid ? { validUntil: uploadValid } : {}),
     };
     const updatedFiles = [...(editForm.files || []), newFile];
-    setEditForm(prev => ({ ...prev, files: updatedFiles }));
-    await onUpdate({ ...device, ...editForm, files: updatedFiles });
+    const dinEl = dinBuletin(newFile);
+    setEditForm(prev => ({ ...prev, files: updatedFiles, ...dinEl }));
+    await onUpdate({ ...device, ...editForm, files: updatedFiles, ...dinEl });
     setLastSyncTime(new Date().toLocaleTimeString());
-  }, [device, editForm, onUpdate, uploadType]);
+    setUploadValid('');
+  }, [device, editForm, onUpdate, uploadType, uploadValid]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -298,13 +324,16 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         type: uploadType,
         path,
         size: file.size,
-        dateAdded: new Date().toISOString().split('T')[0]
+        dateAdded: new Date().toISOString().split('T')[0],
+        ...(uploadValid ? { validUntil: uploadValid } : {}),
       };
 
       const updatedFiles = [...(editForm.files || []), newFile];
-      setEditForm(prev => ({ ...prev, files: updatedFiles }));
-      await onUpdate({ ...device, ...editForm, files: updatedFiles });
+      const dinEl = dinBuletin(newFile);
+      setEditForm(prev => ({ ...prev, files: updatedFiles, ...dinEl }));
+      await onUpdate({ ...device, ...editForm, files: updatedFiles, ...dinEl });
       setLastSyncTime(new Date().toLocaleTimeString());
+      setUploadValid('');
     } catch (err) {
       console.error("File upload failed", err);
       setUploadError("Incarcarea a esuat");
@@ -312,7 +341,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [device, editForm, onUpdate, uploadType]);
+  }, [device, editForm, onUpdate, uploadType, uploadValid]);
 
   // Removing a document deletes it from cloud storage too — there is no copy
   // left to restore from, so this one has to be asked before, not regretted
@@ -335,6 +364,22 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
       setIsRemovingFile(false);
       setPendingFileDelete(null);
     }
+  }, [device, editForm, onUpdate]);
+
+  /**
+   * Termenul pus pe o hartie deja incarcata.
+   *
+   * Fara asta, buletinele urcate pana acum n-ar fi avut cum sa capete termen
+   * decat urcate inca o data — iar tocmai ele sunt cele care expira primele.
+   * Gol il si scoate, pentru documentul pus din greseala pe termen.
+   */
+  const puneValabilitatea = useCallback(async (fileId: string, pana: string) => {
+    const updatedFiles = editForm.files.map(f =>
+      f.id === fileId ? { ...f, validUntil: pana || undefined } : f);
+    const dinEl = dinBuletin(updatedFiles.find(f => f.id === fileId)!);
+    setEditForm(prev => ({ ...prev, files: updatedFiles, ...dinEl }));
+    await onUpdate({ ...device, ...editForm, files: updatedFiles, ...dinEl });
+    setLastSyncTime(new Date().toLocaleTimeString());
   }, [device, editForm, onUpdate]);
 
   // Opens the built-in viewer instead of a new browser tab, so the user can
@@ -1011,7 +1056,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
           <div className="max-w-6xl mx-auto py-2 sm:py-6 space-y-5 sm:space-y-8 animate-slide-up">
              <div className="hardware-card p-4 sm:p-10 rounded-3xl flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-5 sm:gap-8 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20" />
-                <div className="flex items-center gap-4 sm:gap-6">
+                <div className="flex items-center gap-4 sm:gap-6 shrink-0">
                    <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-xl">
                       <BookOpen className="w-6 h-6 sm:w-8 sm:h-8" />
                    </div>
@@ -1020,20 +1065,37 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                       <p className="tech-label mt-1">Documentatie si manuale centralizate</p>
                    </div>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:justify-end items-stretch sm:items-center gap-3 sm:gap-4 w-full lg:w-auto">
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1">Tip Document</label>
                       <select 
-                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm sm:min-w-[180px]"
+                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm sm:w-[170px]"
                          value={uploadType}
                          onChange={(e) => setUploadType(e.target.value as any)}
                       >
                          <option value="report">Raport Service</option>
+                         <option value="metrologie">Buletin de verificare</option>
                          <option value="manual">Manual Tehnic</option>
                          <option value="service">Document Service</option>
                          <option value="achizitie">Document Achizitie</option>
                          <option value="other">Alt Document</option>
                       </select>
+                   </div>
+                   {/*
+                     Termenul hartiei. Gol pentru un manual, scris pentru un
+                     buletin de verificare — si atunci se vede pe fisier si in
+                     capul gramezii, fara sa mai fie deschis documentul.
+                   */}
+                   <div className="flex flex-col gap-1 w-full sm:w-auto">
+                      <label className="tech-label ml-1 mb-1" htmlFor="valabil-pana">Valabil pana la</label>
+                      <input
+                         id="valabil-pana"
+                         type="date"
+                         value={uploadValid}
+                         onChange={(e) => setUploadValid(e.target.value)}
+                         title="Pentru buletine de verificare, autorizatii, avize. Gol pentru documentele fara termen."
+                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm sm:w-[150px]"
+                      />
                    </div>
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1 opacity-0">Actiune</label>
@@ -1086,11 +1148,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                      <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'manual').length} fisiere</span>
                   </div>
+                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'manual')} />
                   
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'manual').length > 0 ? (
                        editForm.files.filter(f => f.type === 'manual').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -1110,16 +1173,41 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                      <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'report').length} fisiere</span>
                   </div>
+                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'report')} />
                   
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'report').length > 0 ? (
                        editForm.files.filter(f => f.type === 'report').map(file => (
-                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
                           <FileText className="w-10 h-10 text-slate-500 mb-3" />
                           <p className="tech-label">Niciun raport</p>
+                       </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* Buletine de verificare — hartia care tine aparatul in uz */}
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex items-center justify-between px-2">
+                     <div className="flex items-center gap-3">
+                        <div className="w-2 h-6 bg-indigo-500 rounded-full" />
+                        <h4 className="tech-label text-slate-900">Buletine de verificare</h4>
+                     </div>
+                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'metrologie').length} fisiere</span>
+                  </div>
+                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'metrologie')} />
+                  <div className="space-y-3 sm:space-y-4">
+                     {editForm.files.filter(f => f.type === 'metrologie').length > 0 ? (
+                       editForm.files.filter(f => f.type === 'metrologie').map(file => (
+                         <FileCard key={file.id} file={file} color="indigo" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                       ))
+                     ) : (
+                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
+                          <ShieldCheck className="w-10 h-10 text-slate-500 mb-3" />
+                          <p className="tech-label">Niciun buletin</p>
                        </div>
                      )}
                   </div>
@@ -1134,10 +1222,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                      <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'service').length} fisiere</span>
                   </div>
+                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'service')} />
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'service').length > 0 ? (
                        editForm.files.filter(f => f.type === 'service').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -1157,10 +1246,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                      </div>
                      <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'achizitie').length} fisiere</span>
                   </div>
+                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'achizitie')} />
                   <div className="space-y-3 sm:space-y-4">
                      {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
                        editForm.files.filter(f => f.type === 'achizitie').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))
                      ) : (
                        <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
@@ -1183,7 +1273,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                        {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
                        ))}
                     </div>
                   </div>
@@ -1727,7 +1817,41 @@ const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
   other: 'Altele',
 };
 
-const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete, onLink, alteAparate = [] }: any) => (
+/**
+ * Termenul gramezii: ce spune ultima hartie cu termen pusa in ea.
+ *
+ * Statea numai pe hartia scanata. Ca sa afli pana cand tine buletinul, trebuia
+ * deschis documentul — si se deschidea cand se gandea cineva sa se uite.
+ */
+const TermenulGramezii = React.memo(({ fisiere }: { fisiere: DeviceFile[] }) => {
+  const ultim = ultimaCuTermen(fisiere);
+  const termen = valabilitatea(ultim?.validUntil);
+  if (!ultim || !termen) return null;
+  return (
+    <div className={`mx-2 px-3 py-2 rounded-xl border flex items-center gap-2 ${CULORI_VALABILITATE[termen.stare]}`}>
+      <ShieldCheck className="w-4 h-4 shrink-0" />
+      <p className="text-[11px] font-black uppercase tracking-wide">{termen.text}</p>
+      <p className="text-[10px] font-bold opacity-70 truncate ml-auto" title={ultim.name}>
+        dupa {ultim.name}
+      </p>
+    </div>
+  );
+});
+
+/** Cum arata un termen: verde cat mai e timp, chihlimbar cand se apropie, rosu dupa. */
+const CULORI_VALABILITATE: Record<string, string> = {
+  valabil: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  aproape: 'bg-amber-50 border-amber-200 text-amber-800',
+  expirat: 'bg-red-50 border-red-200 text-red-700',
+};
+
+const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete, onLink, onValabilitate, alteAparate = [] }: any) => {
+  /* Termenul se scrie si dupa ce hartia a fost incarcata: cele vechi n-ar fi
+     avut altfel de unde sa-l capete. */
+  const [scriuTermenul, setScriuTermenul] = React.useState(false);
+  const termen = valabilitatea(file.validUntil);
+
+  return (
   <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
     <div className={`absolute top-0 left-0 w-1 h-full bg-${color}-600`} />
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -1750,6 +1874,26 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
                 si pe {alteAparate.length} {alteAparate.length === 1 ? 'alt aparat' : 'alte aparate'}
               </p>
             )}
+            {onValabilitate && (scriuTermenul ? (
+              <input
+                type="date" autoFocus defaultValue={file.validUntil || ''}
+                onBlur={e => { setScriuTermenul(false); if (e.target.value !== (file.validUntil || '')) onValabilitate(e.target.value); }}
+                onKeyDown={e => { if (e.key === 'Escape') setScriuTermenul(false); }}
+                aria-label={`Valabil pana la, pentru ${file.name}`}
+                className="mt-1 px-2 py-1 bg-white border-2 border-blue-400 rounded-lg text-[11px] font-bold outline-none"
+              />
+            ) : termen ? (
+              <button type="button" onClick={() => setScriuTermenul(true)}
+                title="Apasa ca sa schimbi termenul"
+                className={`mt-1 px-2 py-0.5 rounded-[4px] border text-[10px] font-black uppercase tracking-wide ${CULORI_VALABILITATE[termen.stare]}`}>
+                {termen.text}
+              </button>
+            ) : (
+              <button type="button" onClick={() => setScriuTermenul(true)}
+                className="mt-1 px-2 py-0.5 rounded-[4px] border border-dashed border-slate-300 text-[10px] font-bold uppercase tracking-wide text-slate-400 hover:text-slate-700 hover:border-slate-400 transition">
+                + termen
+              </button>
+            ))}
          </div>
        </div>
        {/* Actions drop to their own full-width row on phones so the file name keeps its space */}
@@ -1766,7 +1910,8 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
        </div>
     </div>
   </div>
-));
+  );
+});
 
 /**
  * Un buton din randul de actiuni al fisei.
