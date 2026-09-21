@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
 import { valabilitatea, ultimaCuTermen } from '../services/valabilitate';
+import CampData from './CampData';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
@@ -843,21 +844,20 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                                 </div>
                                 <div className="space-y-1.5">
                                   <label className="tech-label ml-1">Data verificarii</label>
-                                  <input type="date" name="metrologyDate" value={editForm.metrologyDate}
-                                    onChange={e => {
-                                      const d = e.target.value;
+                                  <CampData value={editForm.metrologyDate}
+                                    onChange={d => {
                                       // Valabilitatea se propune la un an, cat e de obicei;
                                       // ramane de schimbat cand laboratorul scrie altceva.
                                       setEditForm(p => ({ ...p, metrologyDate: d,
                                         metrologyExpiry: p.metrologyExpiry || valabilitatePropusa(d) }));
                                     }}
-                                    aria-label="Data verificarii metrologice" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                    eticheta="Data verificarii metrologice" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
                                 </div>
                                 <div className="space-y-1.5">
                                   <label className="tech-label ml-1">Valabil pana la</label>
-                                  <input type="date" name="metrologyExpiry" value={editForm.metrologyExpiry}
-                                    onChange={handleEditChange}
-                                    aria-label="Buletinul metrologic e valabil pana la" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                                  <CampData value={editForm.metrologyExpiry}
+                                    onChange={d => setEditForm(p => ({ ...p, metrologyExpiry: d }))}
+                                    eticheta="Buletinul metrologic e valabil pana la" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
                                 </div>
                               </div>
                             )}
@@ -865,24 +865,31 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                               <label className="tech-label ml-1">Garantia expira</label>
-                              <input type="date" name="warrantyExpiration" value={editForm.warrantyExpiration}
-                                onChange={handleEditChange} aria-label="Data expirarii garantiei" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                              <CampData value={editForm.warrantyExpiration}
+                                onChange={d => setEditForm(p => ({ ...p, warrantyExpiration: d }))}
+                                eticheta="Data expirarii garantiei" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="tech-label ml-1">Autorizatia CNCAN expira</label>
-                              <input type="date" name="cncanExpiry" value={editForm.cncanExpiry}
-                                onChange={handleEditChange} disabled={!editForm.isCNCAN}
-                                title={editForm.isCNCAN ? '' : 'Se completeaza doar la aparatele sub incidenta CNCAN'}
-                                aria-label="Data expirarii autorizatiei CNCAN"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors disabled:opacity-40" />
+                              {editForm.isCNCAN ? (
+                                <CampData value={editForm.cncanExpiry}
+                                  onChange={d => setEditForm(p => ({ ...p, cncanExpiry: d }))}
+                                  eticheta="Data expirarii autorizatiei CNCAN"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
+                              ) : (
+                                <input value="" readOnly disabled
+                                  title="Se completeaza doar la aparatele sub incidenta CNCAN"
+                                  aria-label="Data expirarii autorizatiei CNCAN"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors opacity-40" />
+                              )}
                             </div>
                             {/* Al treilea in grila de doua coloane, deci chiar
                                 sub garantie — de unde si curge garantia. */}
                             <div className="space-y-1.5">
                               <label className="tech-label ml-1">Pus in functiune</label>
-                              <input type="date" name="commissioningDate" value={editForm.commissioningDate}
-                                onChange={handleEditChange} aria-label="Data punerii in functiune"
-                                title="Cand a inceput aparatul sa fie folosit — de obicei dupa instalare si instruire, nu in ziua facturii"
+                              <CampData value={editForm.commissioningDate}
+                                onChange={d => setEditForm(p => ({ ...p, commissioningDate: d }))}
+                                eticheta="Data punerii in functiune"
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
                             </div>
                           </div>
@@ -1088,13 +1095,12 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    */}
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                       <label className="tech-label ml-1 mb-1" htmlFor="valabil-pana">Valabil pana la</label>
-                      <input
+                      <CampData
                          id="valabil-pana"
-                         type="date"
                          value={uploadValid}
-                         onChange={(e) => setUploadValid(e.target.value)}
-                         title="Pentru buletine de verificare, autorizatii, avize. Gol pentru documentele fara termen."
-                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none cursor-pointer focus:border-blue-500 transition-all shadow-sm sm:w-[150px]"
+                         onChange={setUploadValid}
+                         eticheta="Valabil pana la"
+                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 tech-label outline-none focus:border-blue-500 transition-all shadow-sm sm:w-[150px]"
                       />
                    </div>
                    <div className="flex flex-col gap-1 w-full sm:w-auto">
@@ -1875,13 +1881,16 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
               </p>
             )}
             {onValabilitate && (scriuTermenul ? (
-              <input
-                type="date" autoFocus defaultValue={file.validUntil || ''}
-                onBlur={e => { setScriuTermenul(false); if (e.target.value !== (file.validUntil || '')) onValabilitate(e.target.value); }}
-                onKeyDown={e => { if (e.key === 'Escape') setScriuTermenul(false); }}
-                aria-label={`Valabil pana la, pentru ${file.name}`}
-                className="mt-1 px-2 py-1 bg-white border-2 border-blue-400 rounded-lg text-[11px] font-bold outline-none"
-              />
+              <div className="mt-1 w-[150px]">
+                <CampData
+                  autoFocus
+                  value={file.validUntil || ''}
+                  onChange={(iso: string) => onValabilitate(iso)}
+                  onIesire={() => setScriuTermenul(false)}
+                  eticheta={`Valabil pana la, pentru ${file.name}`}
+                  className="w-full px-2 py-1 bg-white border-2 border-blue-400 rounded-lg text-[11px] font-bold outline-none"
+                />
+              </div>
             ) : termen ? (
               <button type="button" onClick={() => setScriuTermenul(true)}
                 title="Apasa ca sa schimbi termenul"
