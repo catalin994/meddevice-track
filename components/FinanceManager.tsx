@@ -158,6 +158,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
   // Cand se apasa pe insigna de documente a unui referat, se trece pe tab-ul
   // celalalt cu lista deja restransa la dosarul lui.
   const [dosarReferat, setDosarReferat] = useState<string | null>(null);
+  /** Referatul din care se incepe o fundamentare noua, o singura data. */
+  const [faDinReferat, setFaDinReferat] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
@@ -1131,6 +1133,9 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             canDelete={canDelete}
             onShowDocs={(id) => { setDosarReferat(id); setTab('FUNDAMENTARE'); }}
             onLeagaDoc={onUpsertFoundationDoc}
+            /* Lista ramane filtrata pe referat: dupa salvare, acolo se vede ce
+               s-a facut din el. */
+            onFaFundamentare={(id) => { setDosarReferat(id); setFaDinReferat(id); setTab('FUNDAMENTARE'); }}
           />
         </Suspense>
       )}
@@ -1147,6 +1152,8 @@ const FinanceManager: React.FC<FinanceManagerProps> = ({
             canDelete={canDelete}
             filtruReferat={dosarReferat}
             onClearFiltruReferat={() => setDosarReferat(null)}
+            faDinReferat={faDinReferat}
+            onPornitDinReferat={() => setFaDinReferat(null)}
           />
         </Suspense>
       )}

@@ -22,6 +22,7 @@ import useTragere from './useTragere';
 import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteFundamentareDinWord } from '../services/achizitieWordParse';
 import { citesteFundamentarePdf } from '../services/achizitiePdf';
+import { fundamentareaDinReferat } from '../services/fundamentareDinReferat';
 
 /**
  * Documentul de fundamentare, in forma pe care o cere legea.
@@ -230,10 +231,15 @@ interface Props {
   /** Cand se vine dinspre un referat, lista porneste filtrata pe el. */
   filtruReferat: string | null;
   onClearFiltruReferat: () => void;
+  /** Referatul din care se incepe un document nou, completat din el. */
+  faDinReferat?: string | null;
+  /** Spune inapoi ca formularul s-a deschis, ca sa nu se redeschida. */
+  onPornitDinReferat?: () => void;
 }
 
 const FoundationDocManager: React.FC<Props> = ({
   docs, referate, devices = [], onUpsert, onDelete, canDelete, filtruReferat, onClearFiltruReferat,
+  faDinReferat, onPornitDinReferat,
 }) => {
   const [cauta, setCauta] = useState('');
   const [filtruTip, setFiltruTip] = useState<'ALL' | FoundationDocType>('ALL');
@@ -299,6 +305,52 @@ const FoundationDocManager: React.FC<Props> = ({
     setFrazaAtinsa(false); setDataRevizieiAtinsa(false);
     setIdEditat(null); setEditez(true);
   }, [filtruReferat]);
+
+  /**
+   * Un document nou, scris din referat.
+   *
+   * Se deschide completat, nu salvat: raman lucruri pe care numai omul le stie
+   * — numarul de inregistrare, codul SSI, ce s-a mai schimbat intre timp — iar
+   * o hartie aparuta singura in evidenta, cu numarul gol, e mai rea decat una
+   * nescrisa inca.
+   */
+  const deschideDinReferat = useCallback((r: Referat) => {
+    const z = fundamentareaDinReferat(r);
+    const g = gol();
+    setForm({
+      ...g,
+      referatId: z.referatId,
+      subject: z.subject,
+      shortDescription: z.shortDescription,
+      description: z.description,
+      // Compartimentul retinut de la ultimul document tine locul numai cand
+      // referatul nu spune cine l-a emis.
+      compartment: z.compartment || g.compartment,
+      budgetArticle: z.budgetArticle,
+      element: z.element,
+      parameters: z.parameters,
+      previousValue: z.previousValue,
+      influence: z.influence,
+      currency: z.currency,
+      supplier: z.supplier,
+      referenceNumber: z.referenceNumber,
+      reference: frazaPropusa({
+        type: g.type, supplier: z.supplier,
+        referenceNumber: z.referenceNumber, frameworkContract: '',
+      }),
+    });
+    setDispozitive(z.deviceIds);
+    setCautaDispozitiv('');
+    setFrazaAtinsa(false); setDataRevizieiAtinsa(false);
+    setIdEditat(null); setEditez(true);
+  }, []);
+
+  useEffect(() => {
+    if (!faDinReferat) return;
+    const r = referateDupaId.get(faDinReferat);
+    if (r) deschideDinReferat(r);
+    onPornitDinReferat?.();
+  }, [faDinReferat, referateDupaId, deschideDinReferat, onPornitDinReferat]);
 
   const deschideEditare = useCallback((d: FoundationDoc) => {
     setForm({
