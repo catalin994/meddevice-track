@@ -187,10 +187,24 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
         + `${d.referenceNumber ? `, cu numărul ${d.referenceNumber}` : ''}.`
       : '');
 
+  /*
+   * Ce contin sumele. Scris pe hartie, fiindca cine o citeste peste un an nu mai
+   * are de unde sti daca 3.630 e cu TVA sau fara — iar referatul din acelasi
+   * dosar spune raspicat "fara TVA".
+   *
+   * Sta langa socoteala, in coloana parametrilor, fiindca acolo il scrie si
+   * omul, si fiindca asa incape in formularul oficial fara sa i se adauge un
+   * rand pe care nu-l are. Pentru sabloanele proprii ramane si semnul lui, daca
+   * cineva vrea fraza intreaga in alta parte a hartiei.
+   */
+  const randTva = d.vatRate ? `Valorile din tabel includ TVA ${d.vatRate}%.` : '';
+  const parametriiScrisi = (d.parameters || '') + (d.vatRate ? ` (cu TVA ${d.vatRate}%)` : '');
+
   const sablon = await iaSablon('fundamentare');
   if (sablon) {
     return completeazaSablon(sablon, {
       valori: {
+        tva: randTva,
         obiect: d.subject || '',
         descriere_scurta: descriereScurta,
         numar: d.number || '',
@@ -204,7 +218,7 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
         element,
         program: d.program || '',
         cod_ssi: d.ssiCode || '',
-        parametri: d.parameters || '',
+        parametri: parametriiScrisi,
         val_precedenta: suma(precedenta),
         influenta: suma(influenta),
         val_actualizata: suma(actualizata),
@@ -230,7 +244,7 @@ export const fundamentareDocx = async (d: FoundationDoc, referat?: Referat): Pro
       { text: element, width: L[0], style: { size: 9 } },
       { text: d.program || '', width: L[1], style: { size: 9, align: 'center' as const } },
       { text: d.ssiCode || '', width: L[2], style: { size: 9, align: 'center' as const } },
-      { text: d.parameters || '', width: L[3], style: { size: 9, align: 'center' as const } },
+      { text: parametriiScrisi, width: L[3], style: { size: 9, align: 'center' as const } },
       { text: suma(precedenta), width: L[4], style: { size: 9, align: 'right' as const } },
       { text: suma(influenta), width: L[5], style: { size: 9, align: 'right' as const } },
       { text: suma(actualizata), width: L[6], style: { size: 9, align: 'right' as const } },

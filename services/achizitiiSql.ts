@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS public.documente_fundamentare (
   "influence"         NUMERIC,
   "amount"            NUMERIC,
   "remainingAmount"   NUMERIC,
+  -- cota de TVA cuprinsa in sumele de mai sus, informativa
+  "vatRate"           NUMERIC,
   "currency"          TEXT,
   "supplier"          TEXT,
   "referenceNumber"   TEXT,
@@ -102,7 +104,9 @@ ALTER TABLE public.documente_fundamentare
   ADD COLUMN IF NOT EXISTS "seriesId"          TEXT,
   ADD COLUMN IF NOT EXISTS "periodMonth"       TEXT,
   -- plafonul acordului-cadru din care trag alocarile lunare
-  ADD COLUMN IF NOT EXISTS "frameworkTotal"    NUMERIC;
+  ADD COLUMN IF NOT EXISTS "frameworkTotal"    NUMERIC,
+  -- ce contin sumele: referatul estimeaza fara TVA, fundamentarea angajeaza cu
+  ADD COLUMN IF NOT EXISTS "vatRate"           NUMERIC;
 
 -- ── 3. COMENZI CATRE FURNIZOR ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.comenzi (

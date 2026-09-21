@@ -351,6 +351,15 @@ export interface FoundationDoc {
   previousValue?: number;
   influence?: number;
   amount?: number;
+  /**
+   * Cota de TVA cuprinsa in sumele de mai sus, in procente.
+   *
+   * Nu se recalculeaza nimic dupa ea — sumele sunt deja cele care se scriu pe
+   * hartie. E acolo ca sa se stie ce contin: referatul estimeaza fara TVA,
+   * fundamentarea angajeaza cu TVA, si cele doua cifre stau una langa alta in
+   * dosarul aparatului. Goala inseamna "asa cum a fost scrisa", nu "fara TVA".
+   */
+  vatRate?: number;
   currency?: string;
   /** "[ ] ramane in suma de ___ lei, conform fundamentarii aprobate intr-o
    *  revizuire anterioara". */

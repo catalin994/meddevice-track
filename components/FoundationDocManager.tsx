@@ -23,6 +23,7 @@ import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteFundamentareDinWord } from '../services/achizitieWordParse';
 import { citesteFundamentarePdf } from '../services/achizitiePdf';
 import { fundamentareaDinReferat } from '../services/fundamentareDinReferat';
+import { COTA_TVA, cuTva, faraTva } from '../services/tva';
 
 /**
  * Documentul de fundamentare, in forma pe care o cere legea.
@@ -81,6 +82,8 @@ const gol = () => ({
   previousValue: 0,
   influence: 0,
   remainingAmount: 0,
+  /* Gol inseamna "suma asa cum a fost scrisa", nu "fara TVA". */
+  vatRate: 0,
   currency: 'RON',
   supplier: '',
   referenceNumber: '',
@@ -331,6 +334,7 @@ const FoundationDocManager: React.FC<Props> = ({
       parameters: z.parameters,
       previousValue: z.previousValue,
       influence: z.influence,
+      vatRate: z.vatRate,
       currency: z.currency,
       supplier: z.supplier,
       referenceNumber: z.referenceNumber,
@@ -352,6 +356,20 @@ const FoundationDocManager: React.FC<Props> = ({
     onPornitDinReferat?.();
   }, [faDinReferat, referateDupaId, deschideDinReferat, onPornitDinReferat]);
 
+  /**
+   * Pune sau scoate TVA-ul din influenta.
+   *
+   * Socoteste, nu bifeaza numai: suma din tabel e cea care se scrie pe hartie,
+   * asa ca bifa fara socoteala ar spune despre un numar nemiscat ca e altceva
+   * decat e. A doua apasare face drumul invers, ca sa fie de unde sa se
+   * intoarca cine a apasat din greseala.
+   */
+  const puneTva = useCallback(() => {
+    setForm(f => f.vatRate
+      ? { ...f, influence: faraTva(f.influence || 0, f.vatRate), vatRate: 0 }
+      : { ...f, influence: cuTva(f.influence || 0), vatRate: COTA_TVA });
+  }, []);
+
   const deschideEditare = useCallback((d: FoundationDoc) => {
     setForm({
       referatId: d.referatId || '', type: normaliseFoundationType(d.type),
@@ -366,6 +384,7 @@ const FoundationDocManager: React.FC<Props> = ({
       previousValue: d.previousValue || 0,
       influence: d.influence ?? ((d.amount || 0) - (d.previousValue || 0)),
       remainingAmount: d.remainingAmount || 0,
+      vatRate: d.vatRate || 0,
       currency: d.currency || 'RON',
       supplier: d.supplier || '', referenceNumber: d.referenceNumber || '',
       frameworkContract: d.frameworkContract || '', frameworkTotal: d.frameworkTotal || 0,
@@ -617,6 +636,7 @@ const FoundationDocManager: React.FC<Props> = ({
       previousValue: form.previousValue || undefined,
       influence: form.influence || undefined,
       amount: actualizata || undefined,
+      vatRate: form.vatRate || undefined,
       remainingAmount: form.remainingAmount || undefined,
       currency: actualizata ? form.currency : undefined,
       supplier: form.supplier.trim() || undefined,
@@ -850,6 +870,12 @@ const FoundationDocManager: React.FC<Props> = ({
                       <p className="text-lg font-black text-slate-900">
                         {fmt(d.amount)} <span className="text-xs text-slate-500">{d.currency}</span>
                       </p>
+                      {/* Langa referatele care scriu "fara TVA", tacerea ar fi induca in eroare. */}
+                      {!!d.vatRate && (
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          cu TVA {d.vatRate}%
+                        </p>
+                      )}
                       {!!d.influence && (
                         <p className={`text-[11px] font-bold ${d.influence > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                           {d.influence > 0 ? '+' : ''}{fmt(d.influence)} fata de rev. {Math.max(0, (d.revision || 1) - 1)}
@@ -1135,6 +1161,39 @@ const FoundationDocManager: React.FC<Props> = ({
                       </div>
                     </div>
                   </div>
+                  {/*
+                    Ce contin sumele. Referatul estimeaza fara TVA, fundamentarea
+                    angajeaza banii care ies din buget, adica cu TVA — iar cine
+                    citeste hartia peste un an nu mai are de unde sti care e care
+                    daca nu scrie pe ea.
+
+                    Apasarea socoteste, nu doar bifeaza: pune TVA-ul peste
+                    influenta, si a doua apasare il scoate la loc.
+                  */}
+                  <button type="button" onClick={puneTva}
+                    aria-pressed={!!form.vatRate}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition ${
+                      form.vatRate
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200'
+                    }`}>
+                    <span className={`w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center ${
+                      form.vatRate ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300'
+                    }`}>
+                      {!!form.vatRate && <CheckCircle className="w-3.5 h-3.5" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-black">
+                        Valorile includ TVA {form.vatRate || COTA_TVA}%
+                      </span>
+                      <span className="block text-[11px] font-semibold text-slate-500 mt-0.5">
+                        {form.vatRate
+                          ? `Se scrie pe document. Fara TVA ar fi ${fmt(faraTva(form.influence || 0, form.vatRate))} lei.`
+                          : `Apasa si se adauga peste influenta: ${fmt(cuTva(form.influence || 0))} lei.`}
+                      </span>
+                    </span>
+                  </button>
+
                   {/* Randul de bifat de sub tabel, completat pe amandoua documentele reale. */}
                   <Camp eticheta="Ramane in suma de ___ lei (randul de sub tabel)">
                     <input type="number" step="0.01" value={form.remainingAmount || ''}

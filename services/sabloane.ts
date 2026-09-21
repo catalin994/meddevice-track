@@ -137,6 +137,7 @@ export const SEMNE: Record<FelSablon, { semn: string; ce: string }[]> = {
     { semn: 'val_precedenta', ce: 'Valoarea la revizia precedentă' },
     { semn: 'influenta', ce: 'Influenţa +/−' },
     { semn: 'val_actualizata', ce: 'Valoarea actualizată' },
+    { semn: 'tva', ce: '„Valorile din tabel includ TVA 21%"' },
     { semn: 'ramane', ce: '„Rămâne în sumă de ___ lei"' },
   ],
 };
