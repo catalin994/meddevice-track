@@ -15,6 +15,11 @@ import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteReferatDinWord, CampuriReferat } from '../services/achizitieWordParse';
 import { citesteReferatPdf } from '../services/achizitiePdf';
 import useEscape from './useEscape';
+import CampAles from './CampAles';
+import {
+  CheieLista, PersoanaReferat, optiunileCampului, primaOptiune, tineMinte, uita,
+  persoaneleReferatului, tineMintePersoana, uitaPersoana,
+} from '../services/listeReferat';
 import ConfirmDialog from './ConfirmDialog';
 import DepartmentPicker from './DepartmentPicker';
 import Pager, { usePagination, PageSizePicker } from './Pager';
@@ -61,8 +66,13 @@ const gol = () => {
     date: new Date().toISOString().split('T')[0],
     autoritate: a.autoritate || '',
     manager: a.manager || '',
-    issuedBy: a.issuedBy || '',
-    approvedBy: a.approvedBy || '',
+    /*
+     * Antetul retinut de la ultimul referat are intaietate; cand nu e nimic
+     * retinut — prima oara, pe un calculator nou — se deschide cu primul din
+     * lista de ales, ca sa nu porneasca gol ceva ce e mereu acelasi.
+     */
+    issuedBy: a.issuedBy || primaOptiune('emitent'),
+    approvedBy: a.approvedBy || primaOptiune('aprobat'),
     department: '',
     subject: '',
     justification: '',
@@ -71,8 +81,8 @@ const gol = () => {
     offerNumbers: '',
     currency: 'RON',
     status: ReferatStatus.DRAFT,
-    contactName: a.contactName || '',
-    contactRole: a.contactRole || '',
+    contactName: a.contactName || persoaneleReferatului()[0]?.nume || '',
+    contactRole: a.contactRole || persoaneleReferatului()[0]?.functie || '',
     contactEmail: a.contactEmail || '',
     contactPhone: a.contactPhone || '',
     filePath: undefined as string | undefined,
@@ -160,6 +170,12 @@ const ReferatManager: React.FC<Props> = ({
   const [pozitii, setPozitii] = useState<ReferatItem[]>([pozitieNoua()]);
   const [dispozitive, setDispozitive] = useState<string[]>([]);
   const [aratAntet, setAratAntet] = useState(false);
+  /*
+   * Listele stau pe dispozitiv, nu in stare; contorul asta spune numai ca s-au
+   * schimbat, ca sa fie citite din nou. Se schimba rar — la o salvare sau la o
+   * scoatere din lista — asa ca nu e nimic de castigat tinandu-le altfel.
+   */
+  const [versiuneListe, setVersiuneListe] = useState(0);
   const [cautaDispozitiv, setCautaDispozitiv] = useState('');
   const [deSters, setDeSters] = useState<Referat | null>(null);
   const [seSalveaza, setSeSalveaza] = useState(false);
@@ -342,6 +358,48 @@ const ReferatManager: React.FC<Props> = ({
 
   const tragere = useTragere(useCallback((fisiere: File[]) => { void preiaReferatul(fisiere[0]); }, [preiaReferatul]), true);
 
+  /*
+   * Optiunile se string din doua parti: ce s-a retinut anume si ce se vede in
+   * referatele deja scrise. A doua parte face ca lista sa fie de la inceput a
+   * celui care o foloseste, fara sa fie intrebat ce articole bugetare il
+   * privesc — sunt cele de pe hartiile lui.
+   */
+  const optiuni = useMemo(() => ({
+    emitent: optiunileCampului('emitent', referate),
+    aprobat: optiunileCampului('aprobat', referate),
+    articol: optiunileCampului('articol', referate),
+  }), [referate, versiuneListe]);
+
+  const persoane = useMemo(() => persoaneleReferatului(), [versiuneListe]);
+
+  const scoateDinLista = useCallback((cheie: CheieLista, valoare: string) => {
+    uita(cheie, valoare);
+    setVersiuneListe(n => n + 1);
+  }, []);
+
+  /*
+   * Aleasa persoana, se completeaza si restul randurilor ei de pe hartie.
+   *
+   * Aici apasarea nu comuta, ca la celelalte liste: numele vine impreuna cu
+   * functia, emailul si telefonul, iar o a doua apasare care ar sterge numai
+   * numele ar lasa in urma functia si telefonul altcuiva. Cine vrea alt nume il
+   * scrie in camp.
+   */
+  const alegePersoana = useCallback((p: PersoanaReferat) => {
+    setForm(f => ({
+      ...f,
+      contactName: p.nume,
+      contactRole: p.functie || f.contactRole,
+      contactEmail: p.email || f.contactEmail,
+      contactPhone: p.telefon || f.contactPhone,
+    }));
+  }, []);
+
+  const scoatePersoana = useCallback((nume: string) => {
+    uitaPersoana(nume);
+    setVersiuneListe(n => n + 1);
+  }, []);
+
   const salveaza = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setSeSalveaza(true);
@@ -362,6 +420,20 @@ const ReferatManager: React.FC<Props> = ({
         contactEmail: form.contactEmail, contactPhone: form.contactPhone,
       }));
     } catch { /* antetul e o comoditate, nu o obligatie */ }
+
+    /*
+     * Ce s-a scris acum intra in lista pentru data viitoare, in fata. Asa creste
+     * lista de una singura: un articol bugetar nou se scrie o data si de atunci
+     * se alege.
+     */
+    tineMinte('emitent', form.issuedBy);
+    tineMinte('aprobat', form.approvedBy);
+    tineMinte('articol', form.budgetArticle);
+    tineMintePersoana({
+      nume: form.contactName, functie: form.contactRole,
+      email: form.contactEmail, telefon: form.contactPhone,
+    });
+    setVersiuneListe(n => n + 1);
 
     onUpsert({
       id,
@@ -594,12 +666,16 @@ const ReferatManager: React.FC<Props> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Camp eticheta="Emis de (compartiment)" obligatoriu>
-                    <input required value={form.issuedBy} onChange={e => setForm(p => ({ ...p, issuedBy: e.target.value }))}
-                      placeholder="ex. Birou Tehnic" className="camp" />
+                    <CampAles required eticheta="Emis de"
+                      value={form.issuedBy} onChange={v => setForm(p => ({ ...p, issuedBy: v }))}
+                      optiuni={optiuni.emitent} onUita={v => scoateDinLista('emitent', v)}
+                      placeholder="ex. Birou tehnic" />
                   </Camp>
                   <Camp eticheta="Aprobat de (sef compartiment)">
-                    <input value={form.approvedBy} onChange={e => setForm(p => ({ ...p, approvedBy: e.target.value }))}
-                      placeholder="ex. Ing. Isopescu Liliana" className="camp" />
+                    <CampAles eticheta="Aprobat de"
+                      value={form.approvedBy} onChange={v => setForm(p => ({ ...p, approvedBy: v }))}
+                      optiuni={optiuni.aprobat} onUita={v => scoateDinLista('aprobat', v)}
+                      placeholder="numele sefului de compartiment" />
                   </Camp>
                 </div>
 
@@ -700,8 +776,10 @@ const ReferatManager: React.FC<Props> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Camp eticheta="Articol bugetar">
-                    <input value={form.budgetArticle} onChange={e => setForm(p => ({ ...p, budgetArticle: e.target.value }))}
-                      placeholder="ex. 66100 UPU" className="camp" />
+                    <CampAles eticheta="Articol bugetar"
+                      value={form.budgetArticle} onChange={v => setForm(p => ({ ...p, budgetArticle: v }))}
+                      optiuni={optiuni.articol} onUita={v => scoateDinLista('articol', v)}
+                      placeholder="ex. 66100 UPU" />
                   </Camp>
                   <Camp eticheta="Stare">
                     <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as ReferatStatus }))}
@@ -794,32 +872,73 @@ const ReferatManager: React.FC<Props> = ({
                     aria-expanded={aratAntet}
                     className="w-full flex items-center justify-between px-5 py-4 bg-slate-50 hover:bg-slate-100 transition">
                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-                      Antet si persoana de contact {form.contactName ? `· ${form.contactName}` : ''}
+                      Antet si persoana care face referatul {form.contactName ? `· ${form.contactName}` : ''}
                     </span>
                     <span className="text-[11px] font-black text-slate-500">{aratAntet ? '−' : '+'}</span>
                   </button>
                   {aratAntet && (
-                    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Camp eticheta="Autoritatea contractanta">
-                        <input value={form.autoritate} onChange={e => setForm(p => ({ ...p, autoritate: e.target.value }))}
-                          placeholder="ex. Spitalul Clinic Judetean de Urgenta Brasov" className="camp" />
-                      </Camp>
-                      <Camp eticheta="Manager">
-                        <input value={form.manager} onChange={e => setForm(p => ({ ...p, manager: e.target.value }))}
-                          placeholder="ex. Prof. Univ. Dr. ..." className="camp" />
-                      </Camp>
-                      <Camp eticheta="Nume si prenume">
-                        <input value={form.contactName} onChange={e => setForm(p => ({ ...p, contactName: e.target.value }))} className="camp" />
-                      </Camp>
-                      <Camp eticheta="Functia">
-                        <input value={form.contactRole} onChange={e => setForm(p => ({ ...p, contactRole: e.target.value }))} placeholder="ex. inginer" className="camp" />
-                      </Camp>
-                      <Camp eticheta="Email">
-                        <input type="email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} className="camp" />
-                      </Camp>
-                      <Camp eticheta="Telefon">
-                        <input value={form.contactPhone} onChange={e => setForm(p => ({ ...p, contactPhone: e.target.value }))} className="camp" />
-                      </Camp>
+                    <div className="p-5 space-y-5">
+                      {/* Persoana sta prima: e singurul rand din antet care se
+                          schimba de la un referat la altul. */}
+                      <div className="space-y-3">
+                        <p className="text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                          Persoana care face referatul
+                        </p>
+                        {persoane.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {persoane.map(p => {
+                              const ales = p.nume.trim().toLowerCase() === form.contactName.trim().toLowerCase();
+                              return (
+                                <span key={p.nume}
+                                  className={`inline-flex items-center rounded-lg border-2 transition ${
+                                    ales ? 'bg-slate-900 border-slate-900 text-white'
+                                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}>
+                                  <button type="button" onClick={() => alegePersoana(p)} aria-pressed={ales}
+                                    className="px-2.5 py-1 text-[11px] font-bold">
+                                    {p.nume}
+                                  </button>
+                                  <button type="button" onClick={() => scoatePersoana(p.nume)}
+                                    aria-label={`Scoate ${p.nume} din lista`} title="Scoate din lista"
+                                    className={`pr-2 pl-0.5 py-1 ${ales ? 'text-white/60 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <Camp eticheta="Nume si prenume">
+                            <input value={form.contactName} onChange={e => setForm(p => ({ ...p, contactName: e.target.value }))} className="camp" />
+                          </Camp>
+                          <Camp eticheta="Functia">
+                            <input value={form.contactRole} onChange={e => setForm(p => ({ ...p, contactRole: e.target.value }))} placeholder="ex. inginer" className="camp" />
+                          </Camp>
+                          <Camp eticheta="Email">
+                            <input type="email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} className="camp" />
+                          </Camp>
+                          <Camp eticheta="Telefon">
+                            <input value={form.contactPhone} onChange={e => setForm(p => ({ ...p, contactPhone: e.target.value }))} className="camp" />
+                          </Camp>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-4 border-t-2 border-slate-100">
+                        <p className="text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                          Antet <span className="font-bold text-slate-400 normal-case tracking-normal">— acelasi pe toate referatele</span>
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <Camp eticheta="Autoritatea contractanta">
+                            <input value={form.autoritate} onChange={e => setForm(p => ({ ...p, autoritate: e.target.value }))}
+                              placeholder="ex. Spitalul Clinic Judetean de Urgenta Brasov" className="camp" />
+                          </Camp>
+                          <Camp eticheta="Manager">
+                            <input value={form.manager} onChange={e => setForm(p => ({ ...p, manager: e.target.value }))}
+                              placeholder="ex. Prof. Univ. Dr. ..." className="camp" />
+                          </Camp>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
