@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown, ShieldCheck, Gavel } from 'lucide-react';
 
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -49,6 +49,7 @@ const listState = {
   category: 'ALL' as string,
   tag: 'ALL' as string,
   metrologie: 'ALL' as FiltruMetrologie,
+  licitatie: 'ALL' as 'ALL' | 'DA',
   page: 1,
 };
 
@@ -171,7 +172,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   wb.creator = 'Biomedic';
   wb.created = new Date();
 
-  const TOTAL_COLS = 15;
+  const TOTAL_COLS = 16;
   const statusColor = (status: string) => {
     if (status === 'Active') return 'FF059669';
     if (status === 'In Maintenance') return 'FFD97706';
@@ -202,6 +203,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
     { key: 'warranty',    width: 16 },
     { key: 'nextpm',      width: 16 },
     { key: 'cncan',       width: 8  },
+    { key: 'licitatie',   width: 16 },
     { key: 'notes',       width: 32 },
     { key: 'id',          width: 28 },
   ];
@@ -274,7 +276,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   ws.addRow([]).height = 8;
 
   // Header row
-  const headers = ['#', 'Denumire echipament', 'Categorie', 'Producator', 'Model', 'Numar serie', 'Numar inventar', 'Departament', 'Status', 'Data achizitiei', 'Expirare garantie', 'Urmatoarea mentenanta', 'CNCAN', 'Note', 'ID (nu modificati)'];
+  const headers = ['#', 'Denumire echipament', 'Categorie', 'Producator', 'Model', 'Numar serie', 'Numar inventar', 'Departament', 'Status', 'Data achizitiei', 'Expirare garantie', 'Urmatoarea mentenanta', 'CNCAN', 'Licitatie service', 'Note', 'ID (nu modificati)'];
   const headerRow = ws.addRow(headers);
   headerRow.height = 30;
   headerRow.eachCell(cell => {
@@ -314,6 +316,7 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
       device.warrantyExpiration || '—',
       device.nextMaintenanceDate || '—',
       device.isCNCAN ? 'DA' : 'NU',
+      device.serviceTender ? 'DA' : 'NU',
       device.notes || '',
       device.id,
     ]);
@@ -332,9 +335,11 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
         cell.style = { font: { bold: true, size: 8, color: { argb: statusColor(device.status) } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else if (col === 13) {
         cell.style = { font: { bold: true, size: 8, color: { argb: device.isCNCAN ? 'FFF59E0B' : 'FF94A3B8' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
+      } else if (col === 14) {
+        cell.style = { font: { bold: true, size: 8, color: { argb: device.serviceTender ? 'FF4F46E5' : 'FF94A3B8' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else if (col >= 10 && col <= 12) {
         cell.style = { font: { size: 8, color: { argb: 'FF64748B' } }, fill, border, alignment: { horizontal: 'center', vertical: 'middle' } };
-      } else if (col === 15) {
+      } else if (col === 16) {
         cell.style = { font: { size: 7, name: 'Courier New', color: { argb: 'FFCBD5E1' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } }, border, alignment: { horizontal: 'center', vertical: 'middle' } };
       } else {
         cell.style = { font: { size: 9 }, fill, border, alignment: { vertical: 'middle' } };
@@ -458,6 +463,7 @@ const importFromExcel = (
       const warrantyCol  = col('Warranty Exp.', 'Expirare garantie');
       const nextPMCol    = col('Next PM', 'Urmatoarea mentenanta');
       const cncanCol     = col('CNCAN');
+      const licitatieCol = col('Licitatie service', 'Licitatie');
       const notesCol     = col('Notes', 'Note');
 
       if (nameCol === -1) {
@@ -504,6 +510,7 @@ const importFromExcel = (
           warrantyExpiration:  String(row[warrantyCol] ?? '').trim().replace('—', '') || existing?.warrantyExpiration,
           nextMaintenanceDate: String(row[nextPMCol]   ?? '').trim().replace('—', '') || (purchase ? calculateNextMaintenanceDate(purchase, category) : existing?.nextMaintenanceDate),
           isCNCAN:             cncanCol !== -1 ? ['YES', 'DA'].includes(String(row[cncanCol]).trim().toUpperCase()) : (existing?.isCNCAN ?? false),
+          serviceTender:       licitatieCol !== -1 ? ['YES', 'DA'].includes(String(row[licitatieCol]).trim().toUpperCase()) : (existing?.serviceTender ?? false),
           notes:               notesCol !== -1 ? String(row[notesCol] ?? '').trim() : (existing?.notes ?? ''),
           updated_at:          new Date().toISOString(),
         } as MedicalDevice;
@@ -690,6 +697,24 @@ const InsignaBuletin = React.memo(({ device }: { device: MedicalDevice }) => {
   );
 });
 
+/**
+ * Semnul ca aparatul trebuie trecut in licitatia de service.
+ *
+ * Nu e o stare a aparatului, e o hotarare a serviciului tehnic — de aceea se
+ * bifeaza, nu se deduce. Sta la vedere in lista fiindca acolo se face
+ * inventarul pentru caietul de sarcini, rand cu rand.
+ */
+const InsignaLicitatie = React.memo(({ device }: { device: MedicalDevice }) => {
+  if (!device.serviceTender) return null;
+  return (
+    <span className="px-2 py-0.5 rounded-lg border text-[11px] font-bold whitespace-nowrap inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border-indigo-200"
+          title="De introdus in licitatia de service">
+      <Gavel className="w-3 h-3 shrink-0" />
+      Licitatie service
+    </span>
+  );
+});
+
 const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   let styles = "bg-slate-100 text-slate-700 border-slate-200";
   let dot = "bg-slate-400";
@@ -767,7 +792,10 @@ const DeviceRow = React.memo(({
         </h3>
         {/* Sub nume, nu intr-o coloana proprie: coloanele sunt pline, iar
             termenul priveste aparatul, nu o rubrica a lui. */}
-        <div className="mt-1 empty:mt-0"><InsignaBuletin device={device} /></div>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 empty:mt-0">
+          <InsignaBuletin device={device} />
+          <InsignaLicitatie device={device} />
+        </div>
       </div>
       <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate" title={device.department}>{device.department || '—'}</span>
       <span className="hidden md:flex">
@@ -911,6 +939,7 @@ const DeviceCard = React.memo(({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
           <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
           <InsignaBuletin device={device} />
+          <InsignaLicitatie device={device} />
           <span className="text-[13px] font-semibold text-slate-600 truncate max-w-[14rem]">
             {device.department || '—'}
           </span>
@@ -998,6 +1027,9 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const [filterCategory, setFilterCategory] = useState<string | 'ALL'>(listState.category);
   const [filterTag, setFilterTag] = useState<string | 'ALL'>(listState.tag);
   const [filterMetrologie, setFilterMetrologie] = useState<FiltruMetrologie>(listState.metrologie);
+  /* Bifa e buna la ceva abia cand se pot scoate toate deodata: filtrezi si
+     exporti, si ai lista pentru caietul de sarcini. */
+  const [filterLicitatie, setFilterLicitatie] = useState<'ALL' | 'DA'>(listState.licitatie);
   const [localSearch, setLocalSearch] = useState(listState.search);
   const [showQRSheet, setShowQRSheet] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -1022,7 +1054,8 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
   const activeFilterCount =
     (filterDept !== 'ALL' ? 1 : 0) + (filterCategory !== 'ALL' ? 1 : 0) +
     (filterStatus !== 'ALL' ? 1 : 0) + (filterTag !== 'ALL' ? 1 : 0) +
-    (filterMetrologie !== 'ALL' ? 1 : 0);
+    (filterMetrologie !== 'ALL' ? 1 : 0) +
+    (filterLicitatie !== 'ALL' ? 1 : 0);
   const [showFilters, setShowFilters] = useState(() => activeFilterCount > 0);
 
   // A placeholder can't be shortened with CSS, so track the breakpoint itself
@@ -1059,6 +1092,9 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     serialNumber: '',
     department: '',
     status: DeviceStatus.ACTIVE,
+    /* Bifa se pune de aici, de pe rand: lista pentru caietul de sarcini se
+       face trecand prin inventar, nu deschizand doua mii de fise. */
+    serviceTender: false,
   });
 
   // Dynamic department list from existing fleet + static list
@@ -1119,10 +1155,12 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       const matchCategory = filterCategory === 'ALL' || d.category === filterCategory;
       const matchTag = filterTag === 'ALL' || (d.tags || []).includes(filterTag);
       const matchMetrologie = treceFiltrulMetrologic(d, filterMetrologie);
+      const matchLicitatie = filterLicitatie === 'ALL' || !!d.serviceTender;
 
-      return matchSearch && matchStatus && matchDept && matchCategory && matchTag && matchMetrologie;
+      return matchSearch && matchStatus && matchDept && matchCategory && matchTag
+        && matchMetrologie && matchLicitatie;
     });
-  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag, filterMetrologie]);
+  }, [devices, effectiveSearch, filterStatus, filterDept, filterCategory, filterTag, filterMetrologie, filterLicitatie]);
 
   const pageCount = Math.max(1, Math.ceil(filteredDevices.length / pageSize));
 
@@ -1146,6 +1184,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
     listState.category = filterCategory;
     listState.tag = filterTag;
     listState.metrologie = filterMetrologie;
+    listState.licitatie = filterLicitatie;
     listState.page = page;
   }, [localSearch, filterStatus, filterDept, filterCategory, filterTag, page]);
 
@@ -1186,6 +1225,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       serialNumber: device.serialNumber || '',
       department: device.department || HOSPITAL_DEPARTMENTS[0],
       status: device.status || DeviceStatus.ACTIVE,
+      serviceTender: !!device.serviceTender,
     });
   }, []);
 
@@ -1274,6 +1314,19 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                     </select>
                   </div>
                 </div>
+                <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition ${
+                  quickEditForm.serviceTender ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <input type="checkbox" checked={quickEditForm.serviceTender}
+                    onChange={e => setQuickEditForm(prev => ({ ...prev, serviceTender: e.target.checked }))}
+                    className="mt-0.5 w-5 h-5 accent-indigo-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-black text-slate-900">De introdus in licitatia de service</p>
+                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                      Intra in caietul de sarcini al urmatoarei proceduri de service.
+                    </p>
+                  </div>
+                </label>
              </div>
 
              <div className="flex gap-4">
@@ -1346,6 +1399,18 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
               onChange={e => setFilterMetrologie(e.target.value as FiltruMetrologie)}
             >
               {FILTRE_METROLOGIE.map(f => <option key={f.id} value={f.id}>{f.text}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1 min-w-0">
+            <label className="tech-label ml-1">Licitatie service</label>
+            <select
+              aria-label="Filtru licitatie de service"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-[13px] font-semibold text-slate-700 outline-none"
+              value={filterLicitatie}
+              onChange={e => setFilterLicitatie(e.target.value as 'ALL' | 'DA')}
+            >
+              <option value="ALL">Toate</option>
+              <option value="DA">De introdus in licitatie</option>
             </select>
           </div>
           {allTags.length > 0 && (

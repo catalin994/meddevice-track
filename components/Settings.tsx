@@ -298,6 +298,10 @@ CREATE TABLE IF NOT EXISTS public.devices (
     "metrologyDate" TEXT,
     "metrologyExpiry" TEXT,
     "metrologyLab" TEXT,
+    "smisCode" TEXT,
+    "commissioningDate" TEXT,
+    "createdAt" TEXT,
+    "serviceTender" BOOLEAN DEFAULT FALSE,
     image TEXT,
     notes TEXT,
     tags JSONB DEFAULT '[]'::jsonb,
@@ -505,6 +509,15 @@ ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS components JSONB DEFAULT '[
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS notes TEXT;
+-- Campuri adaugate dupa ce evidenta a fost pusa fata in fata cu munca de zi cu
+-- zi. Fara coloana, randul aparatului care le poarta e refuzat intreg la urcare
+-- si ramane numai pe dispozitiv — pe tacute, fiindca sincronizarea se amana.
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "smisCode" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "commissioningDate" TEXT;
+-- cand a fost introdus aparatul in evidenta, pentru "ultimele adaugate"
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "createdAt" TEXT;
+-- de introdus in licitatia de service
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "serviceTender" BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS "deviceId" TEXT;
 ALTER TABLE public.tasks    ADD COLUMN IF NOT EXISTS "deviceName" TEXT;

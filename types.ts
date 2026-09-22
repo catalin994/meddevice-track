@@ -552,6 +552,19 @@ export interface MedicalDevice {
    */
   commissioningDate?: string;
   status: DeviceStatus;
+  /**
+   * Aparatul trebuie trecut in licitatia de service.
+   *
+   * Lista pentru caietul de sarcini se facea din memorie si din cate un tabel
+   * tinut separat: cineva umbla prin sectii, isi nota ce nu e acoperit de un
+   * contract, si pana la procedura urmatoare tabelul se pierdea. Insemnat aici,
+   * semnul sta pe aparat, se vede in lista si iese in export odata cu el.
+   *
+   * E o hotarare a serviciului tehnic, nu ceva ce se poate deduce: un aparat in
+   * garantie, unul care se repara la bucata si unul care asteapta casarea arata
+   * la fel in evidenta si nu intra in licitatie din aceleasi motive.
+   */
+  serviceTender?: boolean;
   isCNCAN?: boolean;
   /** Autorizatia CNCAN are termen; se reinnoieste. */
   cncanExpiry?: string;

@@ -18,7 +18,7 @@ import ConfirmDialog from './ConfirmDialog';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
-  ShieldAlert, Cpu, Wrench, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt, FileSignature, FolderOpen, Link2
+  ShieldAlert, Cpu, Wrench, Gavel, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt, FileSignature, FolderOpen, Link2
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
@@ -103,6 +103,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     smisCode: device.smisCode || '',
     department: device.department,
     status: device.status,
+    serviceTender: !!device.serviceTender,
     isCNCAN: !!device.isCNCAN,
     cncanExpiry: device.cncanExpiry || '',
     warrantyExpiration: device.warrantyExpiration || '',
@@ -135,6 +136,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         smisCode: device.smisCode || '',
         department: device.department,
         status: device.status,
+        serviceTender: !!device.serviceTender,
         isCNCAN: !!device.isCNCAN,
         cncanExpiry: device.cncanExpiry || '',
         warrantyExpiration: device.warrantyExpiration || '',
@@ -893,6 +895,24 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-blue-500 transition-colors" />
                             </div>
                           </div>
+                          {/*
+                            Lista pentru caietul de sarcini se facea din memorie
+                            si dintr-un tabel tinut separat, care se pierdea pana
+                            la procedura urmatoare. Insemnat aici, semnul sta pe
+                            aparat si iese in export odata cu el.
+                          */}
+                          <label className={`flex items-start gap-3 p-4 sm:p-5 rounded-2xl border cursor-pointer transition ${
+                            editForm.serviceTender ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200'
+                          }`}>
+                            <input type="checkbox" name="serviceTender" checked={editForm.serviceTender}
+                              onChange={handleEditChange} className="mt-0.5 w-5 h-5 accent-indigo-600 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-black text-slate-900">De introdus in licitatia de service</p>
+                              <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                                Aparatul intra in caietul de sarcini al urmatoarei proceduri de service.
+                              </p>
+                            </div>
+                          </label>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -927,6 +947,14 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             neconfirmat={!areDovadaVerificarii(device)}
                             notaNeconfirmat="Neconfirmata — incarca raportul de service sau fisa de interventie, in Documente, si termenul incepe sa se numere."
                           />
+                          {device.serviceTender && (
+                            <div className="md:col-span-2 flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
+                              <Gavel className="w-4 h-4 text-indigo-700 shrink-0" />
+                              <p className="text-[12px] font-black text-indigo-800 uppercase tracking-wide">
+                                De introdus in licitatia de service
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                    </div>
