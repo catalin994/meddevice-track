@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, WifiOff, X, Database, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import Portal from './Portal';
@@ -15,12 +15,53 @@ import { getNotice, onNotice, dismissNotice, Notice } from '../services/notices'
  * like fresh data.
  */
 const AppStatusBar: React.FC = () => {
+  /* Inregistrarea, ca sa poata fi intrebata din nou daca a aparut ceva nou. */
+  const sw = useRef<ServiceWorkerRegistration | undefined>(undefined);
+  const ultimaCautare = useRef(0);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisterError: (err) => console.warn('[PWA] inregistrare esuata', err),
+    onRegisteredSW: (_url, r) => { sw.current = r; },
   });
+
+  /*
+   * Cand se uita aplicatia dupa o versiune noua.
+   *
+   * Pana acum, o singura data: la incarcarea paginii. Aplicatia insa sta
+   * deschisa zile intregi intr-un tab, si atunci o indreptare publicata azi nu
+   * ajungea la om pana nu inchidea si deschidea browserul — iar pana atunci
+   * vedea mai departe purtarea veche si credea, pe buna dreptate, ca nu s-a
+   * schimbat nimic.
+   *
+   * Acum se intreaba si din cand in cand, si la intoarcerea pe fereastra, cu
+   * o pauza intre intrebari ca sa nu batem serverul la fiecare alt-tab.
+   * Schimbarea tot omul o apasa: un bundle schimbat in mijlocul unei scanari
+   * ar pierde paginile deja fotografiate.
+   */
+  useEffect(() => {
+    const PAUZA = 5 * 60 * 1000;
+    const cauta = () => {
+      const acum = Date.now();
+      if (!sw.current || !navigator.onLine || acum - ultimaCautare.current < PAUZA) return;
+      ultimaCautare.current = acum;
+      sw.current.update().catch(() => { /* fara semnal, se incearca data viitoare */ });
+    };
+    const laVedere = () => { if (!document.hidden) cauta(); };
+
+    const ceas = window.setInterval(cauta, 30 * 60 * 1000);
+    window.addEventListener('focus', cauta);
+    window.addEventListener('online', cauta);
+    document.addEventListener('visibilitychange', laVedere);
+    return () => {
+      window.clearInterval(ceas);
+      window.removeEventListener('focus', cauta);
+      window.removeEventListener('online', cauta);
+      document.removeEventListener('visibilitychange', laVedere);
+    };
+  }, []);
 
   // The local database is where everything is read from and written to, so a
   // failure to open it has to be visible: the app would otherwise start empty
