@@ -8,6 +8,7 @@ import useEscape from './useEscape';
 import Pager, { PAGE_SIZES } from './Pager';
 import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
+import { termenulVerificarii, valabilitatea, zi } from '../services/valabilitate';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 /**
@@ -643,6 +644,52 @@ interface DeviceListProps {
   canDelete?: boolean;
 }
 
+/**
+ * Ce spune buletinul de verificare, direct in lista.
+ *
+ * Pentru un aparat de radiologie asta nu e o informatie printre altele: cu
+ * buletinul expirat aparatul nu mai are voie sa fie folosit, oricat de bine ar
+ * merge. Pana acum trebuia intrat pe fiecare aparat ca sa se afle, deci se afla
+ * pe rand, tarziu, sau deloc.
+ *
+ * Se scrie in zile cand termenul e aproape sau trecut, si cu ziua cand mai e
+ * timp: "expira in 9 zile" se intelege dintr-o privire, "30.09.2026" cere
+ * socoteala in cap — dar peste un an data e tot ce intereseaza.
+ *
+ * Insigna apare oriunde se stie un termen. Lipsa ei se scrie numai la aparatele
+ * cu autorizatie CNCAN: acolo lipsa buletinului e o stare, nu o tacere.
+ */
+const InsignaBuletin = React.memo(({ device }: { device: MedicalDevice }) => {
+  const termen = termenulVerificarii(device);
+  const v = valabilitatea(termen?.pana);
+
+  if (!v) {
+    if (!device.isCNCAN || device.status === DeviceStatus.RETIRED) return null;
+    return (
+      <span className="px-2 py-0.5 rounded-lg border text-[11px] font-bold whitespace-nowrap bg-slate-50 text-slate-500 border-slate-200"
+            title="Aparat cu autorizatie CNCAN, fara niciun buletin de verificare cu termen trecut in evidenta">
+        Fara buletin
+      </span>
+    );
+  }
+
+  const stil = v.stare === 'expirat' ? 'bg-red-50 text-red-700 border-red-200'
+    : v.stare === 'aproape' ? 'bg-amber-50 text-amber-800 border-amber-200'
+    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  const text = v.stare === 'valabil' ? `Buletin ${zi(v.pana)}`
+    : v.stare === 'expirat' ? `Buletin ${v.text}`
+    : `Buletin expira in ${v.zile === 0 ? 'ziua asta' : v.zile === 1 ? 'o zi' : `${v.zile} zile`}`;
+
+  return (
+    <span className={`px-2 py-0.5 rounded-lg border text-[11px] font-bold whitespace-nowrap inline-flex items-center gap-1 ${stil}`}
+          title={`Buletin de verificare valabil pana la ${zi(v.pana)}`
+            + (termen?.dinHartie ? ` — dupa ${termen.hartia}` : ' — din fisa aparatului')}>
+      <ShieldCheck className="w-3 h-3 shrink-0" />
+      {text}
+    </span>
+  );
+});
+
 const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
   let styles = "bg-slate-100 text-slate-700 border-slate-200";
   let dot = "bg-slate-400";
@@ -718,6 +765,9 @@ const DeviceRow = React.memo(({
           {device.name || 'Dispozitiv fara nume'}
           {device.isCNCAN && <ShieldAlert className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5 text-amber-500" />}
         </h3>
+        {/* Sub nume, nu intr-o coloana proprie: coloanele sunt pline, iar
+            termenul priveste aparatul, nu o rubrica a lui. */}
+        <div className="mt-1 empty:mt-0"><InsignaBuletin device={device} /></div>
       </div>
       <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate" title={device.department}>{device.department || '—'}</span>
       <span className="hidden md:flex">
@@ -860,6 +910,7 @@ const DeviceCard = React.memo(({
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
           <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
+          <InsignaBuletin device={device} />
           <span className="text-[13px] font-semibold text-slate-600 truncate max-w-[14rem]">
             {device.department || '—'}
           </span>

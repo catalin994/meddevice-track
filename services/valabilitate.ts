@@ -1,4 +1,4 @@
-import { DeviceFile } from '../types';
+import { DeviceFile, MedicalDevice } from '../types';
 
 /**
  * Pana cand tine o hartie.
@@ -76,3 +76,35 @@ export const ultimaCuTermen = (fisiere: DeviceFile[] = []): DeviceFile | null =>
     .filter(f => f.validUntil)
     .sort((a, b) => (b.dateAdded || '').localeCompare(a.dateAdded || '')
       || (b.id || '').localeCompare(a.id || ''))[0] || null;
+
+/** De unde se stie termenul: de pe fisa aparatului sau de pe hartia din dosar. */
+export interface TermenulVerificarii {
+  pana: string;
+  /** Adevarat cand vine de pe un document incarcat, nu din randul de pe fisa. */
+  dinHartie: boolean;
+  /** Numele hartiei, cand de acolo vine. */
+  hartia?: string;
+}
+
+/**
+ * Pana cand e verificat aparatul, dintr-o singura privire.
+ *
+ * Doua izvoare, si intaietatea conteaza. Randul de pe fisa — "Valabil pana la",
+ * de la termene si conformitate — e cel dupa care Panoul da alarma, si tot el
+ * se muta singur cand se incarca un buletin. Cand e scris, el e adevarul, ca sa
+ * nu spuna lista una si Panoul alta despre acelasi aparat.
+ *
+ * Cand nu e scris, se cauta pe hartii: ultima incarcata cu termen, dintre cele
+ * care pot fi un buletin. Un manual sau un contract n-are ce cauta aici, dar un
+ * buletin urcat la rapoarte de service — cum sunt cele mai multe, fiindca asa
+ * se numea gramada inainte sa aiba una a lui — da.
+ */
+export const termenulVerificarii = (d: MedicalDevice): TermenulVerificarii | null => {
+  if (d.metrologyExpiry) return { pana: d.metrologyExpiry, dinHartie: false };
+  const potFiBuletine = (d.files || []).filter(f =>
+    f.validUntil && (f.type === 'metrologie' || f.type === 'report' || f.type === 'service'));
+  const ultima = ultimaCuTermen(potFiBuletine);
+  return ultima?.validUntil
+    ? { pana: ultima.validUntil, dinHartie: true, hartia: ultima.name }
+    : null;
+};
