@@ -65,16 +65,24 @@ const cate = (zile: number): string =>
   zile === 1 ? 'o zi' : zile % 100 > 19 || zile % 100 === 0 ? `${zile} de zile` : `${zile} zile`;
 
 /**
- * Hartia care da termenul unei gramezi: ultima incarcata dintre cele cu termen.
+ * Hartia in vigoare dintr-o gramada: cea care tine cel mai departe.
  *
- * Nu cea cu data cea mai indepartata. Un buletin nou il inlocuieste pe cel
- * vechi chiar daca din greseala i s-a scris un termen mai scurt, iar ce conteaza
- * e ce spune ultima hartie pusa la dosar.
+ * Intai am socotit-o pe ultima incarcata, si era gresit. Buletinele se urca
+ * aproape intotdeauna deodata, tot teancul dintr-un dosar, si atunci toate au
+ * aceeasi zi de incarcare — iar dintre ele iesea la intamplare una din 2023.
+ * Aparatul aparea expirat de 776 de zile cu buletinul valabil alaturi, pe
+ * acelasi ecran.
+ *
+ * Buletinul in vigoare e, prin definitie, cel al carui termen n-a trecut; iar
+ * cand toate au trecut, cel care a trecut cel mai tarziu — asta e starea de
+ * fapt a aparatului. Deci: termenul cel mai indepartat. La termene egale,
+ * ultima incarcata, ca sa iasa mereu aceeasi.
  */
-export const ultimaCuTermen = (fisiere: DeviceFile[] = []): DeviceFile | null =>
+export const hartiaInVigoare = (fisiere: DeviceFile[] = []): DeviceFile | null =>
   fisiere
     .filter(f => f.validUntil)
-    .sort((a, b) => (b.dateAdded || '').localeCompare(a.dateAdded || '')
+    .sort((a, b) => (b.validUntil || '').localeCompare(a.validUntil || '')
+      || (b.dateAdded || '').localeCompare(a.dateAdded || '')
       || (b.id || '').localeCompare(a.id || ''))[0] || null;
 
 /** De unde se stie termenul: de pe fisa aparatului sau de pe hartia din dosar. */
@@ -94,7 +102,7 @@ export interface TermenulVerificarii {
  * se muta singur cand se incarca un buletin. Cand e scris, el e adevarul, ca sa
  * nu spuna lista una si Panoul alta despre acelasi aparat.
  *
- * Cand nu e scris, se cauta pe hartii: ultima incarcata cu termen, dintre cele
+ * Cand nu e scris, se cauta pe hartii: cea in vigoare, dintre cele
  * care pot fi un buletin. Un manual sau un contract n-are ce cauta aici, dar un
  * buletin urcat la rapoarte de service — cum sunt cele mai multe, fiindca asa
  * se numea gramada inainte sa aiba una a lui — da.
@@ -103,7 +111,7 @@ export const termenulVerificarii = (d: MedicalDevice): TermenulVerificarii | nul
   if (d.metrologyExpiry) return { pana: d.metrologyExpiry, dinHartie: false };
   const potFiBuletine = (d.files || []).filter(f =>
     f.validUntil && (f.type === 'metrologie' || f.type === 'report' || f.type === 'service'));
-  const ultima = ultimaCuTermen(potFiBuletine);
+  const ultima = hartiaInVigoare(potFiBuletine);
   return ultima?.validUntil
     ? { pana: ultima.validUntil, dinHartie: true, hartia: ultima.name }
     : null;

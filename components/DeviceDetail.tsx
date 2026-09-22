@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
-import { valabilitatea, ultimaCuTermen } from '../services/valabilitate';
+import { valabilitatea, hartiaInVigoare } from '../services/valabilitate';
 import CampData from './CampData';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
@@ -1824,17 +1824,22 @@ const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
 };
 
 /**
- * Termenul gramezii: ce spune ultima hartie cu termen pusa in ea.
+ * Termenul gramezii: ce spune hartia in vigoare din ea.
  *
  * Statea numai pe hartia scanata. Ca sa afli pana cand tine buletinul, trebuia
  * deschis documentul — si se deschidea cand se gandea cineva sa se uite.
+ *
+ * Teancul de buletine vechi ramane in gramada, fiecare cu termenul lui scris pe
+ * cartonas: istoricul verificarilor se citeste asa, dintr-o data. Sus se scrie
+ * numai cel care tine acum.
  */
 const TermenulGramezii = React.memo(({ fisiere }: { fisiere: DeviceFile[] }) => {
-  const ultim = ultimaCuTermen(fisiere);
+  const ultim = hartiaInVigoare(fisiere);
   const termen = valabilitatea(ultim?.validUntil);
   if (!ultim || !termen) return null;
   return (
-    <div className={`mx-2 px-3 py-2 rounded-xl border flex items-center gap-2 ${CULORI_VALABILITATE[termen.stare]}`}>
+    <div aria-label="Termenul hartiilor din gramada"
+      className={`mx-2 px-3 py-2 rounded-xl border flex items-center gap-2 ${CULORI_VALABILITATE[termen.stare]}`}>
       <ShieldCheck className="w-4 h-4 shrink-0" />
       <p className="text-[11px] font-black uppercase tracking-wide">{termen.text}</p>
       <p className="text-[10px] font-bold opacity-70 truncate ml-auto" title={ultim.name}>
