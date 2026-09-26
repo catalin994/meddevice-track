@@ -7,6 +7,7 @@ import CampData from './CampData';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
 import Portal from './Portal';
+import useEscape from './useEscape';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
 import { saveFileAs } from '../services/fileService';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
@@ -380,6 +381,30 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     const updatedFiles = editForm.files.map(f =>
       f.id === fileId ? { ...f, validUntil: pana || undefined } : f);
     const dinEl = dinBuletin(updatedFiles.find(f => f.id === fileId)!);
+    setEditForm(prev => ({ ...prev, files: updatedFiles, ...dinEl }));
+    await onUpdate({ ...device, ...editForm, files: updatedFiles, ...dinEl });
+    setLastSyncTime(new Date().toLocaleTimeString());
+  }, [device, editForm, onUpdate]);
+
+  /**
+   * Muta o hartie dintr-o gramada in alta.
+   *
+   * Felul documentului se alegea o singura data, la incarcare, si ramanea asa
+   * pentru totdeauna. Dar el se afla de multe ori dupa aceea: buletinele de
+   * verificare au stat la rapoarte de service pana cand au capatat gramada lor,
+   * iar un document urcat in graba nimereste oricum unde nu trebuie. Singura
+   * indreptare era sa fie sters si urcat din nou — adica sa se piarda data si
+   * termenul scrise pe el.
+   *
+   * Mutarea nu atinge fisierul din stocare: se schimba numai in ce gramada e
+   * numarat. Iar daca ajunge la buletine si are termen, termenul trece si pe
+   * fisa aparatului, la fel ca la o incarcare noua.
+   */
+  const mutaFisierul = useCallback(async (fileId: string, tip: DeviceFile['type']) => {
+    const acum = editForm.files.find(f => f.id === fileId);
+    if (!acum || acum.type === tip) return;
+    const updatedFiles = editForm.files.map(f => (f.id === fileId ? { ...f, type: tip } : f));
+    const dinEl = dinBuletin({ ...acum, type: tip });
     setEditForm(prev => ({ ...prev, files: updatedFiles, ...dinEl }));
     await onUpdate({ ...device, ...editForm, files: updatedFiles, ...dinEl });
     setLastSyncTime(new Date().toLocaleTimeString());
@@ -1108,12 +1133,11 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                          value={uploadType}
                          onChange={(e) => setUploadType(e.target.value as any)}
                       >
-                         <option value="report">Raport Service</option>
-                         <option value="metrologie">Buletin de verificare</option>
-                         <option value="manual">Manual Tehnic</option>
-                         <option value="service">Document Service</option>
-                         <option value="achizitie">Document Achizitie</option>
-                         <option value="other">Alt Document</option>
+                         {/* Aceeasi insiruire ca gramezile de dedesubt, ca sa nu se
+                             desparta; raportul de service ramane cel ales din capul locului. */}
+                         {GRAMEZI.map(g => (
+                           <option key={g.tip} value={g.tip}>{g.laIncarcare || g.titlu}</option>
+                         ))}
                       </select>
                    </div>
                    {/*
@@ -1173,145 +1197,29 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
              )}
 
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12">
-                {/* Technical Manuals Section */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-6 bg-blue-600 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Manuale Tehnice</h4>
-                     </div>
-                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'manual').length} fisiere</span>
-                  </div>
-                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'manual')} />
-                  
-                  <div className="space-y-3 sm:space-y-4">
-                     {editForm.files.filter(f => f.type === 'manual').length > 0 ? (
-                       editForm.files.filter(f => f.type === 'manual').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))
-                     ) : (
-                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <BookOpen className="w-10 h-10 text-slate-500 mb-3" />
-                          <p className="tech-label">Niciun manual</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-
-                {/* Service Reports Section */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-6 bg-emerald-500 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Rapoarte Service</h4>
-                     </div>
-                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'report').length} fisiere</span>
-                  </div>
-                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'report')} />
-                  
-                  <div className="space-y-3 sm:space-y-4">
-                     {editForm.files.filter(f => f.type === 'report').length > 0 ? (
-                       editForm.files.filter(f => f.type === 'report').map(file => (
-                         <FileCard key={file.id} file={file} color="emerald" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))
-                     ) : (
-                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <FileText className="w-10 h-10 text-slate-500 mb-3" />
-                          <p className="tech-label">Niciun raport</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-
-                {/* Buletine de verificare — hartia care tine aparatul in uz */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-6 bg-indigo-500 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Buletine de verificare</h4>
-                     </div>
-                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'metrologie').length} fisiere</span>
-                  </div>
-                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'metrologie')} />
-                  <div className="space-y-3 sm:space-y-4">
-                     {editForm.files.filter(f => f.type === 'metrologie').length > 0 ? (
-                       editForm.files.filter(f => f.type === 'metrologie').map(file => (
-                         <FileCard key={file.id} file={file} color="indigo" onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))
-                     ) : (
-                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <ShieldCheck className="w-10 h-10 text-slate-500 mb-3" />
-                          <p className="tech-label">Niciun buletin</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-
-                {/* Service Documents Section */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-6 bg-amber-500 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Documente Service</h4>
-                     </div>
-                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'service').length} fisiere</span>
-                  </div>
-                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'service')} />
-                  <div className="space-y-3 sm:space-y-4">
-                     {editForm.files.filter(f => f.type === 'service').length > 0 ? (
-                       editForm.files.filter(f => f.type === 'service').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))
-                     ) : (
-                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <Wrench className="w-10 h-10 text-slate-500 mb-3" />
-                          <p className="tech-label">Niciun document de service</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-
-                {/* Acquisition Documents Section */}
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="flex items-center justify-between px-2">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-6 bg-indigo-500 rounded-full" />
-                        <h4 className="tech-label text-slate-900">Documente Achizitie</h4>
-                     </div>
-                     <span className="tech-label text-slate-500">{(editForm.files || []).filter(f => f.type === 'achizitie').length} fisiere</span>
-                  </div>
-                  <TermenulGramezii fisiere={(editForm.files || []).filter(f => f.type === 'achizitie')} />
-                  <div className="space-y-3 sm:space-y-4">
-                     {editForm.files.filter(f => f.type === 'achizitie').length > 0 ? (
-                       editForm.files.filter(f => f.type === 'achizitie').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))
-                     ) : (
-                       <div className="py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed border-slate-200 flex flex-col items-center justify-center opacity-50">
-                          <Box className="w-10 h-10 text-slate-500 mb-3" />
-                          <p className="tech-label">Niciun document de achizitie</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-
-                {/* Other documents (image/other) — only shown when present */}
-                {editForm.files.filter(f => f.type === 'image' || f.type === 'other').length > 0 && (
-                  <div className="space-y-6 lg:col-span-2">
-                    <div className="flex items-center justify-between px-2">
-                       <div className="flex items-center gap-3">
-                          <div className="w-2 h-6 bg-slate-400 rounded-full" />
-                          <h4 className="tech-label text-slate-900">Alte Documente</h4>
-                       </div>
-                       <span className="tech-label text-slate-500">{editForm.files.filter(f => f.type === 'image' || f.type === 'other').length} fisiere</span>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                       {editForm.files.filter(f => f.type === 'image' || f.type === 'other').map(file => (
-                         <FileCard key={file.id} file={file} onView={() => viewFile(file)} onDownload={() => downloadFile(file)} onDelete={() => setPendingFileDelete(file)} onLink={() => deschideLegarea(file)} onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)} alteAparate={undeMaiEste(file, allDevices, device.id)} />
-                       ))}
-                    </div>
-                  </div>
-                )}
+                {/*
+                  Sase gramezi, una scrisa. Hartia se muta dintr-una in alta
+                  tragand-o cu mouse-ul, sau apasand pe insigna ei de fel.
+                */}
+                {GRAMEZI.map(fel => (
+                  <Gramada
+                    key={fel.tip}
+                    fel={fel}
+                    fisiere={editForm.files || []}
+                    onMuta={mutaFisierul}
+                    iconGol={ICOANE_GRAMEZI[fel.tip]}
+                    copil={file => (
+                      <FileCard key={file.id} file={file} color={fel.culoare}
+                        onView={() => viewFile(file)}
+                        onDownload={() => downloadFile(file)}
+                        onDelete={() => setPendingFileDelete(file)}
+                        onLink={() => deschideLegarea(file)}
+                        onValabilitate={(pana: string) => puneValabilitatea(file.id, pana)}
+                        onMuta={(tip: DeviceFile['type']) => mutaFisierul(file.id, tip)}
+                        alteAparate={undeMaiEste(file, allDevices, device.id)} />
+                    )}
+                  />
+                ))}
              </div>
           </div>
         )}
@@ -1840,6 +1748,54 @@ const TermenRow = ({ eticheta, data, gol, detaliu, greuCandLipseste, neconfirmat
   );
 };
 
+/**
+ * Gramezile arhivei, in ordinea in care stau pe ecran.
+ *
+ * Aceeasi lista sta si in spatele alegerii de la incarcare, si in spatele
+ * mutarii unei hartii dintr-o gramada in alta: altfel s-ar fi despartit incet,
+ * iar un fel nou de document ar fi aparut la incarcare si nu si la mutare.
+ */
+const GRAMEZI: {
+  tip: DeviceFile['type'];
+  /** Ce tine gramada. "Alte documente" tine doua feluri deodata. */
+  tipuri: DeviceFile['type'][];
+  titlu: string;
+  /** Cum se cheama la incarcare, unde se alege dintr-o lista. */
+  laIncarcare?: string;
+  dunga: string;
+  culoare?: string;
+  gol: string;
+  /** Se arata numai cand are ceva in ea. */
+  doarCuFisiere?: boolean;
+  lat?: boolean;
+}[] = [
+  { tip: 'manual', tipuri: ['manual'], titlu: 'Manuale Tehnice', laIncarcare: 'Manual Tehnic',
+    dunga: 'bg-blue-600', gol: 'Niciun manual' },
+  { tip: 'report', tipuri: ['report'], titlu: 'Rapoarte Service', laIncarcare: 'Raport Service',
+    dunga: 'bg-emerald-500', culoare: 'emerald', gol: 'Niciun raport' },
+  { tip: 'metrologie', tipuri: ['metrologie'], titlu: 'Buletine de verificare', laIncarcare: 'Buletin de verificare',
+    dunga: 'bg-indigo-500', culoare: 'indigo', gol: 'Niciun buletin' },
+  { tip: 'service', tipuri: ['service'], titlu: 'Documente Service', laIncarcare: 'Document Service',
+    dunga: 'bg-amber-500', gol: 'Niciun document de service' },
+  { tip: 'achizitie', tipuri: ['achizitie'], titlu: 'Documente Achizitie', laIncarcare: 'Document Achizitie',
+    dunga: 'bg-indigo-500', gol: 'Niciun document de achizitie' },
+  { tip: 'other', tipuri: ['other', 'image'], titlu: 'Alte Documente', laIncarcare: 'Alt Document',
+    dunga: 'bg-slate-400', gol: 'Niciun alt document', doarCuFisiere: true, lat: true },
+];
+
+/** Ce se vede intr-o gramada goala. */
+const ICOANE_GRAMEZI: Record<string, React.ReactNode> = {
+  manual: <BookOpen className="w-10 h-10 text-slate-500 mb-3" />,
+  report: <FileText className="w-10 h-10 text-slate-500 mb-3" />,
+  metrologie: <ShieldCheck className="w-10 h-10 text-slate-500 mb-3" />,
+  service: <Wrench className="w-10 h-10 text-slate-500 mb-3" />,
+  achizitie: <Box className="w-10 h-10 text-slate-500 mb-3" />,
+  other: <FileText className="w-10 h-10 text-slate-500 mb-3" />,
+};
+
+/** Ce se pune in dataTransfer cand o hartie e trasa dintr-o gramada in alta. */
+const FEL_TRAS = 'application/x-biomedic-fisier';
+
 // Display labels for internal file type values — the stored values stay unchanged
 const FILE_TYPE_LABELS: Record<DeviceFile['type'], string> = {
   manual: 'Manual',
@@ -1877,6 +1833,67 @@ const TermenulGramezii = React.memo(({ fisiere }: { fisiere: DeviceFile[] }) => 
   );
 });
 
+/**
+ * O gramada din arhiva: capul ei, termenul din ea si hartiile.
+ *
+ * Cele sase gramezi erau scrise de sase ori, cu aceleasi douazeci de randuri
+ * schimbate din loc in loc. Scrise o data, mutarea unei hartii dintr-una in
+ * alta se face si ea o data, si nu ramane o gramada in urma.
+ *
+ * Aici cade hartia trasa cu mouse-ul. Se primeste numai ce vine dinauntru —
+ * fisierele trase de pe calculator au drumul lor, prin butonul de incarcare —
+ * si se vede unde cade: gramada se aprinde cat timb hartia pluteste peste ea.
+ */
+const Gramada: React.FC<{
+  fel: typeof GRAMEZI[number];
+  fisiere: DeviceFile[];
+  onMuta: (fileId: string, tip: DeviceFile['type']) => void;
+  copil: (f: DeviceFile) => React.ReactNode;
+  iconGol: React.ReactNode;
+}> = ({ fel, fisiere, onMuta, copil, iconGol }) => {
+  const [deasupra, setDeasupra] = useState(false);
+  const aleMele = fisiere.filter(f => fel.tipuri.includes(f.type));
+  if (fel.doarCuFisiere && aleMele.length === 0) return null;
+
+  const aleNoastre = (e: React.DragEvent) => e.dataTransfer.types.includes(FEL_TRAS);
+
+  return (
+    <div
+      className={`space-y-4 sm:space-y-6 rounded-3xl transition ${fel.lat ? 'lg:col-span-2' : ''} ${
+        deasupra ? 'ring-2 ring-blue-500 ring-offset-4 ring-offset-white' : ''
+      }`}
+      onDragOver={e => { if (aleNoastre(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDeasupra(true); } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDeasupra(false); }}
+      onDrop={e => {
+        if (!aleNoastre(e)) return;
+        e.preventDefault();
+        setDeasupra(false);
+        const id = e.dataTransfer.getData(FEL_TRAS);
+        if (id) onMuta(id, fel.tip);
+      }}
+    >
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-6 rounded-full ${fel.dunga}`} />
+          <h4 className="tech-label text-slate-900">{fel.titlu}</h4>
+        </div>
+        <span className="tech-label text-slate-500">{aleMele.length} fisiere</span>
+      </div>
+      <TermenulGramezii fisiere={aleMele} />
+      <div className={fel.lat ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-3 sm:space-y-4'}>
+        {aleMele.length > 0 ? aleMele.map(copil) : (
+          <div className={`py-8 sm:py-12 hardware-card rounded-3xl sm:rounded-[2rem] border-dashed flex flex-col items-center justify-center transition ${
+            deasupra ? 'border-blue-400 opacity-100' : 'border-slate-200 opacity-50'
+          }`}>
+            {iconGol}
+            <p className="tech-label">{deasupra ? 'Lasa hartia aici' : fel.gol}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /** Cum arata un termen: verde cat mai e timp, chihlimbar cand se apropie, rosu dupa. */
 const CULORI_VALABILITATE: Record<string, string> = {
   valabil: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -1884,14 +1901,27 @@ const CULORI_VALABILITATE: Record<string, string> = {
   expirat: 'bg-red-50 border-red-200 text-red-700',
 };
 
-const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete, onLink, onValabilitate, alteAparate = [] }: any) => {
+const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelete, onLink, onValabilitate, onMuta, alteAparate = [] }: any) => {
   /* Termenul se scrie si dupa ce hartia a fost incarcata: cele vechi n-ar fi
      avut altfel de unde sa-l capete. */
   const [scriuTermenul, setScriuTermenul] = React.useState(false);
+  /* Mutarea, pentru cine n-are mouse: pe telefon nu se trage nimic nicaieri. */
+  const [aleg, setAleg] = React.useState(false);
+  useEscape(() => setAleg(false), aleg);
   const termen = valabilitatea(file.validUntil);
 
   return (
-  <div className="hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden">
+  <>
+  <div
+    draggable={!!onMuta}
+    onDragStart={e => {
+      if (!onMuta) return;
+      e.dataTransfer.setData(FEL_TRAS, file.id);
+      e.dataTransfer.effectAllowed = 'move';
+    }}
+    className={`hardware-card p-5 rounded-[1.5rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden ${
+      onMuta ? 'cursor-grab active:cursor-grabbing' : ''
+    }`}>
     <div className={`absolute top-0 left-0 w-1 h-full bg-${color}-600`} />
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -1900,9 +1930,19 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
          </div>
          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 min-w-0">
-               <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wide border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700`}>
-                  {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
-               </span>
+               {/*
+                 Insigna felului e si drumul catre alta gramada. Tragerea cu
+                 mouse-ul e mai scurta, dar nu exista pe telefon — iar hartiile
+                 se pun in aplicatie tocmai de pe telefon, in sectie.
+               */}
+               <button type="button" disabled={!onMuta} onClick={() => setAleg(true)}
+                 title={onMuta ? 'Muta in alta gramada' : undefined}
+                 aria-label={onMuta ? `Muta ${file.name} in alta gramada` : undefined}
+                 className={`px-2 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wide border shrink-0 bg-${color}-50 border-${color}-100 text-${color}-700 ${
+                   onMuta ? 'hover:brightness-95 cursor-pointer' : ''
+                 }`}>
+                 {FILE_TYPE_LABELS[file.type as DeviceFile['type']] || file.type}
+               </button>
                <span className="text-[10px] font-mono font-bold text-slate-500 truncate">{file.dateAdded}</span>
             </div>
             <h4 className="text-xs font-black text-slate-900 truncate pr-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{file.name}</h4>
@@ -1952,6 +1992,42 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
        </div>
     </div>
   </div>
+  {/*
+    Alegerea gramezii sta intr-o fereastra, nu intr-o lista agatata de insigna:
+    cartonasul e scund si isi taie ce iese din el, iar pe telefon o lista de
+    doisprezece pixeli inaltime nu se nimereste cu degetul.
+  */}
+  {aleg && onMuta && (
+    <Portal>
+      <div className="fixed inset-0 z-[620] scrim flex items-end sm:items-center justify-center p-0 sm:p-4"
+        onMouseDown={e => { if (e.target === e.currentTarget) setAleg(false); }}>
+        <div role="dialog" aria-modal="true" aria-label="Muta documentul"
+          className="hardware-card w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 animate-slide-up">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Muta documentul</h3>
+              <p className="text-[12px] font-semibold text-slate-500 mt-0.5 truncate">{file.name}</p>
+            </div>
+            <button onClick={() => setAleg(false)} aria-label="Inchide"
+              className="p-2.5 bg-slate-50 text-slate-500 hover:text-slate-900 rounded-xl transition shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {GRAMEZI.filter(g => !g.tipuri.includes(file.type)).map(g => (
+              <button key={g.tip} type="button"
+                onClick={() => { setAleg(false); onMuta(g.tip); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-slate-200 bg-slate-50 hover:border-slate-300 text-left transition">
+                <span className={`w-1.5 h-5 rounded-full shrink-0 ${g.dunga}`} />
+                <span className="text-[13px] font-bold text-slate-800">{g.titlu}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Portal>
+  )}
+  </>
   );
 });
 
