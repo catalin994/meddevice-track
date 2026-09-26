@@ -745,7 +745,7 @@ const StatusBadge = React.memo(({ status }: { status: DeviceStatus }) => {
 });
 
 /** Column track shared by the compact list's header and its rows so they line up. */
-const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_2.25rem_minmax(0,3fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_6.5rem_5.5rem] md:items-center md:gap-3 lg:md:gap-4';
+const LIST_GRID = 'md:grid md:grid-cols-[1.25rem_2.25rem_minmax(0,2.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1.1fr)_6.5rem_5.5rem] md:items-center md:gap-3 lg:md:gap-4';
 
 const DeviceRow = React.memo(({
   device,
@@ -798,10 +798,21 @@ const DeviceRow = React.memo(({
         </div>
       </div>
       <span className="hidden md:block text-[15px] font-semibold text-slate-600 truncate" title={device.department}>{device.department || '—'}</span>
-      <span className="hidden md:flex">
-        <span className="px-2.5 py-1 bg-blue-50 rounded-lg text-[13px] font-bold text-blue-600 border border-blue-100 truncate max-w-full">{device.model || '—'}</span>
+      {/*
+        Producatorul deasupra modelului, in aceeasi coloana. Doua aparate cu
+        acelasi model si serii apropiate se deosebesc dupa cine le-a facut, iar
+        modelul singur nu spune nimic despre asta.
+      */}
+      <span className="hidden md:flex md:flex-col md:items-start md:gap-0.5 min-w-0">
+        <span className="text-[11px] font-bold text-slate-500 truncate max-w-full" title={device.manufacturer}>
+          {device.manufacturer || '—'}
+        </span>
+        <span className="px-2.5 py-1 bg-blue-50 rounded-lg text-[13px] font-bold text-blue-600 border border-blue-100 truncate max-w-full"
+              title={device.model}>
+          {device.model || '—'}
+        </span>
       </span>
-      <span className="hidden md:block text-[15px] font-mono font-bold text-slate-900 truncate">{device.serialNumber || '—'}</span>
+      <span className="hidden md:block text-[15px] font-mono font-bold text-slate-900 truncate" title={device.serialNumber}>{device.serialNumber || '—'}</span>
       <div className="hidden md:block"><StatusBadge status={device.status || DeviceStatus.ACTIVE} /></div>
     </div>
 
@@ -836,10 +847,10 @@ const DeviceRow = React.memo(({
         {device.department || 'N/A'}
       </span>
       <span className="px-2 py-1 shrink-0 bg-blue-50 rounded-lg text-[11px] font-bold text-blue-600 border border-blue-100 whitespace-nowrap">
-        {device.model || 'N/A'}
+        {[device.manufacturer, device.model].filter(Boolean).join(' ') || 'N/A'}
       </span>
       <span className="shrink-0 text-[13px] font-mono font-bold text-slate-900 whitespace-nowrap">
-        {device.serialNumber || 'N/A'}
+        <span className="text-slate-400">SN</span> {device.serialNumber || 'N/A'}
       </span>
     </div>
   </div>
@@ -953,13 +964,30 @@ const DeviceCard = React.memo(({
           </span>
         </div>
 
-        {/* Cifrele dupa care se cauta un aparat pe teren: serie si inventar. */}
+        {/*
+          Cum se deosebeste un aparat de altul, scris pe fata: cine l-a facut, ce
+          model e si ce serie poarta. Producatorul si modelul erau lipite intr-un
+          singur sir, fara sa se spuna care e care — "Sinomedical SN-1600" se
+          citeste la fel de bine ca un nume de aparat, iar la doua aparate din
+          acelasi loc nu se vedea ce le deosebeste. Acum fiecare isi poarta
+          eticheta lui, ca seria si numarul de inventar.
+        */}
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[13px]">
-          <span className="font-medium text-slate-600 truncate max-w-[16rem]">
-            {[device.manufacturer, device.model].filter(Boolean).join(' ') || 'Producator necunoscut'}
-          </span>
+          {device.manufacturer && (
+            <span className="font-medium text-slate-600 truncate max-w-[16rem]" title={device.manufacturer}>
+              <span className="text-slate-400">Producator</span> {device.manufacturer}
+            </span>
+          )}
+          {device.model && (
+            <span className="font-medium text-slate-600 truncate max-w-[16rem]" title={device.model}>
+              <span className="text-slate-400">Model</span> {device.model}
+            </span>
+          )}
+          {!device.manufacturer && !device.model && (
+            <span className="font-medium text-slate-400">Producator si model netrecute</span>
+          )}
           {device.serialNumber && (
-            <span className="font-mono text-slate-500 truncate max-w-[14rem]">
+            <span className="font-mono text-slate-500 truncate max-w-[14rem]" title={device.serialNumber}>
               <span className="text-slate-400">SN</span> {device.serialNumber}
             </span>
           )}
@@ -1571,7 +1599,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
                 <span className="text-center">Nr.</span>
                 <span className="truncate">Denumire</span>
                 <span className="truncate">Departament</span>
-                <span className="truncate">Model</span>
+                <span className="truncate">Producator / Model</span>
                 <span className="truncate">Serie</span>
                 <span className="truncate">Status</span>
                 <span className="truncate">Actiuni</span>
