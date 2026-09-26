@@ -1119,8 +1119,6 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       const sn = (d.serialNumber || '').toLowerCase();
       const mfr = (d.manufacturer || '').toLowerCase();
       const model = (d.model || '').toLowerCase();
-      const dept = (d.department || '').toLowerCase();
-      const cat = (d.category || '').toLowerCase();
       // Numarul de inventar e cel dupa care se cauta un aparat la o inventariere:
       // pe eticheta lipita de aparat scrie el, nu seria.
       const inv = (d.inventoryNumber || '').toLowerCase();
@@ -1138,14 +1136,26 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
         .map(c => `${c.name || ''} ${c.serialNumber || ''} ${c.manufacturer || ''} ${c.model || ''}`)
         .join(' ').toLowerCase();
 
+      /*
+       * Cautarea libera umbla dupa un aparat anume, nu dupa o gramada.
+       *
+       * Sectia si categoria erau si ele cautate, si asta facea cautarea
+       * nefolositoare tocmai la cuvintele care se scriu mai des: "ecograf"
+       * aducea toate ecografele fiindca asa se cheama categoria, iar un aparat
+       * numit dupa sectie aducea toata sectia. Amandoua au deja cate o lista
+       * derulanta a lor, deasupra — acolo se alege o gramada, si se poate si
+       * cauta inauntrul ei.
+       *
+       * Ce ramane sunt semnele aparatului: cum se cheama, ce scrie pe eticheta
+       * lui (serie, numar de inventar, cod SMIS) si cine l-a facut. Ele aduc
+       * cateva randuri, nu o sectie intreaga.
+       */
       const matchSearch = !effectiveSearch || 
         name.includes(effectiveSearch) || 
         sn.includes(effectiveSearch) ||
         inv.includes(effectiveSearch) ||
         mfr.includes(effectiveSearch) ||
         model.includes(effectiveSearch) ||
-        dept.includes(effectiveSearch) ||
-        cat.includes(effectiveSearch) ||
         smis.includes(effectiveSearch) ||
         smisIntreg.includes(effectiveSearch) ||
         parti.includes(effectiveSearch);
@@ -1352,7 +1362,7 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
             <Search className={`absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 transition-colors ${effectiveSearch ? 'text-blue-600' : 'text-slate-500'}`} />
             <input 
               type="text"
-              placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, serie, numar de inventar, categorie sau sectie...'}
+              placeholder={isNarrow ? 'Cauta dispozitiv...' : 'Cauta dupa nume, serie, numar de inventar, model sau producator...'}
               className="w-full pl-10 sm:pl-14 pr-3 sm:pr-6 py-3 sm:py-4 bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl sm:rounded-2xl text-sm font-bold focus:outline-none transition-all shadow-inner"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
