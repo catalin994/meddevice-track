@@ -116,6 +116,15 @@ export interface TaskAttachment {
   id: string;
   name: string;
   kind: 'image' | 'video' | 'file';
+  /**
+   * La ce foloseste hartia pe tichet: oferta de pret, referat, document de
+   * fundamentare sau altceva.
+   *
+   * Goala la pozele puse odata cu raportarea incidentului — ele nu se intreaba
+   * ce sunt, se vad. Scrisa, ea e singurul lucru care deosebeste doua PDF-uri
+   * cu nume de scanner intre ele.
+   */
+  category?: 'oferta' | 'referat' | 'fundamentare' | 'altul';
   /** Key in Supabase Storage. Newer records use this instead of `url`. */
   path?: string;
   /** Legacy inline data URL, kept so old records still open. */

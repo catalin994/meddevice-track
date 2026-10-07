@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
+import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, Referat, FoundationDoc, Invoice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
 import IncidentReport from './IncidentReport';
+const DocumenteTichet = React.lazy(() => import('./DocumenteTichet'));
 
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -69,9 +70,20 @@ interface TaskTrackerProps {
   onAddTask: (task: MedicalTask) => void;
   onUpdateTask: (task: MedicalTask) => void;
   onDeleteTask: (id: string) => void;
+  /** Deschide fisa aparatului de pe tichet. */
+  onSelectDevice?: (id: string) => void;
+  /* Hartiile aparatului din Financiar, ca sa se vada din tichet ce exista deja. */
+  referate?: Referat[];
+  foundationDocs?: FoundationDoc[];
+  invoices?: Invoice[];
 }
 
-const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, onUpdateTask, onDeleteTask }) => {
+const TaskTracker: React.FC<TaskTrackerProps> = ({
+  tasks, devices, onAddTask, onUpdateTask, onDeleteTask,
+  onSelectDevice, referate = [], foundationDocs = [], invoices = [],
+}) => {
+  /** Tichetul caruia i se pun hartiile. */
+  const [hartiile, setHartiile] = useState<MedicalTask | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
@@ -318,6 +330,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
               onToggleStatus={toggleStatus}
               onEdit={handleEdit}
               onDelete={setPendingDelete}
+              onVeziAparatul={onSelectDevice}
+              onHartii={() => setHartiile(task)}
             />
           ))}
           <Pager page={page} pageCount={pageCount} pageSize={pageSize}
@@ -474,6 +488,26 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({ tasks, devices, onAddTask, on
             </div>
           ))}
         </div>
+      )}
+
+      {hartiile && (
+        <React.Suspense fallback={null}>
+          <DocumenteTichet
+            task={tasks.find(t => t.id === hartiile.id) || hartiile}
+            device={devices.find(d => d.id === hartiile.deviceId)}
+            referate={referate}
+            foundationDocs={foundationDocs}
+            invoices={invoices}
+            onSchimba={atasamente => {
+              const t = tasks.find(x => x.id === hartiile.id) || hartiile;
+              onUpdateTask({ ...t, attachments: atasamente });
+            }}
+            onVeziAparatul={hartiile.deviceId && onSelectDevice
+              ? () => onSelectDevice(hartiile.deviceId!)
+              : undefined}
+            onInchide={() => setHartiile(null)}
+          />
+        </React.Suspense>
       )}
 
       {isReportingIncident && (
@@ -694,13 +728,17 @@ const TaskCard = React.memo(({
   devices, 
   onToggleStatus, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onVeziAparatul,
+  onHartii,
 }: { 
   task: MedicalTask, 
   devices: MedicalDevice[], 
   onToggleStatus: (task: MedicalTask) => void, 
   onEdit: (task: MedicalTask) => void, 
-  onDelete: (id: string) => void 
+  onDelete: (id: string) => void,
+  onVeziAparatul?: (id: string) => void,
+  onHartii?: () => void,
 }) => {
   const device = useMemo(() => devices.find(d => d.id === task.deviceId), [devices, task.deviceId]);
   
@@ -728,13 +766,25 @@ const TaskCard = React.memo(({
               acelasi lucru, spus mai incet.
             */}
             {task.deviceName && (
-              <span className="text-[13px] font-medium text-slate-600 flex items-center gap-1.5 min-w-0">
+              /*
+                Numele aparatului e acum drumul catre fisa lui. Tichetul spune
+                ce s-a stricat; ce s-a mai intamplat cu aparatul — istoricul,
+                buletinul, dosarul — sta la doua tab-uri si o cautare distanta,
+                si se ajungea acolo cautandu-l de mana in Inventar.
+              */
+              <button type="button"
+                onClick={() => task.deviceId && onVeziAparatul?.(task.deviceId)}
+                disabled={!task.deviceId || !onVeziAparatul}
+                title={task.deviceId && onVeziAparatul ? 'Deschide fisa aparatului' : undefined}
+                className={`text-[13px] font-medium text-slate-600 flex items-center gap-1.5 min-w-0 rounded-lg px-1 -mx-1 transition ${
+                  task.deviceId && onVeziAparatul ? 'hover:text-blue-700 hover:bg-blue-50' : ''
+                }`}>
                 <Info className="w-3 h-3 text-slate-400 shrink-0" />
                 <span className="truncate">{task.deviceName}</span>
                 {device?.serialNumber && (
                   <span className="font-mono text-slate-500 shrink-0">· {device.serialNumber}</span>
                 )}
-              </span>
+              </button>
             )}
             {task.notes && (
               <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1 border border-amber-100" title="Note tehnice disponibile">
@@ -789,6 +839,20 @@ const TaskCard = React.memo(({
             </button>
             
             <div className="flex gap-1 border-l border-slate-100 pl-4 ml-2">
+              {onHartii && (
+                <button
+                  onClick={onHartii}
+                  className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all relative"
+                  title="Oferte, referate si alte documente ale tichetului"
+                  aria-label="Documentele tichetului">
+                  <Paperclip className="w-4 h-4" />
+                  {(task.attachments || []).length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center">
+                      {task.attachments!.length}
+                    </span>
+                  )}
+                </button>
+              )}
               <button 
                 onClick={() => onEdit(task)} 
                 className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"

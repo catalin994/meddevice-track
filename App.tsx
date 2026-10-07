@@ -1606,6 +1606,10 @@ const App: React.FC = () => {
                     onAddTask={handleUpsertTasks} 
                     onUpdateTask={handleUpsertTasks} 
                     onDeleteTask={handleDeleteTask} 
+                    onSelectDevice={id => navigate('DEVICE_DETAIL', id)}
+                    referate={referate}
+                    foundationDocs={foundationDocs}
+                    invoices={invoices}
                   />
                 )}
                 {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); navigate('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); navigate('INVENTORY'); }} onCancel={goBack} />}
