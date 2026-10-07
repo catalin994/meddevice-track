@@ -3,9 +3,10 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, Referat, FoundationDoc, Invoice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
 import IncidentReport from './IncidentReport';
-const DocumenteTichet = React.lazy(() => import('./DocumenteTichet'));
+const FisaTichet = React.lazy(() => import('./FisaTichet'));
 
 import Portal from './Portal';
+import { getPriorityColor, getPriorityText, getStatusStyles, getStatusIcon } from './stilTichet';
 import useEscape from './useEscape';
 import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
@@ -82,8 +83,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
   tasks, devices, onAddTask, onUpdateTask, onDeleteTask,
   onSelectDevice, referate = [], foundationDocs = [], invoices = [],
 }) => {
-  /** Tichetul caruia i se pun hartiile. */
-  const [hartiile, setHartiile] = useState<MedicalTask | null>(null);
+  /** Tichetul deschis la vedere, cu tot ce se stie despre el. */
+  const [deschis, setDeschis] = useState<MedicalTask | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
@@ -331,7 +332,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
               onEdit={handleEdit}
               onDelete={setPendingDelete}
               onVeziAparatul={onSelectDevice}
-              onHartii={() => setHartiile(task)}
+              onDeschide={() => setDeschis(task)}
             />
           ))}
           <Pager page={page} pageCount={pageCount} pageSize={pageSize}
@@ -365,7 +366,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
               </thead>
               <tbody>
                 {visibleTasks.map(task => (
-                  <tr key={task.id} className="border-b border-slate-50 hover:bg-blue-50/30 transition group">
+                  <tr key={task.id} onClick={() => setDeschis(task)}
+                    className="border-b border-slate-50 hover:bg-blue-50/30 transition group cursor-pointer">
                     <td className="px-5 py-3.5 max-w-[280px]">
                       <p className="text-xs font-black text-slate-900 truncate" title={task.title}>{task.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -393,7 +395,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <button onClick={() => toggleStatus(task)}
+                      <button onClick={e => { e.stopPropagation(); toggleStatus(task); }}
                         className={`px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
                         title="Click pentru a schimba statusul" aria-label="Click pentru a schimba statusul">
                         {getStatusIcon(task.status)}
@@ -407,7 +409,11 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                         : <span className="text-[11px] text-slate-500 font-bold">—</span>}
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <div className="flex justify-end gap-1 transition" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setDeschis(task)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Deschide tichetul" aria-label="Deschide tichetul">
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={() => handleEdit(task)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editeaza" aria-label="Editeaza">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
@@ -455,13 +461,14 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                     key={task.id}
                     draggable
                     onDragStart={e => e.dataTransfer.setData('text/task-id', task.id)}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition group"
+                    onClick={() => setDeschis(task)}
+                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-pointer hover:shadow-md hover:border-blue-200 transition group"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-500 hover:text-blue-600 rounded-md transition"><Edit className="w-3 h-3" /></button>
-                        <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-500 hover:text-red-500 rounded-md transition"><Trash2 className="w-3 h-3" /></button>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => handleEdit(task)} className="p-1.5 text-slate-500 hover:text-blue-600 rounded-md transition" title="Editeaza" aria-label="Editeaza"><Edit className="w-3 h-3" /></button>
+                        <button onClick={() => setPendingDelete(task.id)} className="p-1.5 text-slate-500 hover:text-red-500 rounded-md transition" title="Sterge" aria-label="Sterge"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                     <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
@@ -490,25 +497,30 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
         </div>
       )}
 
-      {hartiile && (
-        <React.Suspense fallback={null}>
-          <DocumenteTichet
-            task={tasks.find(t => t.id === hartiile.id) || hartiile}
-            device={devices.find(d => d.id === hartiile.deviceId)}
-            referate={referate}
-            foundationDocs={foundationDocs}
-            invoices={invoices}
-            onSchimba={atasamente => {
-              const t = tasks.find(x => x.id === hartiile.id) || hartiile;
-              onUpdateTask({ ...t, attachments: atasamente });
-            }}
-            onVeziAparatul={hartiile.deviceId && onSelectDevice
-              ? () => onSelectDevice(hartiile.deviceId!)
-              : undefined}
-            onInchide={() => setHartiile(null)}
-          />
-        </React.Suspense>
-      )}
+      {deschis && (() => {
+        /* Tichetul citit din sir, nu cel retinut la apasare: altfel fisa ar
+           ramane cu starea veche dupa ce o schimbi din ea. */
+        const t = tasks.find(x => x.id === deschis.id) || deschis;
+        return (
+          <React.Suspense fallback={null}>
+            <FisaTichet
+              task={t}
+              device={devices.find(d => d.id === t.deviceId)}
+              referate={referate}
+              foundationDocs={foundationDocs}
+              invoices={invoices}
+              onSchimba={atasamente => onUpdateTask({ ...t, attachments: atasamente })}
+              onStatus={() => toggleStatus(t)}
+              onEditeaza={() => { setDeschis(null); handleEdit(t); }}
+              onSterge={() => { setDeschis(null); setPendingDelete(t.id); }}
+              onVeziAparatul={t.deviceId && onSelectDevice
+                ? () => onSelectDevice(t.deviceId!)
+                : undefined}
+              onInchide={() => setDeschis(null)}
+            />
+          </React.Suspense>
+        );
+      })()}
 
       {isReportingIncident && (
         <IncidentReport
@@ -730,7 +742,7 @@ const TaskCard = React.memo(({
   onEdit, 
   onDelete,
   onVeziAparatul,
-  onHartii,
+  onDeschide,
 }: { 
   task: MedicalTask, 
   devices: MedicalDevice[], 
@@ -738,12 +750,24 @@ const TaskCard = React.memo(({
   onEdit: (task: MedicalTask) => void, 
   onDelete: (id: string) => void,
   onVeziAparatul?: (id: string) => void,
-  onHartii?: () => void,
+  onDeschide?: () => void,
 }) => {
   const device = useMemo(() => devices.find(d => d.id === task.deviceId), [devices, task.deviceId]);
   
+  /*
+   * Tichetul se deschide apasand pe el, ca aparatul din Inventar. Butoanele de
+   * pe rand isi opresc apasarea: cine apasa pe cos vrea sa stearga, nu sa
+   * citeasca.
+   */
   return (
-    <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex items-stretch group">
+    <div
+      role={onDeschide ? 'button' : undefined}
+      tabIndex={onDeschide ? 0 : undefined}
+      onClick={onDeschide}
+      onKeyDown={e => { if (onDeschide && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onDeschide(); } }}
+      className={`bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex items-stretch group ${
+        onDeschide ? 'cursor-pointer hover:border-blue-200' : ''
+      }`}>
       <div className={`w-2 ${getPriorityColor(task.priority)} transition-all group-hover:w-3`} />
       <div className="p-4 sm:p-5 flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
@@ -753,7 +777,9 @@ const TaskCard = React.memo(({
             asa ca ochiul citea "RIDICATA · RADIOLOGIE · Ecograf..." si abia pe
             randul urmator afla ca sonda nu porneste. Titlul vine primul.
           */}
-          <h4 className="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">{task.title}</h4>
+          <h4 className={`text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words transition-colors ${
+            onDeschide ? 'group-hover:text-blue-700' : ''
+          }`}>{task.title}</h4>
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5">
             <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
             <span className="text-[13px] font-semibold text-slate-600 flex items-center gap-1">
@@ -773,7 +799,7 @@ const TaskCard = React.memo(({
                 si se ajungea acolo cautandu-l de mana in Inventar.
               */
               <button type="button"
-                onClick={() => task.deviceId && onVeziAparatul?.(task.deviceId)}
+                onClick={e => { e.stopPropagation(); if (task.deviceId) onVeziAparatul?.(task.deviceId); }}
                 disabled={!task.deviceId || !onVeziAparatul}
                 title={task.deviceId && onVeziAparatul ? 'Deschide fisa aparatului' : undefined}
                 className={`text-[13px] font-medium text-slate-600 flex items-center gap-1.5 min-w-0 rounded-lg px-1 -mx-1 transition ${
@@ -807,12 +833,12 @@ const TaskCard = React.memo(({
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {(task.attachments || []).map(a => (
                 a.kind === 'image' ? (
-                  <button key={a.id} onClick={() => openAttachment(a)} title={a.name}
+                  <button key={a.id} onClick={e => { e.stopPropagation(); openAttachment(a); }} title={a.name}
                     className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-400 transition shadow-sm">
                     <AttachmentThumb attachment={a} />
                   </button>
                 ) : (
-                  <button key={a.id} onClick={() => openAttachment(a)} title={a.name}
+                  <button key={a.id} onClick={e => { e.stopPropagation(); openAttachment(a); }} title={a.name}
                     className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-400 transition text-slate-600">
                     {a.kind === 'video' ? <Film className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
                     <span className="text-[11px] font-bold max-w-[110px] truncate">{a.name}</span>
@@ -823,7 +849,7 @@ const TaskCard = React.memo(({
           )}
         </div>
 
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-4 shrink-0" onClick={e => e.stopPropagation()}>
           <div className="text-right hidden xl:block">
             <p className="text-[13px] font-medium text-slate-500 whitespace-nowrap">Creat {task.createdAt}</p>
           </div>
@@ -839,16 +865,21 @@ const TaskCard = React.memo(({
             </button>
             
             <div className="flex gap-1 border-l border-slate-100 pl-4 ml-2">
-              {onHartii && (
+              {/*
+                Scris, nu numai desenat: "intra pe tichet" trebuie sa se vada ca
+                se poate, nu sa fie ghicit dintr-o iconita.
+              */}
+              {onDeschide && (
                 <button
-                  onClick={onHartii}
-                  className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all relative"
-                  title="Oferte, referate si alte documente ale tichetului"
-                  aria-label="Documentele tichetului">
-                  <Paperclip className="w-4 h-4" />
+                  onClick={onDeschide}
+                  className="px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-[12px] font-bold hover:bg-blue-100 transition flex items-center gap-1.5 active:scale-95"
+                  title="Deschide tichetul: descriere, note, documente"
+                  aria-label="Deschide tichetul">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  Deschide
                   {(task.attachments || []).length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center">
-                      {task.attachments!.length}
+                    <span className="inline-flex items-center gap-0.5 pl-1.5 ml-0.5 border-l border-blue-200 text-blue-600">
+                      <Paperclip className="w-3 h-3" />{task.attachments!.length}
                     </span>
                   )}
                 </button>
@@ -874,39 +905,5 @@ const TaskCard = React.memo(({
     </div>
   );
 });
-
-const getPriorityColor = (p: TaskPriority) => {
-  switch(p) {
-    case TaskPriority.CRITICAL: return 'bg-red-600';
-    case TaskPriority.HIGH: return 'bg-orange-500';
-    case TaskPriority.MEDIUM: return 'bg-blue-500';
-    case TaskPriority.LOW: return 'bg-slate-400';
-  }
-};
-
-const getPriorityText = (p: TaskPriority) => {
-  switch(p) {
-    case TaskPriority.CRITICAL: return 'bg-red-50 text-red-700 border border-red-100';
-    case TaskPriority.HIGH: return 'bg-orange-50 text-orange-700 border border-orange-100';
-    case TaskPriority.MEDIUM: return 'bg-blue-50 text-blue-600 border border-blue-100';
-    case TaskPriority.LOW: return 'bg-slate-50 text-slate-600 border border-slate-100';
-  }
-};
-
-const getStatusStyles = (s: TaskStatus) => {
-  switch(s) {
-    case TaskStatus.PENDING: return 'border-slate-200 text-slate-500 bg-white hover:border-slate-300';
-    case TaskStatus.IN_PROGRESS: return 'border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-50';
-    case TaskStatus.COMPLETED: return 'border-green-200 text-green-600 bg-green-50/50 hover:bg-green-50';
-  }
-};
-
-const getStatusIcon = (s: TaskStatus) => {
-  switch(s) {
-    case TaskStatus.PENDING: return <Clock className="w-3.5 h-3.5" />;
-    case TaskStatus.IN_PROGRESS: return <AlertCircle className="w-3.5 h-3.5 animate-pulse" />;
-    case TaskStatus.COMPLETED: return <CheckCircle2 className="w-3.5 h-3.5" />;
-  }
-};
 
 export default React.memo(TaskTracker);
