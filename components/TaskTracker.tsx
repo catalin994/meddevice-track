@@ -86,6 +86,11 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
 }) => {
   /** Tichetul deschis la vedere, cu tot ce se stie despre el. */
   const [deschis, setDeschis] = useState<MedicalTask | null>(null);
+  /*
+   * Randul desfacut in tabel. Unul singur: desfacute toate, tabelul nu mai e
+   * tabel, e un sir de cartonase — si tocmai asta e de ales intre vederi.
+   */
+  const [desfacut, setDesfacut] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
@@ -355,7 +360,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                     ['dueDate', 'Scadenta'],
                   ] as [SortKey, string][]).map(([key, label]) => (
                     <th key={key} onClick={() => handleSort(key)}
-                      className="px-5 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-900 transition whitespace-nowrap">
+                      className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-900 transition whitespace-nowrap">
                       <span className="inline-flex items-center gap-1">
                         {label}
                         {sortKey === key && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-600" /> : <ChevronDown className="w-3 h-3 text-blue-600" />)}
@@ -363,37 +368,52 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                     </th>
                   ))}
                   {/* Nu se sorteaza: hartiile unui tichet nu se asaza in sir. */}
-                  <th className="px-5 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Documente</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right">Actiuni</th>
+                  <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Documente</th>
+                  {/*
+                    Actiunile raman lipite de marginea din dreapta. Cu zece
+                    coloane, pe un laptop tabelul e mai lat decat ecranul, si
+                    pana acum tocmai butoanele cadeau afara: se vedea tot, in
+                    afara de ce se putea face.
+                  */}
+                  <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right sticky right-0 bg-slate-50 border-l border-slate-200">Actiuni</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleTasks.map(task => (
-                  <tr key={task.id} onClick={() => setDeschis(task)}
-                    className="border-b border-slate-50 hover:bg-blue-50/30 transition group cursor-pointer">
-                    <td className="px-5 py-3.5 max-w-[280px]">
-                      <p className="text-xs font-black text-slate-900 truncate" title={task.title}>{task.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {task.notes && (
-                          <p className="text-[11px] text-amber-600 font-bold uppercase tracking-wide flex items-center gap-1">
-                            <StickyNote className="w-2.5 h-2.5" /> Note tehnice
-                          </p>
-                        )}
-
-                      </div>
+                  <React.Fragment key={task.id}>
+                  <tr onClick={() => setDeschis(task)}
+                    className={`border-b border-slate-50 transition group cursor-pointer ${
+                      desfacut === task.id ? 'bg-blue-50/40' : 'hover:bg-blue-50/30'
+                    }`}>
+                    <td className="px-3 py-3.5">
+                      <p className="text-xs font-black text-slate-900 leading-snug line-clamp-2 break-words max-w-[260px]" title={task.title}>
+                        {task.title}
+                      </p>
+                      {/* Descrierea, pe un rand: ea spune ce s-a stricat, si
+                          lipsea cu totul din tabel. */}
+                      {task.description && desfacut !== task.id && (
+                        <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5 max-w-[260px]" title={task.description}>
+                          {task.description}
+                        </p>
+                      )}
+                      {task.notes && (
+                        <p className="text-[11px] text-amber-600 font-bold uppercase tracking-wide flex items-center gap-1 mt-0.5">
+                          <StickyNote className="w-2.5 h-2.5" /> Note tehnice
+                        </p>
+                      )}
                     </td>
-                    <td className="px-5 py-3.5 max-w-[180px]">
+                    <td className="px-3 py-3.5">
                       {task.deviceName
-                        ? <span className="text-[11px] font-bold text-blue-600 truncate block" title={task.deviceName}>{task.deviceName}</span>
+                        ? <span className="text-[11px] font-bold text-blue-600 truncate block max-w-[150px]" title={task.deviceName}>{task.deviceName}</span>
                         : <span className="text-[11px] text-slate-500 font-bold">—</span>}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5">
                       <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${getPriorityText(task.priority)}`}>{TASK_PRIORITY_RO[task.priority]}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5">
                       <button onClick={e => { e.stopPropagation(); toggleStatus(task); }}
                         className={`px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wide border transition flex items-center gap-1.5 whitespace-nowrap ${getStatusStyles(task.status)}`}
                         title="Click pentru a schimba statusul" aria-label="Click pentru a schimba statusul">
@@ -401,8 +421,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                         {TASK_STATUS_RO[task.status]}
                       </button>
                     </td>
-                    <td className="px-5 py-3.5 text-[11px] font-mono font-bold text-slate-500 whitespace-nowrap">{task.createdAt}</td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
+                    <td className="px-3 py-3.5 text-[11px] font-mono font-bold text-slate-500 whitespace-nowrap">{task.createdAt}</td>
+                    <td className="px-3 py-3.5 whitespace-nowrap">
                       {task.dueDate
                         ? <span className={`text-[11px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-500'}`}>{task.dueDate}</span>
                         : <span className="text-[11px] text-slate-500 font-bold">—</span>}
@@ -438,8 +458,27 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className={`px-3 py-3.5 sticky right-0 border-l border-slate-100 transition ${
+                      desfacut === task.id ? 'bg-[#eff6ff]' : 'bg-white group-hover:bg-[#f3f8ff]'
+                    }`}>
                       <div className="flex justify-end gap-1 transition" onClick={e => e.stopPropagation()}>
+                        {/*
+                          Sageata desface randul sub el, cu tot ce nu incape pe o
+                          linie: descrierea intreaga, notele, hartiile. Tabelul
+                          ramane tabel — se citeste de sus in jos — dar nu mai e
+                          nevoie sa fie deschis fiecare tichet ca sa se afle ce
+                          scrie in el.
+                        */}
+                        <button
+                          onClick={() => setDesfacut(d => (d === task.id ? null : task.id))}
+                          aria-expanded={desfacut === task.id}
+                          title={desfacut === task.id ? 'Strange randul' : 'Vezi tot, aici pe rand'}
+                          aria-label={desfacut === task.id ? `Strange ${task.title}` : `Vezi tot despre ${task.title}`}
+                          className={`p-2 rounded-lg transition ${
+                            desfacut === task.id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                          }`}>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${desfacut === task.id ? 'rotate-180' : ''}`} />
+                        </button>
                         <button onClick={() => setDeschis(task)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Deschide tichetul" aria-label="Deschide tichetul">
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -453,6 +492,64 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       </div>
                     </td>
                   </tr>
+                  {desfacut === task.id && (
+                    <tr className="border-b border-slate-100 bg-slate-50/60">
+                      <td colSpan={9} className="px-4 pb-5 pt-1">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                          <div className="lg:col-span-2 space-y-3">
+                            <div>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
+                              <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                                {task.description || 'Nu s-a scris nimic la deschiderea tichetului.'}
+                              </p>
+                            </div>
+                            {task.notes && (
+                              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">Note tehnice</p>
+                                <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                                  {task.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-3">
+                            {task.deviceName && (
+                              <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Aparatul</p>
+                                <button onClick={e => { e.stopPropagation(); if (task.deviceId) onSelectDevice?.(task.deviceId); }}
+                                  disabled={!task.deviceId || !onSelectDevice}
+                                  className="text-[13px] font-bold text-blue-700 hover:underline text-left break-words">
+                                  {task.deviceName}
+                                  {devices.find(d => d.id === task.deviceId)?.serialNumber
+                                    ? ` · ${devices.find(d => d.id === task.deviceId)!.serialNumber}` : ''}
+                                </button>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">
+                                Documente ({(task.attachments || []).length})
+                              </p>
+                              {(task.attachments || []).length === 0 ? (
+                                <p className="text-[13px] font-semibold text-slate-400">Nicio hartie pusa.</p>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {task.attachments!.map(a => (
+                                    <button key={a.id} onClick={e => { e.stopPropagation(); openAttachment(a); }}
+                                      title={a.name} aria-label={`Deschide ${a.name}`}
+                                      className="px-2.5 py-1.5 bg-white border-2 border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700 transition max-w-[220px] truncate flex items-center gap-1.5">
+                                      <FileText className="w-3 h-3 shrink-0 text-slate-400" />
+                                      <span className="truncate">{etichetaHartiei(a)} · {a.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
