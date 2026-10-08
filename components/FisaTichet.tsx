@@ -16,6 +16,7 @@ import useTragere from './useTragere';
 import ConfirmDialog from './ConfirmDialog';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 import { dosarulAparatului } from '../services/dosarAparat';
+import { FELURI, FelHartie, etichetaHartiei } from '../services/hartiiTichet';
 
 /**
  * Fisa unui tichet de service: tot ce stie aplicatia despre o defectiune.
@@ -40,15 +41,6 @@ import { dosarulAparatului } from '../services/dosarAparat';
  * aparatul in evidenta — referatele si documentele din Financiar, facturile lui
  * — ca sa nu fie urcate a doua oara ce exista deja intr-un loc al lor.
  */
-
-export type FelHartie = 'oferta' | 'referat' | 'fundamentare' | 'altul';
-
-export const FELURI: { id: FelHartie; text: string; scurt: string }[] = [
-  { id: 'oferta', text: 'Oferta de pret', scurt: 'Oferta' },
-  { id: 'referat', text: 'Referat de necesitate', scurt: 'Referat' },
-  { id: 'fundamentare', text: 'Document de fundamentare', scurt: 'Fundamentare' },
-  { id: 'altul', text: 'Alt document', scurt: 'Document' },
-];
 
 const MAX_MB = 50;
 
@@ -327,7 +319,7 @@ const FisaTichet: React.FC<Props> = ({
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2 flex-wrap">
                               <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 border border-slate-200 text-[10px] font-black uppercase tracking-wide text-slate-600">
-                                {FELURI.find(f => f.id === a.category)?.scurt || (a.kind === 'image' ? 'Poza' : 'Document')}
+                                {etichetaHartiei(a)}
                               </span>
                               <span className="text-[10px] font-mono font-bold text-slate-400">{a.dateAdded}</span>
                             </span>

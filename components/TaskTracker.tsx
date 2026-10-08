@@ -11,6 +11,7 @@ import useEscape from './useEscape';
 import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
+import { etichetaHartiei } from '../services/hartiiTichet';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
 // cache), older ones are still inline data URLs.
 const openAttachment = async (a: TaskAttachment) => {
@@ -361,6 +362,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       </span>
                     </th>
                   ))}
+                  {/* Nu se sorteaza: hartiile unui tichet nu se asaza in sir. */}
+                  <th className="px-5 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Documente</th>
                   <th className="px-5 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right">Actiuni</th>
                 </tr>
               </thead>
@@ -376,11 +379,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                             <StickyNote className="w-2.5 h-2.5" /> Note tehnice
                           </p>
                         )}
-                        {(task.attachments || []).length > 0 && (
-                          <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wide flex items-center gap-1" title={`${task.attachments!.length} atasamente`}>
-                            <Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length}
-                          </p>
-                        )}
+
                       </div>
                     </td>
                     <td className="px-5 py-3.5 max-w-[180px]">
@@ -407,6 +406,37 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       {task.dueDate
                         ? <span className={`text-[11px] font-mono font-bold ${task.dueDate < new Date().toISOString().split('T')[0] && task.status !== TaskStatus.COMPLETED ? 'text-red-500' : 'text-slate-500'}`}>{task.dueDate}</span>
                         : <span className="text-[11px] text-slate-500 font-bold">—</span>}
+                    </td>
+                    {/*
+                      Hartiile tichetului, scrise pe fel, nu numai numarate.
+                      "Agrafa 2" spunea ca sunt doua, nu care sunt — iar
+                      intrebarea de la tabel e daca a venit oferta, nu cate
+                      fisiere sunt pe tichet. Se apasa si se deschid.
+                    */}
+                    <td className="px-3 py-3.5 min-w-[160px]" onClick={e => e.stopPropagation()}>
+                      {(task.attachments || []).length === 0 ? (
+                        <span className="text-[11px] font-bold text-slate-300">—</span>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {/* Numele felului ajunge: iconita costa cat jumatate
+                              de cuvant si spune mai putin decat el. */}
+                          {task.attachments!.slice(0, 2).map(a => (
+                            <button key={a.id} onClick={() => openAttachment(a)}
+                              title={`${etichetaHartiei(a)} · ${a.name}`}
+                              aria-label={`Deschide ${a.name}`}
+                              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-wide text-slate-600 hover:border-blue-300 hover:text-blue-700 transition max-w-[104px] truncate">
+                              {etichetaHartiei(a)}
+                            </button>
+                          ))}
+                          {task.attachments!.length > 2 && (
+                            <button onClick={() => setDeschis(task)}
+                              title="Vezi toate hartiile tichetului"
+                              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-500 hover:border-blue-300 hover:text-blue-700 transition">
+                              +{task.attachments!.length - 2}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex justify-end gap-1 transition" onClick={e => e.stopPropagation()}>
