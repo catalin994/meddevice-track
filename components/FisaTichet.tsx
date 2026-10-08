@@ -9,7 +9,7 @@ import {
   FOUNDATION_DOC_RO, normaliseFoundationType, referatTotal,
   TASK_STATUS_RO, TASK_PRIORITY_RO,
 } from '../types';
-import { getPriorityText, getStatusStyles, getStatusIcon } from './stilTichet';
+import { getPriorityText, getStatusStyles, getStatusIcon, marimeaDescrierii } from './stilTichet';
 import Portal from './Portal';
 import useEscape from './useEscape';
 import useTragere from './useTragere';
@@ -212,7 +212,8 @@ const FisaTichet: React.FC<Props> = ({
               <Sectiune icon={<Wrench className="w-4 h-4" />} titlu="Problema">
                 <div className="space-y-3">
                   {task.description ? (
-                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                    /* Chenarul isi tine inaltimea: ce trece de ea se deruleaza. */
+                    <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[260px] overflow-y-auto custom-scrollbar pr-1 ${marimeaDescrierii(task.description)}`}>
                       {task.description}
                     </p>
                   ) : (
@@ -225,7 +226,7 @@ const FisaTichet: React.FC<Props> = ({
                       <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
                         <MessageSquare className="w-3 h-3" /> Note tehnice
                       </p>
-                      <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                      <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[160px] overflow-y-auto custom-scrollbar pr-1 ${marimeaDescrierii(task.notes)}`}>
                         {task.notes}
                       </p>
                     </div>

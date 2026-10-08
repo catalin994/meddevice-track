@@ -44,3 +44,20 @@ export const getStatusIcon = (s: TaskStatus) => {
     case TaskStatus.COMPLETED: return <CheckCircle2 className="w-3.5 h-3.5" />;
   }
 };
+
+/**
+ * Cat de mare se scrie descrierea problemei, ca sa incapa in chenarul ei.
+ *
+ * O defectiune se povesteste in doua randuri sau in douazeci — "nu porneste"
+ * si o pagina despre ce s-a incercat de luni incoace. Scrise la aceeasi marime,
+ * cele douazeci umflau chenarul peste tot ce era langa el. Textul lung se
+ * scrie deci ceva mai marunt, iar ce trece si de atat se deruleaza inauntru:
+ * chenarul isi pastreaza inaltimea, oricat ar avea de spus.
+ *
+ * Marimile raman citibile — nu se coboara sub 11.5px — fiindca o descriere pe
+ * care n-o mai poti citi nu incape nicaieri.
+ */
+export const marimeaDescrierii = (text: string): string =>
+  (text || '').length > 900 ? 'text-[11.5px] leading-[1.65]'
+  : (text || '').length > 420 ? 'text-[12px] leading-[1.7]'
+  : 'text-[13px] leading-relaxed';

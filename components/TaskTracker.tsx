@@ -6,7 +6,7 @@ import IncidentReport from './IncidentReport';
 const FisaTichet = React.lazy(() => import('./FisaTichet'));
 
 import Portal from './Portal';
-import { getPriorityColor, getPriorityText, getStatusStyles, getStatusIcon } from './stilTichet';
+import { getPriorityColor, getPriorityText, getStatusStyles, getStatusIcon, marimeaDescrierii } from './stilTichet';
 import useEscape from './useEscape';
 import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
@@ -567,14 +567,20 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                           <div className="space-y-3">
                             <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
-                              <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                              {/* Se incadreaza in rand: o descriere de o pagina
+                                  se scrie mai marunt, iar restul se deruleaza. */}
+                              <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[180px] overflow-y-auto custom-scrollbar pr-1 ${
+                                marimeaDescrierii(task.description || '')
+                              }`}>
                                 {task.description || 'Nu s-a scris nimic la deschiderea tichetului.'}
                               </p>
                             </div>
                             {task.notes && (
                               <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
                                 <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">Note tehnice</p>
-                                <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                                <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto custom-scrollbar pr-1 ${
+                                  marimeaDescrierii(task.notes || '')
+                                }`}>
                                   {task.notes}
                                 </p>
                               </div>
