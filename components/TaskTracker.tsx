@@ -561,27 +561,47 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                <button onClick={() => { setIsAdding(false); setEditingTask(null); }} className="p-3 text-slate-500 hover:bg-white hover:text-slate-900 rounded-2xl transition border border-slate-200 shadow-sm"><X className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
+              {/*
+                Campurile erau cenusii pe alb, cu o margine abia vazuta: aratau
+                a text scris, nu a casuta de scris. Acum sunt albe cu margine
+                groasa, si se inchid la culoare cand scrii in ele — se vede ca
+                asteapta ceva, si se vede care anume.
+              */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Titlu / Tip Defectiune</label>
-                <input required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="ex: Defectiune sonda ecograf" />
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 flex items-center gap-1.5">
+                  <Edit className="w-3 h-3 text-slate-400" /> Titlu / Tip defectiune
+                  <span className="text-red-500">*</span>
+                  <span className="font-semibold normal-case tracking-normal text-slate-400">— de scris</span>
+                </label>
+                <input required className="w-full bg-white border-2 border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold placeholder:font-semibold placeholder:text-slate-400 focus:border-slate-900 focus:bg-white outline-none transition-all" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="ex: Defectiune sonda ecograf" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Departament Solicitant</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 flex items-center gap-1.5">
+                    <ChevronDown className="w-3 h-3 text-slate-400" /> Departament solicitant
+                    <span className="font-semibold normal-case tracking-normal text-slate-400">— de ales</span>
+                  </label>
                   <div className="relative">
-                    <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
+                    <select className="w-full bg-white border-2 border-slate-200 rounded-2xl pl-5 pr-14 py-4 text-sm font-bold appearance-none cursor-pointer focus:border-slate-900 outline-none transition-all" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
                       {allAvailableDepartments.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
-                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-100 text-slate-600 rounded-xl pointer-events-none">
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Prioritate</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 flex items-center gap-1.5">
+                    <ChevronDown className="w-3 h-3 text-slate-400" /> Prioritate
+                    <span className="font-semibold normal-case tracking-normal text-slate-400">— de ales</span>
+                  </label>
                   <div className="relative">
-                    <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-blue-500/10 outline-none" value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value as any})}>
+                    <select className="w-full bg-white border-2 border-slate-200 rounded-2xl pl-5 pr-14 py-4 text-sm font-bold appearance-none cursor-pointer focus:border-slate-900 outline-none transition-all" value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value as any})}>
                       {Object.values(TaskPriority).map(p => <option key={p} value={p}>{TASK_PRIORITY_RO[p]}</option>)}
                     </select>
-                    <ArrowRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 rotate-90 pointer-events-none" />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-100 text-slate-600 rounded-xl pointer-events-none">
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
                   </div>
                 </div>
               </div>
@@ -591,27 +611,32 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                 onChange={id => setFormData(f => ({ ...f, deviceId: id }))}
               />
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Descrierea Problemei</label>
-                <textarea className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[100px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Descrie problema raportata de departament..." />
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 flex items-center gap-1.5">
+                  <Edit className="w-3 h-3 text-slate-400" /> Descrierea problemei
+                  <span className="font-semibold normal-case tracking-normal text-slate-400">— de scris</span>
+                </label>
+                <textarea className="w-full bg-white border-2 border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[110px] placeholder:text-slate-400 focus:border-slate-900 outline-none transition-all resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Ce face aparatul, de cand, in ce imprejurari. Ex: la pornire da eroare de inalta tensiune, din 12.07." />
               </div>
 
-              {/* ADDITIONAL DATA FIELD */}
-              <div className="space-y-2 p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
-                <label className="text-[11px] font-black text-blue-600 uppercase tracking-wide ml-1 flex items-center gap-2">
-                  <StickyNote className="w-4 h-4" /> Note Tehnice
+              {/* Notele poarta acelasi galben ca pe fisa tichetului: acelasi
+                  lucru, aceeasi culoare, oriunde ar fi vazut. */}
+              <div className="space-y-2 p-5 sm:p-6 bg-amber-50/60 rounded-3xl border-2 border-amber-100">
+                <label className="text-[11px] font-black text-amber-700 uppercase tracking-wide ml-1 flex items-center gap-2">
+                  <StickyNote className="w-4 h-4" /> Note tehnice
+                  <span className="font-semibold normal-case tracking-normal text-amber-600/70">— de scris, daca ai ce</span>
                 </label>
                 <textarea 
-                  className="w-full bg-white border border-blue-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[120px] focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-none placeholder:text-blue-300" 
+                  className="w-full bg-white border-2 border-amber-200 rounded-2xl px-5 py-4 text-sm font-medium min-h-[120px] focus:border-amber-500 outline-none transition-all resize-none placeholder:text-amber-700/40" 
                   value={formData.notes} 
                   onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  placeholder="Adauga rezultate diagnostic, piese necesare sau progres tehnic..."
+                  placeholder="Ce s-a constatat la fata locului, ce piese trebuie, cu cine s-a vorbit..."
                 />
-                <p className="text-[11px] text-blue-400 font-bold uppercase tracking-wide text-right mt-1 italic">Aceste date sunt vizibile doar echipei tehnice</p>
+                <p className="text-[11px] text-amber-700/70 font-bold mt-1">Se vad numai de catre serviciul tehnic.</p>
               </div>
 
               <div className="pt-4 flex gap-4">
                 <button type="button" onClick={() => { setIsAdding(false); setEditingTask(null); }} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-slate-200 transition">Renunta</button>
-                <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide shadow-2xl hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2">
+                <button type="submit" className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-wide hover:bg-slate-800 transition active:scale-95 flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-5 h-5" /> {editingTask ? 'Salveaza Modificarile' : 'Creeaza Tichet'}
                 </button>
               </div>
@@ -668,22 +693,34 @@ const AlegeDispozitivul: React.FC<{
 
   return (
     <div className="space-y-2">
-      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">
-        Dispozitiv Asociat (Optional)
+      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 flex items-center gap-1.5">
+        <Search className="w-3 h-3 text-slate-400" /> Dispozitivul
+        <span className="font-semibold normal-case tracking-normal text-slate-400">
+          — de cautat si ales, daca tichetul e pe un aparat anume
+        </span>
       </label>
 
       {ales ? (
-        <div className="flex items-center gap-3 p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/20">
-          <div className="p-2 bg-white/20 rounded-lg shrink-0"><CheckCircle2 className="w-4 h-4" /></div>
+        /*
+          Aparatul ales statea intr-un dreptunghi albastru plin, cu umbra
+          albastra sub el — cantarea mai mult decat tot formularul si parea o
+          alarma, nu o alegere facuta. Acum spune acelasi lucru mai incet:
+          verde, ca orice lucru in regula din aplicatie.
+        */
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl">
+          <div className="p-2 bg-white text-emerald-600 rounded-lg shrink-0 border border-emerald-100">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-black truncate">{ales.name}</p>
-            <p className="text-[10px] font-bold uppercase tracking-tighter text-white/70 truncate">
+            <p className="text-[13px] font-black text-slate-900 truncate">{ales.name}</p>
+            <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-500 truncate">
               {ales.serialNumber}{ales.model ? ` · ${ales.model}` : ''}{ales.department ? ` · ${ales.department}` : ''}
             </p>
           </div>
-          <button type="button" onClick={() => onChange('')} aria-label="Scoate dispozitivul de pe tichet"
-            className="p-2 bg-white/15 hover:bg-white/25 rounded-lg transition shrink-0">
-            <X className="w-4 h-4" />
+          <button type="button" onClick={() => onChange('')}
+            title="Scoate aparatul de pe tichet" aria-label="Scoate dispozitivul de pe tichet"
+            className="px-3 py-2 bg-white border-2 border-emerald-200 text-slate-600 hover:text-red-600 hover:border-red-200 rounded-xl transition shrink-0 flex items-center gap-1.5 text-[11px] font-bold">
+            <X className="w-3.5 h-3.5" /> Schimba
           </button>
         </div>
       ) : (
@@ -695,7 +732,7 @@ const AlegeDispozitivul: React.FC<{
               onChange={e => setCauta(e.target.value)}
               placeholder="Cauta dupa denumire, serie sau model..."
               aria-label="Cauta dispozitivul dupa denumire, serie sau model"
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+              className="w-full bg-white border-2 border-slate-200 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold placeholder:font-semibold placeholder:text-slate-400 focus:border-slate-900 outline-none transition-all"
             />
           </div>
           {devices.length === 0 ? (
@@ -711,7 +748,7 @@ const AlegeDispozitivul: React.FC<{
                   key={d.id}
                   type="button"
                   onClick={() => { onChange(d.id); setCauta(''); }}
-                  className="w-full text-left p-3.5 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:bg-blue-50/40 transition flex items-center gap-3"
+                  className="w-full text-left p-3.5 bg-white border-2 border-slate-100 rounded-2xl hover:border-emerald-300 hover:bg-emerald-50/50 transition flex items-center gap-3"
                 >
                   <div className="p-2 bg-slate-50 text-slate-500 rounded-lg shrink-0"><Fingerprint className="w-4 h-4" /></div>
                   <div className="min-w-0">
