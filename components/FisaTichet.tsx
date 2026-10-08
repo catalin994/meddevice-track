@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   X, Upload, Loader2, Trash2, FileText, Film, Eye, ExternalLink,
   FileSignature, FolderOpen, Receipt, Edit, Building, Calendar, MessageSquare, Clock,
+  Paperclip, Wrench,
 } from 'lucide-react';
 import {
   MedicalTask, TaskAttachment, MedicalDevice, Referat, FoundationDoc, Invoice,
@@ -11,6 +12,7 @@ import {
 import { getPriorityText, getStatusStyles, getStatusIcon } from './stilTichet';
 import Portal from './Portal';
 import useEscape from './useEscape';
+import useTragere from './useTragere';
 import ConfirmDialog from './ConfirmDialog';
 import { buildPath, uploadDataUrl, resolveSource } from '../services/fileStorage';
 import { dosarulAparatului } from '../services/dosarAparat';
@@ -146,6 +148,13 @@ const FisaTichet: React.FC<Props> = ({
     if (alege.current) alege.current.value = '';
   }, [atasamente, fel, onSchimba, task.id]);
 
+  /* Fisierul lasat cu mouse-ul peste caseta, nu numai ales din foldere. */
+  const tragere = useTragere(useCallback((fisiere: File[]) => {
+    const lista = new DataTransfer();
+    for (const f of fisiere) lista.items.add(f);
+    void primeste(lista.files);
+  }, [primeste]));
+
   const scoate = useCallback((a: TaskAttachment) => {
     onSchimba(atasamente.filter(x => x.id !== a.id));
     setDeSters(null);
@@ -209,17 +218,24 @@ const FisaTichet: React.FC<Props> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6">
-            {/* ── ce s-a intamplat ── */}
-            {(task.description || task.notes) && (
+            {/* ── 1. ce s-a stricat ── */}
+            <Sectiune icon={<Wrench className="w-4 h-4" />} titlu="Problema">
               <div className="space-y-3">
-                {task.description && (
-                  <p className="text-[14px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                    {task.description}
-                  </p>
-                )}
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descriere</p>
+                  {task.description ? (
+                    <p className="text-[14px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                      {task.description}
+                    </p>
+                  ) : (
+                    <p className="text-[13px] font-semibold text-slate-400">
+                      Nu s-a scris nimic la deschiderea tichetului.
+                    </p>
+                  )}
+                </div>
                 {task.notes && (
-                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-2xl">
-                    <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
                       <MessageSquare className="w-3 h-3" /> Note tehnice
                     </p>
                     <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
@@ -228,80 +244,115 @@ const FisaTichet: React.FC<Props> = ({
                   </div>
                 )}
               </div>
-            )}
+            </Sectiune>
 
-            {/* ── de pus ── */}
-            <div className="p-4 sm:p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl space-y-3">
-              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide">Adauga un document</p>
-              <div className="flex flex-wrap gap-1.5">
-                {FELURI.map(f => (
-                  <button key={f.id} type="button" onClick={() => setFel(f.id)} aria-pressed={fel === f.id}
-                    className={`px-3 py-1.5 rounded-xl border-2 text-[12px] font-bold transition ${
-                      fel === f.id ? 'bg-slate-900 border-slate-900 text-white'
-                                   : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}>
-                    {f.text}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <button onClick={() => alege.current?.click()} disabled={urc}
-                  className="px-5 py-3 bg-blue-600 text-white rounded-xl text-[12px] font-black uppercase tracking-wide flex items-center gap-2 hover:bg-blue-700 transition disabled:opacity-50">
-                  {urc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {urc ? 'Se incarca' : 'Alege fisierul'}
-                </button>
-                <p className="text-[11px] font-semibold text-slate-500">
-                  Se pune ca {FELURI.find(f => f.id === fel)!.text.toLowerCase()}. Pana la {MAX_MB}MB.
-                </p>
-                <input ref={alege} type="file" multiple className="hidden"
-                  onChange={e => { void primeste(e.target.files); }} />
-              </div>
-              {greseala && (
-                <p className="text-[11px] font-bold text-red-600 break-words">{greseala}</p>
-              )}
-            </div>
-
-            {/* ── ce e pus ── */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide px-1">
-                Pe tichet ({atasamente.length})
-              </p>
-              {atasamente.length === 0 ? (
-                <p className="text-[13px] font-semibold text-slate-500 p-4 bg-slate-50 rounded-2xl">
-                  Nicio hartie pusa inca pe tichet.
-                </p>
-              ) : atasamente.map(a => (
-                <div key={a.id} className="flex items-center gap-3 p-3 bg-white border-2 border-slate-100 rounded-2xl">
-                  <span className="p-2.5 bg-slate-50 rounded-xl text-slate-500 shrink-0">
-                    {a.kind === 'video' ? <Film className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 border border-slate-200 text-[10px] font-black uppercase tracking-wide text-slate-600">
-                        {FELURI.find(f => f.id === a.category)?.scurt || (a.kind === 'image' ? 'Poza' : 'Document')}
-                      </span>
-                      <span className="text-[10px] font-mono font-bold text-slate-400">{a.dateAdded}</span>
-                    </span>
-                    <span className="block text-[13px] font-bold text-slate-800 truncate mt-0.5" title={a.name}>{a.name}</span>
-                  </span>
-                  <button onClick={() => deschideHartia(a)} title="Deschide" aria-label={`Deschide ${a.name}`}
-                    className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition shrink-0">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setDeSters(a)} title="Scoate de pe tichet" aria-label={`Scoate ${a.name}`}
-                    className="p-2.5 bg-slate-50 text-slate-500 hover:text-red-600 rounded-xl transition shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {/* ── 2. hartiile tichetului ── */}
+            <Sectiune icon={<Paperclip className="w-4 h-4" />} titlu="Documentele tichetului"
+              numar={atasamente.length}>
+              {/*
+                Doi pasi numerotati, nu o insiruire de butoane. Inainte, felul
+                hartiei si alegerea fisierului stateau unul langa altul, la fel
+                de apasat scrise, si nu se vedea ca primul il schimba pe al
+                doilea: se alegea fisierul si abia dupa aceea se baga de seama ca
+                s-a pus ca oferta, cand era referat.
+              */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[11px] font-black text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">1</span>
+                    Ce fel de document pui?
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FELURI.map(f => (
+                      <button key={f.id} type="button" onClick={() => setFel(f.id)} aria-pressed={fel === f.id}
+                        className={`px-3 py-2 rounded-xl border-2 text-[12px] font-bold transition ${
+                          fel === f.id ? 'bg-slate-900 border-slate-900 text-white'
+                                       : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}>
+                        {f.text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                <div>
+                  <p className="text-[11px] font-black text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">2</span>
+                    Alege fisierul
+                  </p>
+                  <button
+                    type="button"
+                    {...tragere.proprietati}
+                    onClick={() => alege.current?.click()}
+                    disabled={urc}
+                    aria-label="Alege sau trage fisierul aici"
+                    className={`w-full p-6 rounded-2xl border-2 border-dashed transition flex flex-col items-center justify-center gap-2 text-center ${
+                      tragere.peDeasupra ? 'border-blue-500 bg-blue-50'
+                                         : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/40'
+                    } disabled:opacity-60`}>
+                    {urc
+                      ? <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
+                      : <Upload className="w-7 h-7 text-slate-400" />}
+                    <span className="text-[13px] font-black text-slate-800">
+                      {urc ? 'Se incarca...'
+                           : tragere.peDeasupra ? 'Lasa fisierul aici'
+                           : 'Trage fisierul aici sau apasa ca sa-l cauti'}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Se pune ca <strong className="text-slate-700">{FELURI.find(f => f.id === fel)!.text}</strong> · cel mult {MAX_MB}MB
+                    </span>
+                  </button>
+                  <input ref={alege} type="file" multiple className="hidden"
+                    onChange={e => { void primeste(e.target.files); }} />
+                  {greseala && (
+                    <p className="text-[11px] font-bold text-red-600 break-words mt-2">{greseala}</p>
+                  )}
+                </div>
+
+                <div className="pt-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-2">
+                    Puse pe tichet ({atasamente.length})
+                  </p>
+                  {atasamente.length === 0 ? (
+                    <p className="text-[13px] font-semibold text-slate-400 py-3">
+                      Nicio hartie pusa inca.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {atasamente.map(a => (
+                        <div key={a.id} className="flex items-center gap-3 p-3 bg-white border-2 border-slate-100 rounded-xl">
+                          <span className="p-2.5 bg-slate-50 rounded-xl text-slate-500 shrink-0">
+                            {a.kind === 'video' ? <Film className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 border border-slate-200 text-[10px] font-black uppercase tracking-wide text-slate-600">
+                                {FELURI.find(f => f.id === a.category)?.scurt || (a.kind === 'image' ? 'Poza' : 'Document')}
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-slate-400">{a.dateAdded}</span>
+                            </span>
+                            <span className="block text-[13px] font-bold text-slate-800 truncate mt-0.5" title={a.name}>{a.name}</span>
+                          </span>
+                          <button onClick={() => deschideHartia(a)} title="Deschide" aria-label={`Deschide ${a.name}`}
+                            className="p-2.5 bg-slate-50 text-slate-500 hover:text-blue-600 rounded-xl transition shrink-0">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeSters(a)} title="Scoate de pe tichet" aria-label={`Scoate ${a.name}`}
+                            className="p-2.5 bg-slate-50 text-slate-500 hover:text-red-600 rounded-xl transition shrink-0">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Sectiune>
 
             {/* ── ce are deja aparatul, din Financiar ── */}
             {device && dosar && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide px-1">
-                  Din dosarul aparatului
-                </p>
+              <Sectiune icon={<FolderOpen className="w-4 h-4" />} titlu="Dosarul aparatului"
+                sub="Ce are deja aparatul in Financiar">
                 {dosar.referate.length === 0 && dosar.fundamentari.length === 0 && dosar.facturi.length === 0 ? (
                   <p className="text-[13px] font-semibold text-slate-500 p-4 bg-slate-50 rounded-2xl">
                     Aparatul n-are inca referate sau documente de fundamentare in evidenta.
@@ -329,7 +380,7 @@ const FisaTichet: React.FC<Props> = ({
                     ))}
                   </div>
                 )}
-              </div>
+              </Sectiune>
             )}
           </div>
 
@@ -369,6 +420,31 @@ const FisaTichet: React.FC<Props> = ({
     </Portal>
   );
 };
+
+/**
+ * O sectiune a fisei: un titlu scris apasat si ce tine de el, intr-un chenar.
+ *
+ * Fara ele, fisa era un sir de bucati despartite numai prin aer, cu titluri
+ * mici si cenusii — se vedea ca scrie ceva, nu se vedea unde se termina un
+ * lucru si incepe altul.
+ */
+const Sectiune: React.FC<{
+  icon: React.ReactNode; titlu: string; sub?: string; numar?: number; children: React.ReactNode;
+}> = ({ icon, titlu, sub, numar, children }) => (
+  <section className="border-2 border-slate-100 rounded-2xl overflow-hidden">
+    <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2.5">
+      <span className="text-slate-500 shrink-0">{icon}</span>
+      <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-wide">{titlu}</h4>
+      {typeof numar === 'number' && (
+        <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-[11px] font-black text-slate-600">
+          {numar}
+        </span>
+      )}
+      {sub && <span className="text-[11px] font-semibold text-slate-400 truncate ml-auto hidden sm:block">{sub}</span>}
+    </div>
+    <div className="p-4 sm:p-5">{children}</div>
+  </section>
+);
 
 /** Un rand din dosarul aparatului, asa cum arata in fereastra tichetului. */
 const RandDosar: React.FC<{
