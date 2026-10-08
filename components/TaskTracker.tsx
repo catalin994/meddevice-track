@@ -359,6 +359,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/70">
+                  <th className="w-9" />
                   {([
                     ['title', 'Titlu'],
                     ['deviceName', 'Dispozitiv'],
@@ -368,23 +369,33 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                     ['createdAt', 'Creat'],
                     ['dueDate', 'Scadenta'],
                   ] as [SortKey, string][]).map(([key, label]) => (
-                    <th key={key} onClick={() => handleSort(key)}
-                      className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-900 transition whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1">
-                        {label}
-                        {sortKey === key && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-600" /> : <ChevronDown className="w-3 h-3 text-blue-600" />)}
-                      </span>
-                    </th>
+                    <React.Fragment key={key}>
+                      <th onClick={() => handleSort(key)}
+                        className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide cursor-pointer select-none hover:text-slate-900 transition whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          {label}
+                          {sortKey === key && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-600" /> : <ChevronDown className="w-3 h-3 text-blue-600" />)}
+                        </span>
+                      </th>
+                      {/*
+                        Hartiile vin imediat dupa titlu, nu la capatul randului.
+                        Ele se citesc la fiecare trecere peste lista — a venit
+                        oferta? — pe cand butoanele se cauta abia cand ai hotarat
+                        ce faci. Puse ultimele, erau primele care cadeau afara
+                        din ecran. Nu se sorteaza: hartiile nu se asaza in sir.
+                      */}
+                      {key === 'title' && (
+                        <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Documente</th>
+                      )}
+                    </React.Fragment>
                   ))}
-                  {/* Nu se sorteaza: hartiile unui tichet nu se asaza in sir. */}
-                  <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Documente</th>
                   {/*
                     Actiunile raman lipite de marginea din dreapta. Cu zece
                     coloane, pe un laptop tabelul e mai lat decat ecranul, si
                     pana acum tocmai butoanele cadeau afara: se vedea tot, in
                     afara de ce se putea face.
                   */}
-                  <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right sticky right-0 bg-slate-50 border-l border-slate-200">Actiuni</th>
+                  <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right">Actiuni</th>
                 </tr>
               </thead>
               <tbody>
@@ -394,6 +405,20 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                     className={`border-b border-slate-50 transition group cursor-pointer ${
                       desfacut === task.id ? 'bg-blue-50/40' : 'hover:bg-blue-50/30'
                     }`}>
+                    {/* Sageata la inceputul randului, unde o cauta ochiul si
+                        unde ramane la vedere oricat de ingust ar fi ecranul. */}
+                    <td className="pl-3 pr-0 py-3.5" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setDesfacut(d => (d === task.id ? null : task.id))}
+                        aria-expanded={desfacut === task.id}
+                        title={desfacut === task.id ? 'Strange randul' : 'Vezi tot, aici pe rand'}
+                        aria-label={desfacut === task.id ? `Strange ${task.title}` : `Vezi tot despre ${task.title}`}
+                        className={`p-1.5 rounded-lg transition ${
+                          desfacut === task.id ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'
+                        }`}>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${desfacut === task.id ? 'rotate-180' : ''}`} />
+                      </button>
+                    </td>
                     <td className="px-3 py-3.5">
                       <p className="text-xs font-black text-slate-900 leading-snug line-clamp-2 break-words max-w-[260px]" title={task.title}>
                         {task.title}
@@ -409,6 +434,36 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                         <p className="text-[11px] text-amber-600 font-bold uppercase tracking-wide flex items-center gap-1 mt-0.5">
                           <StickyNote className="w-2.5 h-2.5" /> Note tehnice
                         </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-3.5" onClick={e => e.stopPropagation()}>
+                      {(task.attachments || []).length === 0 ? (
+                        <span className="text-[11px] font-bold text-slate-300">—</span>
+                      ) : (
+                        <button
+                          onClick={e => {
+                            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setHartiiLa(h => (h?.task.id === task.id ? null : { task, x: r.left, y: r.bottom }));
+                          }}
+                          aria-expanded={hartiiLa?.task.id === task.id}
+                          aria-label={`Vezi cele ${task.attachments!.length} documente ale tichetului`}
+                          title={task.attachments!.map(a => `${etichetaHartiei(a)} · ${a.name}`).join('\n')}
+                          className={`px-2.5 py-1.5 rounded-xl border-2 text-[12px] font-black transition flex items-center gap-1.5 ${
+                            hartiiLa?.task.id === task.id
+                              ? 'bg-slate-900 border-slate-900 text-white'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-900'
+                          }`}>
+                          <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                          {task.attachments!.length}
+                          {/* Cate feluri sunt, in culori: oferta si referat se
+                              deosebesc inainte sa fie citit vreun nume. */}
+                          <span className="flex items-center gap-0.5 ml-0.5">
+                            {[...new Set(task.attachments!.map(a => a.category || 'altul'))].slice(0, 4).map(fel => (
+                              <span key={fel}
+                                className={`w-1.5 h-1.5 rounded-full ${culoareaHartiei({ category: fel } as any).punct}`} />
+                            ))}
+                          </span>
+                        </button>
                       )}
                     </td>
                     <td className="px-3 py-3.5">
@@ -442,57 +497,8 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       intrebarea de la tabel e daca a venit oferta, nu cate
                       fisiere sunt pe tichet. Se apasa si se deschid.
                     */}
-                    <td className="px-3 py-3.5" onClick={e => e.stopPropagation()}>
-                      {(task.attachments || []).length === 0 ? (
-                        <span className="text-[11px] font-bold text-slate-300">—</span>
-                      ) : (
-                        <button
-                          onClick={e => {
-                            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setHartiiLa(h => (h?.task.id === task.id ? null : { task, x: r.left, y: r.bottom }));
-                          }}
-                          aria-expanded={hartiiLa?.task.id === task.id}
-                          aria-label={`Vezi cele ${task.attachments!.length} documente ale tichetului`}
-                          title={task.attachments!.map(a => `${etichetaHartiei(a)} · ${a.name}`).join('\n')}
-                          className={`px-2.5 py-1.5 rounded-xl border-2 text-[12px] font-black transition flex items-center gap-1.5 ${
-                            hartiiLa?.task.id === task.id
-                              ? 'bg-slate-900 border-slate-900 text-white'
-                              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-900'
-                          }`}>
-                          <Paperclip className="w-3.5 h-3.5 shrink-0" />
-                          {task.attachments!.length}
-                          {/* Cate feluri sunt, in culori: oferta si referat se
-                              deosebesc inainte sa fie citit vreun nume. */}
-                          <span className="flex items-center gap-0.5 ml-0.5">
-                            {[...new Set(task.attachments!.map(a => a.category || 'altul'))].slice(0, 4).map(fel => (
-                              <span key={fel}
-                                className={`w-1.5 h-1.5 rounded-full ${culoareaHartiei({ category: fel } as any).punct}`} />
-                            ))}
-                          </span>
-                        </button>
-                      )}
-                    </td>
-                    <td className={`px-3 py-3.5 sticky right-0 border-l border-slate-100 transition ${
-                      desfacut === task.id ? 'bg-[#eff6ff]' : 'bg-white group-hover:bg-[#f3f8ff]'
-                    }`}>
+                    <td className="px-3 py-3.5">
                       <div className="flex justify-end gap-1 transition" onClick={e => e.stopPropagation()}>
-                        {/*
-                          Sageata desface randul sub el, cu tot ce nu incape pe o
-                          linie: descrierea intreaga, notele, hartiile. Tabelul
-                          ramane tabel — se citeste de sus in jos — dar nu mai e
-                          nevoie sa fie deschis fiecare tichet ca sa se afle ce
-                          scrie in el.
-                        */}
-                        <button
-                          onClick={() => setDesfacut(d => (d === task.id ? null : task.id))}
-                          aria-expanded={desfacut === task.id}
-                          title={desfacut === task.id ? 'Strange randul' : 'Vezi tot, aici pe rand'}
-                          aria-label={desfacut === task.id ? `Strange ${task.title}` : `Vezi tot despre ${task.title}`}
-                          className={`p-2 rounded-lg transition ${
-                            desfacut === task.id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                          }`}>
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${desfacut === task.id ? 'rotate-180' : ''}`} />
-                        </button>
                         <button onClick={() => setDeschis(task)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Deschide tichetul" aria-label="Deschide tichetul">
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -508,7 +514,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                   </tr>
                   {desfacut === task.id && (
                     <tr className="border-b border-slate-100 bg-slate-50/60">
-                      <td colSpan={9} className="px-4 pb-5 pt-1">
+                      <td colSpan={10} className="px-4 pb-5 pt-1">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                           <div className="lg:col-span-2 space-y-3">
                             <div>
