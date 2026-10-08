@@ -26,3 +26,19 @@ export const FELURI: { id: FelHartie; text: string; scurt: string }[] = [
 export const etichetaHartiei = (a: TaskAttachment): string =>
   FELURI.find(f => f.id === a.category)?.scurt
   || (a.kind === 'image' ? 'Poza' : a.kind === 'video' ? 'Filmare' : 'Document');
+
+/**
+ * Cu ce culoare se arata fiecare fel.
+ *
+ * Nu de frumusete: intr-o lista de sase hartii, culoarea e ce deosebeste
+ * dintr-o privire oferta de referat, inainte sa fie citit numele fisierului.
+ */
+export const CULORI_HARTIE: Record<string, { punct: string; text: string }> = {
+  oferta:       { punct: 'bg-amber-500',   text: 'text-amber-700' },
+  referat:      { punct: 'bg-blue-500',    text: 'text-blue-700' },
+  fundamentare: { punct: 'bg-indigo-500',  text: 'text-indigo-700' },
+  altul:        { punct: 'bg-slate-400',   text: 'text-slate-600' },
+};
+
+export const culoareaHartiei = (a: TaskAttachment) =>
+  CULORI_HARTIE[a.category || 'altul'] || CULORI_HARTIE.altul;

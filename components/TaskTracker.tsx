@@ -11,7 +11,7 @@ import useEscape from './useEscape';
 import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
-import { etichetaHartiei } from '../services/hartiiTichet';
+import { etichetaHartiei, culoareaHartiei } from '../services/hartiiTichet';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
 // cache), older ones are still inline data URLs.
 const openAttachment = async (a: TaskAttachment) => {
@@ -91,6 +91,14 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
    * tabel, e un sir de cartonase — si tocmai asta e de ales intre vederi.
    */
   const [desfacut, setDesfacut] = useState<string | null>(null);
+  /*
+   * Hartiile aratate dintr-un rand, intr-o fereastra mica agatata de insigna.
+   * Se tine si locul ei pe ecran: tabelul deruleaza pe orizontala si isi taie
+   * ce iese din el, asa ca fereastra se deseneaza deasupra paginii, nu in
+   * celula.
+   */
+  const [hartiiLa, setHartiiLa] = useState<{ task: MedicalTask; x: number; y: number } | null>(null);
+  useEscape(() => setHartiiLa(null), !!hartiiLa);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
@@ -433,29 +441,34 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       intrebarea de la tabel e daca a venit oferta, nu cate
                       fisiere sunt pe tichet. Se apasa si se deschid.
                     */}
-                    <td className="px-3 py-3.5 min-w-[160px]" onClick={e => e.stopPropagation()}>
+                    <td className="px-3 py-3.5" onClick={e => e.stopPropagation()}>
                       {(task.attachments || []).length === 0 ? (
                         <span className="text-[11px] font-bold text-slate-300">—</span>
                       ) : (
-                        <div className="flex flex-wrap items-center gap-1">
-                          {/* Numele felului ajunge: iconita costa cat jumatate
-                              de cuvant si spune mai putin decat el. */}
-                          {task.attachments!.slice(0, 2).map(a => (
-                            <button key={a.id} onClick={() => openAttachment(a)}
-                              title={`${etichetaHartiei(a)} · ${a.name}`}
-                              aria-label={`Deschide ${a.name}`}
-                              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-wide text-slate-600 hover:border-blue-300 hover:text-blue-700 transition max-w-[104px] truncate">
-                              {etichetaHartiei(a)}
-                            </button>
-                          ))}
-                          {task.attachments!.length > 2 && (
-                            <button onClick={() => setDeschis(task)}
-                              title="Vezi toate hartiile tichetului"
-                              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-500 hover:border-blue-300 hover:text-blue-700 transition">
-                              +{task.attachments!.length - 2}
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={e => {
+                            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setHartiiLa(h => (h?.task.id === task.id ? null : { task, x: r.left, y: r.bottom }));
+                          }}
+                          aria-expanded={hartiiLa?.task.id === task.id}
+                          aria-label={`Vezi cele ${task.attachments!.length} documente ale tichetului`}
+                          title={task.attachments!.map(a => `${etichetaHartiei(a)} · ${a.name}`).join('\n')}
+                          className={`px-2.5 py-1.5 rounded-xl border-2 text-[12px] font-black transition flex items-center gap-1.5 ${
+                            hartiiLa?.task.id === task.id
+                              ? 'bg-slate-900 border-slate-900 text-white'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-900'
+                          }`}>
+                          <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                          {task.attachments!.length}
+                          {/* Cate feluri sunt, in culori: oferta si referat se
+                              deosebesc inainte sa fie citit vreun nume. */}
+                          <span className="flex items-center gap-0.5 ml-0.5">
+                            {[...new Set(task.attachments!.map(a => a.category || 'altul'))].slice(0, 4).map(fel => (
+                              <span key={fel}
+                                className={`w-1.5 h-1.5 rounded-full ${culoareaHartiei({ category: fel } as any).punct}`} />
+                            ))}
+                          </span>
+                        </button>
                       )}
                     </td>
                     <td className={`px-3 py-3.5 sticky right-0 border-l border-slate-100 transition ${
@@ -622,6 +635,59 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {/*
+        Hartiile randului, intr-o fereastra mica langa insigna lor.
+        Insignele scrise una langa alta umpleau coloana si cadeau pe doua
+        randuri, iar din sase hartii se vedeau doua. Asa se vede numarul si
+        felurile dintr-o privire, iar lista intreaga vine la o apasare — si se
+        deschide fiecare hartie de acolo.
+      */}
+      {hartiiLa && (
+        <Portal>
+          <div className="fixed inset-0 z-[590]" onClick={() => setHartiiLa(null)} onWheel={() => setHartiiLa(null)} />
+          <div
+            role="dialog"
+            aria-label={`Documentele tichetului ${hartiiLa.task.title}`}
+            className="fixed z-[600] w-[320px] max-h-[60vh] overflow-y-auto custom-scrollbar bg-white border-2 border-slate-100 rounded-2xl shadow-2xl p-2 animate-fade-in"
+            style={{
+              top: Math.min(hartiiLa.y + 8, (typeof window !== 'undefined' ? window.innerHeight : 800) - 320),
+              left: Math.max(12, Math.min(hartiiLa.x, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 332)),
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide truncate">
+                {hartiiLa.task.attachments!.length} documente
+              </p>
+              <button onClick={() => setHartiiLa(null)} aria-label="Inchide"
+                className="p-1 text-slate-400 hover:text-slate-900 rounded-lg transition shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="space-y-1">
+              {hartiiLa.task.attachments!.map(a => (
+                <button key={a.id} onClick={() => { openAttachment(a); setHartiiLa(null); }}
+                  title={a.name} aria-label={`Deschide ${a.name}`}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-50 transition text-left">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${culoareaHartiei(a).punct}`} />
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-[11px] font-black uppercase tracking-wide ${culoareaHartiei(a).text}`}>
+                      {etichetaHartiei(a)}
+                    </span>
+                    <span className="block text-[12px] font-bold text-slate-700 truncate">{a.name}</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">{a.dateAdded}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { const t = hartiiLa.task; setHartiiLa(null); setDeschis(t); }}
+              className="w-full mt-1 px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+              <ArrowRight className="w-3 h-3" /> Deschide tichetul
+            </button>
+          </div>
+        </Portal>
       )}
 
       {deschis && (() => {
