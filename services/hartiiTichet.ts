@@ -42,3 +42,31 @@ export const CULORI_HARTIE: Record<string, { punct: string; text: string }> = {
 
 export const culoareaHartiei = (a: TaskAttachment) =>
   CULORI_HARTIE[a.category || 'altul'] || CULORI_HARTIE.altul;
+
+/**
+ * Hartiile tichetului, stranse pe feluri.
+ *
+ * Insirate una dupa alta, fiecare isi scria felul deasupra numelui — "oferta,
+ * o1.pdf; oferta, o2.pdf" — si acelasi cuvant se repeta cat tine lista.
+ * Stranse, felul se spune o data si sub el stau fisierele lui, ca intr-un dosar.
+ *
+ * Ordinea e cea a felurilor, nu cea a incarcarii: oferta vine inaintea
+ * referatului fiindca asa vine si in realitate. Ce n-are fel — pozele de la
+ * fata locului — ramane la urma.
+ */
+export const grupeazaHartiile = (atasamente: TaskAttachment[] = []) => {
+  const grupuri: { fel: string; text: string; hartii: TaskAttachment[] }[] = [];
+  const pune = (fel: string, text: string, a: TaskAttachment) => {
+    const g = grupuri.find(x => x.fel === fel);
+    if (g) g.hartii.push(a);
+    else grupuri.push({ fel, text, hartii: [a] });
+  };
+  for (const f of FELURI) {
+    for (const a of atasamente) if (a.category === f.id) pune(f.id, f.text, a);
+  }
+  for (const a of atasamente) {
+    if (FELURI.some(f => f.id === a.category)) continue;
+    pune('fara', a.kind === 'image' ? 'Poze' : a.kind === 'video' ? 'Filmari' : 'Alte fisiere', a);
+  }
+  return grupuri;
+};

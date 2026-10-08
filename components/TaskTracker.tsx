@@ -11,7 +11,8 @@ import useEscape from './useEscape';
 import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
-import { etichetaHartiei, culoareaHartiei } from '../services/hartiiTichet';
+import { etichetaHartiei, culoareaHartiei, grupeazaHartiile, CULORI_HARTIE } from '../services/hartiiTichet';
+import { zi } from '../services/valabilitate';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
 // cache), older ones are still inline data URLs.
 const openAttachment = async (a: TaskAttachment) => {
@@ -650,42 +651,53 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
           <div
             role="dialog"
             aria-label={`Documentele tichetului ${hartiiLa.task.title}`}
-            className="fixed z-[600] w-[320px] max-h-[60vh] overflow-y-auto custom-scrollbar bg-white border-2 border-slate-100 rounded-2xl shadow-2xl p-2 animate-fade-in"
+            className="fixed z-[600] w-[340px] bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
             style={{
-              top: Math.min(hartiiLa.y + 8, (typeof window !== 'undefined' ? window.innerHeight : 800) - 320),
-              left: Math.max(12, Math.min(hartiiLa.x, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 332)),
+              top: Math.min(hartiiLa.y + 8, (typeof window !== 'undefined' ? window.innerHeight : 800) - 340),
+              left: Math.max(12, Math.min(hartiiLa.x, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 352)),
             }}
           >
-            <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide truncate">
-                {hartiiLa.task.attachments!.length} documente
-              </p>
+            <div className="px-4 py-3 border-b border-slate-100 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[13px] font-black text-slate-900 leading-tight">Documente</p>
+                <p className="text-[11px] font-semibold text-slate-400 truncate mt-0.5">{hartiiLa.task.title}</p>
+              </div>
               <button onClick={() => setHartiiLa(null)} aria-label="Inchide"
-                className="p-1 text-slate-400 hover:text-slate-900 rounded-lg transition shrink-0">
-                <X className="w-3.5 h-3.5" />
+                className="p-1.5 -mr-1 -mt-1 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition shrink-0">
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-1">
-              {hartiiLa.task.attachments!.map(a => (
-                <button key={a.id} onClick={() => { openAttachment(a); setHartiiLa(null); }}
-                  title={a.name} aria-label={`Deschide ${a.name}`}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-50 transition text-left">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${culoareaHartiei(a).punct}`} />
-                  <span className="min-w-0 flex-1">
-                    <span className={`block text-[11px] font-black uppercase tracking-wide ${culoareaHartiei(a).text}`}>
-                      {etichetaHartiei(a)}
-                    </span>
-                    <span className="block text-[12px] font-bold text-slate-700 truncate">{a.name}</span>
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">{a.dateAdded}</span>
-                </button>
+
+            <div className="max-h-[46vh] overflow-y-auto custom-scrollbar py-2">
+              {grupeazaHartiile(hartiiLa.task.attachments).map(g => (
+                <div key={g.fel} className="px-2 py-1.5 border-t border-slate-50 first:border-0">
+                  {/* Felul, o data, cu numarul lui la capat — un cap de dosar. */}
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${(CULORI_HARTIE[g.fel] || CULORI_HARTIE.altul).punct}`} />
+                    <span className="text-[10px] font-black uppercase tracking-wide text-slate-500 truncate">{g.text}</span>
+                    <span className="ml-auto text-[10px] font-black text-slate-300 shrink-0">{g.hartii.length}</span>
+                  </div>
+                  {g.hartii.map(a => (
+                    <button key={a.id} onClick={() => { openAttachment(a); setHartiiLa(null); }}
+                      title={a.name} aria-label={`Deschide ${a.name}`}
+                      className="w-full group/h flex items-center gap-2 pl-4 pr-2 py-1.5 rounded-lg hover:bg-slate-50 transition text-left">
+                      {a.kind === 'video' ? <Film className="w-3.5 h-3.5 text-slate-300 group-hover/h:text-slate-500 shrink-0 transition" />
+                        : <FileText className="w-3.5 h-3.5 text-slate-300 group-hover/h:text-slate-500 shrink-0 transition" />}
+                      <span className="text-[12px] font-bold text-slate-700 truncate flex-1">{a.name}</span>
+                      <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">{zi(a.dateAdded)}</span>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
-            <button
-              onClick={() => { const t = hartiiLa.task; setHartiiLa(null); setDeschis(t); }}
-              className="w-full mt-1 px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
-              <ArrowRight className="w-3 h-3" /> Deschide tichetul
-            </button>
+
+            <div className="border-t border-slate-100">
+              <button
+                onClick={() => { const t = hartiiLa.task; setHartiiLa(null); setDeschis(t); }}
+                className="w-full px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition flex items-center justify-center gap-1.5">
+                Deschide tichetul <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </Portal>
       )}
