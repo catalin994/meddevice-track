@@ -515,24 +515,13 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                   {desfacut === task.id && (
                     <tr className="border-b border-slate-100 bg-slate-50/60">
                       <td colSpan={10} className="px-4 pb-5 pt-1">
-                        {/* Jumatati egale: ce s-a stricat si la ce. */}
+                        {/*
+                          Jumatati egale: la ce aparat, si ce s-a stricat.
+                          Aparatul sta in stanga, de unde incepe cititul — in
+                          tabel vii cu intrebarea "care aparat?", iar descrierea
+                          e raspunsul al doilea.
+                        */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
-                              <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                                {task.description || 'Nu s-a scris nimic la deschiderea tichetului.'}
-                              </p>
-                            </div>
-                            {task.notes && (
-                              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
-                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">Note tehnice</p>
-                                <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                                  {task.notes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
                           <div className="space-y-3">
                             {task.deviceName && (() => {
                               const ap = devices.find(d => d.id === task.deviceId);
@@ -574,6 +563,22 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                                 </div>
                               )}
                             </div>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
+                              <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                                {task.description || 'Nu s-a scris nimic la deschiderea tichetului.'}
+                              </p>
+                            </div>
+                            {task.notes && (
+                              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">Note tehnice</p>
+                                <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                                  {task.notes}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
