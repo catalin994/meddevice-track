@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   X, Upload, Loader2, Trash2, FileText, Film, Eye, ExternalLink,
   FileSignature, FolderOpen, Receipt, Edit, Building, Calendar, MessageSquare, Clock,
-  Paperclip, Wrench,
+  Paperclip, Wrench, Cpu,
 } from 'lucide-react';
 import {
   MedicalTask, TaskAttachment, MedicalDevice, Referat, FoundationDoc, Invoice,
@@ -198,25 +198,21 @@ const FisaTichet: React.FC<Props> = ({
                 </span>
               )}
             </div>
-            {device && (
-              <button onClick={onVeziAparatul} disabled={!onVeziAparatul}
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-[12px] font-bold hover:bg-blue-100 transition disabled:opacity-60">
-                <ExternalLink className="w-3.5 h-3.5" />
-                {device.name}
-                {device.serialNumber ? ` · ${device.serialNumber}` : ''}
-                <span className="font-semibold text-blue-600/70">— deschide fisa aparatului</span>
-              </button>
-            )}
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6">
-            {/* ── 1. ce s-a stricat ── */}
-            <Sectiune icon={<Wrench className="w-4 h-4" />} titlu="Problema">
-              <div className="space-y-3">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descriere</p>
+            {/*
+              Problema si aparatul, umar la umar, pe jumatati egale.
+              Descrierea tinea toata latimea ferestrei, iar aparatul era o
+              insigna in capul ei: ochiul citea un paragraf lat de trei randuri
+              si abia dupa aceea afla la ce aparat. Sunt doua fete ale aceluiasi
+              lucru — ce s-a stricat si la ce — si acum cantaresc la fel.
+            */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-start">
+              <Sectiune icon={<Wrench className="w-4 h-4" />} titlu="Problema">
+                <div className="space-y-3">
                   {task.description ? (
-                    <p className="text-[14px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
                       {task.description}
                     </p>
                   ) : (
@@ -224,19 +220,49 @@ const FisaTichet: React.FC<Props> = ({
                       Nu s-a scris nimic la deschiderea tichetului.
                     </p>
                   )}
+                  {task.notes && (
+                    <div className="p-3 bg-amber-50/60 border border-amber-100 rounded-xl">
+                      <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                        <MessageSquare className="w-3 h-3" /> Note tehnice
+                      </p>
+                      <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                        {task.notes}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                {task.notes && (
-                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl">
-                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                      <MessageSquare className="w-3 h-3" /> Note tehnice
-                    </p>
-                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-                      {task.notes}
-                    </p>
+              </Sectiune>
+
+              <Sectiune icon={<Cpu className="w-4 h-4" />} titlu="Aparatul">
+                {device ? (
+                  <div className="space-y-3">
+                    <p className="text-[14px] font-black text-slate-900 leading-snug break-words">{device.name}</p>
+                    <dl className="space-y-1.5">
+                      {[
+                        ['Serie', device.serialNumber],
+                        ['Inventar', device.inventoryNumber],
+                        ['Producator', device.manufacturer],
+                        ['Model', device.model],
+                        ['Sectia', device.department],
+                      ].filter(([, v]) => !!v).map(([k, v]) => (
+                        <div key={k as string} className="flex items-baseline gap-2">
+                          <dt className="text-[10px] font-black text-slate-400 uppercase tracking-wide w-[86px] pr-2 shrink-0">{k}</dt>
+                          <dd className="text-[12px] font-bold text-slate-700 break-words min-w-0">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <button onClick={onVeziAparatul} disabled={!onVeziAparatul}
+                      className="w-full mt-1 px-3 py-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-[12px] font-bold hover:bg-blue-100 transition disabled:opacity-60 flex items-center justify-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5" /> Deschide fisa aparatului
+                    </button>
                   </div>
+                ) : (
+                  <p className="text-[13px] font-semibold text-slate-400">
+                    Tichetul nu e legat de un aparat anume.
+                  </p>
                 )}
-              </div>
-            </Sectiune>
+              </Sectiune>
+            </div>
 
             {/* ── 2. hartiile tichetului ── */}
             <Sectiune icon={<Paperclip className="w-4 h-4" />} titlu="Documentele tichetului"

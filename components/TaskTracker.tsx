@@ -515,8 +515,9 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                   {desfacut === task.id && (
                     <tr className="border-b border-slate-100 bg-slate-50/60">
                       <td colSpan={10} className="px-4 pb-5 pt-1">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                          <div className="lg:col-span-2 space-y-3">
+                        {/* Jumatati egale: ce s-a stricat si la ce. */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                          <div className="space-y-3">
                             <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
                               <p className="text-[13px] font-medium text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
@@ -533,18 +534,27 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                             )}
                           </div>
                           <div className="space-y-3">
-                            {task.deviceName && (
-                              <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Aparatul</p>
-                                <button onClick={e => { e.stopPropagation(); if (task.deviceId) onSelectDevice?.(task.deviceId); }}
-                                  disabled={!task.deviceId || !onSelectDevice}
-                                  className="text-[13px] font-bold text-blue-700 hover:underline text-left break-words">
-                                  {task.deviceName}
-                                  {devices.find(d => d.id === task.deviceId)?.serialNumber
-                                    ? ` · ${devices.find(d => d.id === task.deviceId)!.serialNumber}` : ''}
-                                </button>
-                              </div>
-                            )}
+                            {task.deviceName && (() => {
+                              const ap = devices.find(d => d.id === task.deviceId);
+                              return (
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Aparatul</p>
+                                  <button onClick={e => { e.stopPropagation(); if (task.deviceId) onSelectDevice?.(task.deviceId); }}
+                                    disabled={!task.deviceId || !onSelectDevice}
+                                    className="text-[13px] font-black text-blue-700 hover:underline text-left break-words block">
+                                    {task.deviceName}
+                                  </button>
+                                  {ap && (
+                                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5 break-words">
+                                      {[ap.serialNumber && `SN ${ap.serialNumber}`,
+                                        ap.inventoryNumber && `Inv. ${ap.inventoryNumber}`,
+                                        [ap.manufacturer, ap.model].filter(Boolean).join(' '),
+                                        ap.department].filter(Boolean).join(' · ')}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">
                                 Documente ({(task.attachments || []).length})
