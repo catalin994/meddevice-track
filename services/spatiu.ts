@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { MedicalDevice, Invoice } from '../types';
+import { MedicalDevice, Invoice, MedicalTask } from '../types';
 import { iaSetareLocal, iaSetareDinCloud, punSetare } from './setari';
 
 /**
@@ -147,6 +147,8 @@ export const spatiulDinEvidenta = (
   referate: CuFisier[] = [],
   fundamentare: CuFisier[] = [],
   comenzi: CuFisier[] = [],
+  /* Hartiile puse pe tichete — oferte, referate, poze de la fata locului. */
+  tasks: MedicalTask[] = [],
 ): SpatiuCloud & { faraMarime: number } => {
   const peFeluri = new Map<string, FelSpatiu>();
   let faraMarime = 0;
@@ -189,6 +191,13 @@ export const spatiulDinEvidenta = (
     }
   }
 
+  for (const t of tasks) {
+    for (const a of t.attachments || []) {
+      if (!a.path) continue;
+      pun('tasks', a.size);
+    }
+  }
+
   const randuri = [...peFeluri.values()].sort((a, b) => b.octeti - a.octeti);
   return {
     fisiere: randuri.reduce((s, r) => s + r.fisiere, 0),
@@ -209,4 +218,77 @@ export const NUME_FEL: Record<string, string> = {
   sabloane: 'Sabloane Word',
   tasks: 'Atasamente tichete',
   altele: 'Altele',
+};
+
+
+/** Un fisier din evidenta, cu locul lui, pentru lista celor mai mari. */
+export interface FisierMare {
+  nume: string;
+  fel: string;
+  octeti: number;
+  /** Unde sta: numele aparatului, numarul facturii, titlul tichetului. */
+  unde: string;
+}
+
+/**
+ * Cele mai mari fisiere din evidenta.
+ *
+ * Bara de spatiu spune cat s-a strans, iar impartirea pe feluri spune in ce
+ * gramada — dar nici una nu spune ce anume sa stergi. De obicei cateva scanari
+ * facute la calitate inalta tin cat o suta de hartii obisnuite, si se gasesc
+ * greu: sunt imprastiate prin aparate.
+ *
+ * Marimea e cea trecuta in evidenta la incarcare. Fisierele vechi, puse inainte
+ * sa se tina minte marimea, nu apar aici — ele se vad doar in totalul din cloud.
+ */
+export const celeMaiMari = (
+  devices: MedicalDevice[] = [],
+  invoices: Invoice[] = [],
+  referate: (CuFisier & { number?: string; subject?: string; fileName?: string })[] = [],
+  fundamentare: (CuFisier & { number?: string; subject?: string; fileName?: string })[] = [],
+  comenzi: (CuFisier & { number?: string; fileName?: string })[] = [],
+  tasks: MedicalTask[] = [],
+  cate = 12,
+): FisierMare[] => {
+  const toate: FisierMare[] = [];
+
+  for (const d of devices) {
+    for (const f of d.files || []) {
+      if (f.path && f.size) toate.push({ nume: f.name, fel: 'devices', octeti: f.size, unde: d.name });
+    }
+    for (const c of d.contracts || []) {
+      if (c.filePath && c.fileSize) {
+        toate.push({ nume: c.fileName || c.contractNumber || 'contract', fel: 'contracts', octeti: c.fileSize, unde: d.name });
+      }
+    }
+  }
+  for (const i of invoices) {
+    if (i.filePath && i.fileSize) {
+      toate.push({ nume: i.fileName || `${i.invoiceNumber}.pdf`, fel: 'invoices', octeti: i.fileSize, unde: i.supplier || '' });
+    }
+  }
+  for (const [fel, lista] of [['referate', referate], ['fundamentare', fundamentare], ['comenzi', comenzi]] as const) {
+    for (const x of lista) {
+      if (x.filePath && x.fileSize) {
+        toate.push({ nume: x.fileName || `${x.number || fel}.pdf`, fel, octeti: x.fileSize, unde: (x as any).subject || x.number || '' });
+      }
+    }
+  }
+  for (const t of tasks) {
+    for (const a of t.attachments || []) {
+      if (a.path && a.size) toate.push({ nume: a.name, fel: 'tasks', octeti: a.size, unde: t.title });
+    }
+  }
+
+  /* Acelasi fisier pus pe mai multe aparate ocupa o data; se tine o data. */
+  const vazute = new Set<string>();
+  return toate
+    .sort((a, b) => b.octeti - a.octeti)
+    .filter(f => {
+      const cheie = `${f.fel}/${f.nume}/${f.octeti}`;
+      if (vazute.has(cheie)) return false;
+      vazute.add(cheie);
+      return true;
+    })
+    .slice(0, cate);
 };

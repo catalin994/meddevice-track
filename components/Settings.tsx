@@ -9,7 +9,7 @@ import { Download, Upload, AlertTriangle, Database, Cloud, CheckCircle, Save, Lo
 import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, supabase, checkConnection, countCloudRows, upsertInChunks, diagnoseCloud, CloudDiagnosis, fetchAllRows } from '../services/supabase';
 import { getStorageStats, saveDevicesToDB } from '../services/storageService';
 import {
-  spatiulDinCloud, spatiulDeAici, spatiulDinEvidenta, iaLimitaGB, punLimitaGB, limitaDinCloud, marime, NUME_FEL,
+  spatiulDinCloud, spatiulDeAici, spatiulDinEvidenta, celeMaiMari, iaLimitaGB, punLimitaGB, limitaDinCloud, marime, NUME_FEL,
   LIMITA_IMPLICITA_GB, SpatiuCloud, SpatiuLocal,
 } from '../services/spatiu';
 import { listProfiles, updateProfile } from '../services/authService';
@@ -84,8 +84,13 @@ const Settings: React.FC<SettingsProps> = ({
    * lipseste e precizia, nu raspunsul.
    */
   const dinEvidenta = useMemo(
-    () => spatiulDinEvidenta(devices, invoices, referate, foundationDocs, comenzi),
-    [devices, invoices, referate, foundationDocs, comenzi]);
+    () => spatiulDinEvidenta(devices, invoices, referate, foundationDocs, comenzi, tasks),
+    [devices, invoices, referate, foundationDocs, comenzi, tasks]);
+  /* Ce ocupa cel mai mult, ca sa se stie de unde se taie cand spatiul se termina. */
+  const grele = useMemo(
+    () => celeMaiMari(devices, invoices, referate as any, foundationDocs as any, comenzi as any, tasks),
+    [devices, invoices, referate, foundationDocs, comenzi, tasks]);
+  const [aratGrele, setAratGrele] = useState(false);
   const masoaraSpatiul = useCallback(async () => {
     setSeMasoara(true);
     const [c, l] = await Promise.all([spatiulDinCloud(), spatiulDeAici()]);
@@ -871,6 +876,45 @@ NOTIFY pgrst, 'reload schema';
                 {c.peFeluri.length ? ` · ${c.peFeluri.map(f => `${NUME_FEL[f.fel] || f.fel} ${marime(f.octeti)}`).join(' · ')}` : ''}
               </p>
             </div>
+
+            {/*
+              Ce ocupa cel mai mult. Bara spune cat s-a strans si impartirea pe
+              feluri spune in ce gramada, dar nici una nu spune ce sa stergi:
+              cateva scanari la calitate inalta tin cat o suta de hartii
+              obisnuite, si stau imprastiate prin aparate.
+            */}
+            {grele.length > 0 && (
+              <div className="border-2 border-slate-100 rounded-2xl overflow-hidden">
+                <button type="button" onClick={() => setAratGrele(v => !v)}
+                  aria-expanded={aratGrele}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition">
+                  <span className="text-[11px] font-black text-slate-600 uppercase tracking-wide">
+                    Cele mai mari fisiere ({grele.length})
+                  </span>
+                  <span className="text-[11px] font-black text-slate-500">{aratGrele ? '−' : '+'}</span>
+                </button>
+                {aratGrele && (
+                  <div className="divide-y divide-slate-50">
+                    {grele.map((f, i) => (
+                      <div key={`${f.fel}-${f.nume}-${i}`} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="text-[10px] font-black text-slate-300 w-5 shrink-0 text-right">{i + 1}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[12px] font-bold text-slate-800 truncate" title={f.nume}>{f.nume}</span>
+                          <span className="block text-[10px] font-semibold text-slate-500 truncate">
+                            {NUME_FEL[f.fel] || f.fel}{f.unde ? ` · ${f.unde}` : ''}
+                          </span>
+                        </span>
+                        <span className="text-[12px] font-black text-slate-900 tabular-nums shrink-0">{marime(f.octeti)}</span>
+                      </div>
+                    ))}
+                    <p className="px-4 py-3 text-[11px] font-semibold text-slate-500 bg-slate-50/60">
+                      Se sterg de unde stau — de pe aparat, de pe factura, de pe tichet. Fisierele
+                      urcate inainte sa se tina minte marimea nu apar aici.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Limita nu se poate afla din API: o stie doar abonamentul vostru. */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center gap-3">

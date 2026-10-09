@@ -13,7 +13,7 @@
 
 import { indreaptaLumina } from './imagineScan';
 
-export type ScanQualityId = 'high' | 'balanced' | 'compact';
+export type ScanQualityId = 'high' | 'balanced' | 'compact' | 'archive';
 
 export interface ScanQuality {
   id: ScanQualityId;
@@ -55,6 +55,23 @@ export const SCAN_QUALITIES: ScanQuality[] = [
     maxEdge: 1600,
     grayscale: true,
     approxKb: 205,
+  },
+  /*
+   * Treapta pentru cand spatiul din cloud e pe sfarsite si nu se poate plati
+   * mai mult. O pagina tiparita ramane limpede la 1200 de pixeli pe latura
+   * lunga: literele de corp au inca vreo treizeci de pixeli inaltime, iar
+   * numerele de serie si stampilele cu text se citesc. Ce se pierde sunt
+   * detaliile fine — o semnatura palida, un scris de mana marunt, o poza.
+   * Patru pagini de aici incap in locul uneia la calitate inalta.
+   */
+  {
+    id: 'archive',
+    label: 'Arhiva',
+    description: 'Alb-negru, pana la 1200px. Cat mai putin loc, pentru hartie tiparita — nu pentru poze.',
+    quality: 0.62,
+    maxEdge: 1200,
+    grayscale: true,
+    approxKb: 105,
   },
 ];
 
