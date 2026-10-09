@@ -51,6 +51,16 @@ const AttachmentThumb: React.FC<{ attachment: TaskAttachment }> = ({ attachment 
   return <img src={src} alt={attachment.name} className="w-full h-full object-cover" />;
 };
 
+/**
+ * Cum se scrie aparatul pe un tichet: ce model e si ce serie poarta.
+ *
+ * Numele singur nu ajunge nicaieri in spital — "injectomat" sunt saizeci, iar
+ * tichetul e despre unul. Modelul spune cu ce ai de-a face, seria spune care
+ * anume; amandoua se citesc de pe eticheta lui si se cauta dupa ele.
+ */
+const semneleAparatului = (d?: MedicalDevice): string =>
+  d ? [d.model, d.serialNumber && `SN ${d.serialNumber}`].filter(Boolean).join(' · ') : '';
+
 type TaskViewMode = 'CARDS' | 'TABLE' | 'KANBAN';
 type SortKey = 'title' | 'deviceName' | 'department' | 'priority' | 'status' | 'createdAt' | 'dueDate';
 
@@ -488,9 +498,22 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       )}
                     </td>
                     <td className="px-3 py-3.5">
-                      {task.deviceName
-                        ? <span className="text-[11px] font-bold text-blue-600 truncate block max-w-[150px]" title={task.deviceName}>{task.deviceName}</span>
-                        : <span className="text-[11px] text-slate-500 font-bold">—</span>}
+                      {task.deviceName ? (() => {
+                        const ap = devices.find(d => d.id === task.deviceId);
+                        const semne = semneleAparatului(ap);
+                        return (
+                          <div className="max-w-[160px]">
+                            <span className="text-[11px] font-bold text-blue-600 truncate block" title={task.deviceName}>
+                              {task.deviceName}
+                            </span>
+                            {semne && (
+                              <span className="text-[10px] font-semibold text-slate-500 truncate block mt-0.5" title={semne}>
+                                {semne}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })() : <span className="text-[11px] text-slate-500 font-bold">—</span>}
                     </td>
                     <td className="px-3 py-3.5">
                       <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">{task.department}</span>
@@ -664,7 +687,16 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                       </div>
                     </div>
                     <p className="text-xs font-black text-slate-900 leading-tight mt-2">{task.title}</p>
-                    {task.deviceName && <p className="text-[11px] font-bold text-blue-600 truncate mt-1">{task.deviceName}</p>}
+                    {task.deviceName && (() => {
+                      const ap = devices.find(d => d.id === task.deviceId);
+                      const semne = semneleAparatului(ap);
+                      return (
+                        <>
+                          <p className="text-[11px] font-bold text-blue-600 truncate mt-1" title={task.deviceName}>{task.deviceName}</p>
+                          {semne && <p className="text-[10px] font-semibold text-slate-500 truncate" title={semne}>{semne}</p>}
+                        </>
+                      );
+                    })()}
                     {(task.attachments || []).length > 0 && (
                       <p className="text-[11px] text-slate-500 font-bold flex items-center gap-1 mt-1"><Paperclip className="w-2.5 h-2.5" /> {task.attachments!.length} atasamente</p>
                     )}
@@ -1100,8 +1132,8 @@ const TaskCard = React.memo(({
                 }`}>
                 <Info className="w-3 h-3 text-slate-400 shrink-0" />
                 <span className="truncate">{task.deviceName}</span>
-                {device?.serialNumber && (
-                  <span className="font-mono text-slate-500 shrink-0">· {device.serialNumber}</span>
+                {semneleAparatului(device) && (
+                  <span className="text-slate-500 shrink-0 truncate">· {semneleAparatului(device)}</span>
                 )}
               </button>
             )}
