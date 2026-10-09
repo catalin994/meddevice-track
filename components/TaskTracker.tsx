@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, Referat, FoundationDoc, Invoice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
 import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
 import IncidentReport from './IncidentReport';
@@ -99,12 +99,33 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
    * celula.
    */
   const [hartiiLa, setHartiiLa] = useState<{ task: MedicalTask; x: number; y: number } | null>(null);
+
   useEscape(() => setHartiiLa(null), !!hartiiLa);
   const [isAdding, setIsAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<MedicalTask | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<TaskViewMode>('CARDS');
+  /*
+   * Cat se vede din tabel pe latime.
+   *
+   * Randul desfacut se intinde cat tot tabelul, iar tabelul e de obicei mai lat
+   * decat fereastra: asa, descrierea cadea pe jumatate in afara ecranului si
+   * trebuia derulat pe orizontala ca sa fie citita. Panoul se tine acum lipit
+   * de marginea din stanga si se face exact cat se vede, asa ca textul se
+   * incadreaza oricat ar fi tabelul de lat.
+   */
+  const invelisTabel = useRef<HTMLDivElement>(null);
+  const [latimeVazuta, setLatimeVazuta] = useState(0);
+  useEffect(() => {
+    const el = invelisTabel.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const masoara = () => setLatimeVazuta(el.clientWidth);
+    masoara();
+    const o = new ResizeObserver(masoara);
+    o.observe(el);
+    return () => o.disconnect();
+  }, [viewMode]);
   const [isReportingIncident, setIsReportingIncident] = useState(false);
   // Every bin in this screen goes through here rather than straight to the
   // delete: a ticket carries the description of a fault and whatever was
@@ -355,7 +376,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
         </div>
       ) : viewMode === 'TABLE' ? (
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div ref={invelisTabel} className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/70">
@@ -514,7 +535,9 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                   </tr>
                   {desfacut === task.id && (
                     <tr className="border-b border-slate-100 bg-slate-50/60">
-                      <td colSpan={10} className="px-4 pb-5 pt-1">
+                      <td colSpan={10} className="p-0">
+                        <div className="sticky left-0 px-4 pb-5 pt-1"
+                          style={latimeVazuta ? { width: latimeVazuta } : undefined}>
                         {/*
                           Jumatati egale: la ce aparat, si ce s-a stricat.
                           Aparatul sta in stanga, de unde incepe cititul — in
@@ -567,9 +590,9 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                           <div className="space-y-3">
                             <div>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-1">Descrierea problemei</p>
-                              {/* Se incadreaza in rand: o descriere de o pagina
-                                  se scrie mai marunt, iar restul se deruleaza. */}
-                              <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[180px] overflow-y-auto custom-scrollbar pr-1 ${
+                              {/* Se scrie intreaga, pe cate randuri ii trebuie;
+                                  doar marimea se potriveste cu lungimea. */}
+                              <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words ${
                                 marimeaDescrierii(task.description || '')
                               }`}>
                                 {task.description || 'Nu s-a scris nimic la deschiderea tichetului.'}
@@ -578,7 +601,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                             {task.notes && (
                               <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
                                 <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">Note tehnice</p>
-                                <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto custom-scrollbar pr-1 ${
+                                <p className={`font-medium text-slate-700 whitespace-pre-wrap break-words ${
                                   marimeaDescrierii(task.notes || '')
                                 }`}>
                                   {task.notes}
@@ -586,6 +609,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
                               </div>
                             )}
                           </div>
+                        </div>
                         </div>
                       </td>
                     </tr>
