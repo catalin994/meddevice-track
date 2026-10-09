@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MedicalTask, TaskPriority, TaskStatus, MedicalDevice, TaskAttachment, Referat, FoundationDoc, Invoice, HOSPITAL_DEPARTMENTS, getUniqueDepartments, TASK_STATUS_RO, TASK_PRIORITY_RO } from '../types';
-import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText } from 'lucide-react';
+import { CheckSquare, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, MoreHorizontal, Trash2, Edit, X, ArrowRight, User, Info, Building, MessageSquare, StickyNote, Fingerprint, LayoutGrid, Table2, Columns, ChevronUp, ChevronDown, Siren, Paperclip, Film, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import IncidentReport from './IncidentReport';
 const FisaTichet = React.lazy(() => import('./FisaTichet'));
 
@@ -12,6 +12,8 @@ import Pager, { usePagination } from './Pager';
 import ConfirmDialog from './ConfirmDialog';
 import { resolveSource } from '../services/fileStorage';
 import { etichetaHartiei, culoareaHartiei, grupeazaHartiile, CULORI_HARTIE } from '../services/hartiiTichet';
+import { exportaTicheteExcel } from '../services/raportTichete';
+import { notify } from '../services/notices';
 import { zi } from '../services/valabilitate';
 // Opens an attachment in a new tab. Newer ones come from Storage (or its local
 // cache), older ones are still inline data URLs.
@@ -102,6 +104,7 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
    * tabel, e un sir de cartonase — si tocmai asta e de ales intre vederi.
    */
   const [desfacut, setDesfacut] = useState<string | null>(null);
+  const [seExporta, setSeExporta] = useState(false);
   /*
    * Hartiile aratate dintr-un rand, intr-o fereastra mica agatata de insigna.
    * Se tine si locul ei pe ecran: tabelul deruleaza pe orizontala si isi taie
@@ -284,6 +287,24 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
     });
   }, []);
 
+  /**
+   * Raportul in Excel.
+   *
+   * Scoate ce se vede acum — daca lista e filtrata, filtrul e tot o intrebare,
+   * iar raspunsul ei e raportul. Cate sunt din total scrie in capul foii, ca sa
+   * nu para ca atatea tichete are evidenta.
+   */
+  const exporta = useCallback(async () => {
+    setSeExporta(true);
+    try {
+      await exportaTicheteExcel(sortedTasks, devices, tasks.length);
+    } catch (err: any) {
+      notify(`Raportul nu s-a putut face${err?.message ? `: ${err.message}` : ''}`, 'error');
+    } finally {
+      setSeExporta(false);
+    }
+  }, [sortedTasks, devices, tasks.length]);
+
   const toggleStatus = useCallback((task: MedicalTask) => {
     const nextStatus = task.status === TaskStatus.PENDING ? TaskStatus.IN_PROGRESS :
                       task.status === TaskStatus.IN_PROGRESS ? TaskStatus.COMPLETED : 
@@ -342,6 +363,16 @@ const TaskTracker: React.FC<TaskTrackerProps> = ({
             gaseasca repede, dar in tonul discret, ca butonul principal al
             ecranului sa fie unul singur.
           */}
+          {/* Raportul: ce se vede pe ecran, pus pe hartie. */}
+          <button
+            onClick={exporta}
+            disabled={seExporta || sortedTasks.length === 0}
+            title="Raport Excel cu tichetele: starea, aparatul, documentele"
+            className="px-4 py-3 bg-white text-slate-700 border-2 border-slate-200 rounded-xl font-bold text-[13px] hover:border-slate-900 transition flex items-center gap-2 active:scale-95 disabled:opacity-50"
+          >
+            {seExporta ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+            {seExporta ? 'Se face' : 'Export'}
+          </button>
           <button
             onClick={() => setIsReportingIncident(true)}
             className="px-4 py-3 bg-red-50 text-red-700 border border-red-200 rounded-xl font-bold text-[13px] hover:bg-red-100 transition flex items-center gap-2 active:scale-95"
