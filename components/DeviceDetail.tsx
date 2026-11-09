@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
-import { valabilitatePropusa, areDovadaVerificarii } from '../services/termene';
+import { valabilitatePropusa, areDovadaVerificarii, ziuaCererii, LUNI_INAINTE_DE_CERERE } from '../services/termene';
 import { valabilitatea, hartiaInVigoare } from '../services/valabilitate';
 import CampData from './CampData';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
@@ -946,6 +946,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                             gol={device.metrologyRequired ? 'Netrecut — aparatul e supus controlului metrologic' : 'Nu e supus controlului metrologic'}
                             greuCandLipseste={!!device.metrologyRequired}
                             detaliu={[device.metrologyCertificate, device.metrologyLab].filter(Boolean).join(' · ')} />
+                          {/*
+                            Termenul care se rateaza: cererea se depune cu luni
+                            inainte de expirare, nu in ziua ei. Sta langa buletin
+                            fiindca din el se socoteste.
+                          */}
+                          {device.metrologyRequired && device.metrologyExpiry && (
+                            <TermenRow eticheta={`Cerere de depus (cu ${LUNI_INAINTE_DE_CERERE} luni inainte)`}
+                              data={ziuaCererii(device.metrologyExpiry)}
+                              gol="Se socoteste din data buletinului"
+                              greuCandLipseste={false}
+                              detaliu={`Buletinul expira ${device.metrologyExpiry}`} />
+                          )}
                           {/* Cele doua stau impreuna, intr-o singura casuta a
                               grilei: garantia curge de la punerea in functiune,
                               si asezate una sub alta se citesc ca o pereche. */}

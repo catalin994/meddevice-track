@@ -448,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Termene care expira</h3>
               <p className="text-[13px] font-semibold text-slate-500 mt-1">
-                Buletine metrologice, garantii, contracte de service, autorizatii
+                Cereri de verificare, buletine metrologice, garantii, contracte, autorizatii
               </p>
             </div>
             <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl"><CalendarClock className="w-6 h-6" /></div>
@@ -466,7 +466,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className={`p-3 shrink-0 rounded-2xl text-white shadow-lg ${
  t.zile < 0 ? 'bg-red-600 shadow-red-600/20' : t.zile <= 14 ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-400 shadow-slate-400/20'
                 }`}>
-                  {t.fel === 'metrologie' ? <ShieldCheck className="w-5 h-5" /> : <CalendarClock className="w-5 h-5" />}
+                  {t.fel === 'metrologie' ? <ShieldCheck className="w-5 h-5" />
+                    : t.fel === 'cerere' ? <FileSignature className="w-5 h-5" />
+                    : <CalendarClock className="w-5 h-5" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{t.eticheta}</p>

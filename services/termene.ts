@@ -18,7 +18,7 @@ import { MedicalDevice, Contract } from '../types';
  * Scris o data, ca sa nu fie patru locuri de reparat cand se schimba pragurile.
  */
 
-export type FelTermen = 'metrologie' | 'garantie' | 'contract' | 'cncan' | 'mentenanta';
+export type FelTermen = 'cerere' | 'metrologie' | 'garantie' | 'contract' | 'cncan' | 'mentenanta';
 
 export interface Termen {
   fel: FelTermen;
@@ -34,6 +34,7 @@ export interface Termen {
 }
 
 export const ETICHETE: Record<FelTermen, string> = {
+  cerere: 'Cerere verificare periodica',
   metrologie: 'Buletin metrologic',
   garantie: 'Garantie',
   contract: 'Contract de service',
@@ -49,11 +50,46 @@ export const ETICHETE: Record<FelTermen, string> = {
  * achizitie, deci trebuie stiut cu doua luni inainte, nu cu doua saptamani.
  */
 export const PRAGURI: Record<FelTermen, number> = {
+  /*
+   * Cererea se depune din timp, deci se anunta din timp: cu doua luni inainte
+   * de ziua in care trebuie sa fie la registratura. Mai devreme n-are rost —
+   * dosarul nu e gata — mai tarziu nu mai ajuta la nimic.
+   */
+  cerere: 60,
   metrologie: 45,
   garantie: 30,
   contract: 60,
   cncan: 60,
   mentenanta: 30,
+};
+
+/**
+ * Cu cate luni inainte de expirarea buletinului trebuie depusa cererea.
+ *
+ * Verificarea periodica nu se face in ziua in care expira buletinul: se cere
+ * din timp, iar cererea are drumul ei — dosar, tarif, randul la verificare.
+ * Pana acum aplicatia urmarea numai ziua expirarii si suna cu patruzeci si
+ * cinci de zile inainte; cand se facea galben, ziua in care trebuia depusa
+ * cererea trecuse de luni intregi.
+ *
+ * Se tine aici, un singur numar, fiindca e o regula care se schimba printr-un
+ * ordin, nu prin cod.
+ */
+export const LUNI_INAINTE_DE_CERERE = 6;
+
+/**
+ * Ziua pana la care trebuie depusa cererea pentru un buletin care expira.
+ *
+ * Se scade o zi, ca sa fie "cu cel putin sase luni inainte", nu "fix in ziua
+ * de la sase luni": un termen care se implineste exact in ziua limita e deja
+ * depasit pentru cine il citeste a doua zi.
+ */
+export const ziuaCererii = (expirare: string, luni = LUNI_INAINTE_DE_CERERE): string => {
+  if (!valida(expirare)) return '';
+  const d = new Date(`${expirare}T00:00:00`);
+  d.setMonth(d.getMonth() - luni);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
 };
 
 /**
@@ -96,6 +132,18 @@ export const termeneleTuturor = (
     if (d.metrologyRequired && valida(d.metrologyExpiry)) {
       out.push({ fel: 'metrologie', eticheta: ETICHETE.metrologie, ...baza,
         data: d.metrologyExpiry, zile: zileP(d.metrologyExpiry, azi) });
+      /*
+       * Si ziua in care trebuie depusa cererea — termenul care se rateaza, nu
+       * cel care se vede. Se opreste cand buletinul a expirat deja: atunci nu
+       * mai e o cerere intarziata, e un aparat care nu mai are voie sa fie
+       * folosit, si asta scrie randul de deasupra.
+       */
+      const zi = ziuaCererii(d.metrologyExpiry);
+      if (zi && zileP(d.metrologyExpiry, azi) >= 0) {
+        out.push({ fel: 'cerere', eticheta: ETICHETE.cerere, ...baza,
+          detaliu: [baza.detaliu, `buletinul expira ${d.metrologyExpiry}`].filter(Boolean).join(' · '),
+          data: zi, zile: zileP(zi, azi) });
+      }
     }
     if (valida(d.warrantyExpiration)) {
       out.push({ fel: 'garantie', eticheta: ETICHETE.garantie, ...baza,

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MedicalDevice, DeviceStatus, DEVICE_STATUS_RO, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, calculateNextMaintenanceDate } from '../types';
-import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown, ShieldCheck, Gavel } from 'lucide-react';
+import { Search, Trash2, Box, FileSpreadsheet, Edit2, X, ShieldAlert, RotateCcw, Layers, FileText, Save, Building2, Plus, Upload, CheckCircle, AlertTriangle, QrCode, Tag, LayoutGrid, Rows3, SlidersHorizontal, ChevronDown, ShieldCheck, Gavel, FileSignature } from 'lucide-react';
 
 import Portal from './Portal';
 import useEscape from './useEscape';
@@ -9,6 +9,7 @@ import Pager, { PAGE_SIZES } from './Pager';
 import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
 import { termenulVerificarii, valabilitatea, zi } from '../services/valabilitate';
+import { ziuaCererii, PRAGURI } from '../services/termene';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 /**
@@ -666,6 +667,32 @@ interface DeviceListProps {
  * Insigna apare oriunde se stie un termen. Lipsa ei se scrie numai la aparatele
  * cu autorizatie CNCAN: acolo lipsa buletinului e o stare, nu o tacere.
  */
+/**
+ * Cererea de verificare, cand i-a venit vremea.
+ *
+ * Buletinul care expira peste cinci luni arata verde si linistit, desi ziua in
+ * care trebuia depusa cererea a trecut. Asta e termenul care se rateaza — cel
+ * care nu se vede — si de aceea isi are insigna lui, langa a buletinului.
+ */
+const InsignaCerere = React.memo(({ device }: { device: MedicalDevice }) => {
+  if (!device.metrologyRequired || !device.metrologyExpiry || device.status === DeviceStatus.RETIRED) return null;
+  const buletin = valabilitatea(device.metrologyExpiry);
+  const cerere = valabilitatea(ziuaCererii(device.metrologyExpiry));
+  // Cu buletinul deja expirat, cererea nu mai e o grija: e prea tarziu, si
+  // insigna de alaturi spune asta mai apasat.
+  if (!buletin || !cerere || buletin.zile < 0 || cerere.zile > PRAGURI.cerere) return null;
+
+  return (
+    <span className={`px-2 py-0.5 rounded-lg border text-[11px] font-bold whitespace-nowrap inline-flex items-center gap-1 ${
+      cerere.zile < 0 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+    }`}
+      title={`Cererea pentru verificarea periodica trebuia depusa pana la ${zi(cerere.pana)} — buletinul expira la ${zi(buletin.pana)}`}>
+      <FileSignature className="w-3 h-3 shrink-0" />
+      {cerere.zile < 0 ? `Cerere intarziata de ${-cerere.zile} zile` : `Cerere de depus · ${zi(cerere.pana)}`}
+    </span>
+  );
+});
+
 const InsignaBuletin = React.memo(({ device }: { device: MedicalDevice }) => {
   const termen = termenulVerificarii(device);
   const v = valabilitatea(termen?.pana);
@@ -794,6 +821,7 @@ const DeviceRow = React.memo(({
             termenul priveste aparatul, nu o rubrica a lui. */}
         <div className="mt-1 flex flex-wrap items-center gap-1.5 empty:mt-0">
           <InsignaBuletin device={device} />
+          <InsignaCerere device={device} />
           <InsignaLicitatie device={device} />
         </div>
       </div>
@@ -950,6 +978,7 @@ const DeviceCard = React.memo(({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
           <StatusBadge status={device.status || DeviceStatus.ACTIVE} />
           <InsignaBuletin device={device} />
+          <InsignaCerere device={device} />
           <InsignaLicitatie device={device} />
           <span className="text-[13px] font-semibold text-slate-600 truncate max-w-[14rem]">
             {device.department || '—'}
