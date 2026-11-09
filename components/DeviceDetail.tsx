@@ -10,6 +10,9 @@ import Portal from './Portal';
 import useEscape from './useEscape';
 import { ElementeEditor, ElementeLista } from './ElementeComponente';
 import { saveFileAs } from '../services/fileService';
+import { fisaAparatuluiDocx, numeleFisei } from '../services/fisaAparat';
+import { antetInstitutiei } from '../services/antet';
+import { notify } from '../services/notices';
 import { buildPath, uploadDataUrl, uploadFile, removeFile, resolveSource } from '../services/fileStorage';
 import { undeMaiEste, maiEFolosit, leagaFisierul } from '../services/fisierePartajate';
 import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
@@ -76,7 +79,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  
+  const [scrieFisa, setScrieFisa] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
   /*
@@ -429,6 +433,34 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     }
   }, []);
 
+  /**
+   * Fisa aparatului, scoasa ca document.
+   *
+   * Tot ce se vede pe ecranul asta — identificarea, termenele, mentenanta,
+   * tichetele, documentele, hartiile de achizitie — intr-un Word care se pune
+   * in dosar si se semneaza. Ecranul nu se poate semna, si pana acum cine
+   * trebuia sa predea fisa o copia de mana, uitandu-se la el.
+   *
+   * Se ia din ce e in aplicatie in clipa asta, nu dintr-o copie salvata: o
+   * fisa de aparat se cere cand se cere, si trebuie sa spuna ce se stie
+   * atunci.
+   */
+  const descarcaFisa = useCallback(async () => {
+    setScrieFisa(true);
+    try {
+      const blob = await fisaAparatuluiDocx(device, {
+        tasks, referate, fundamentari: foundationDocs, facturi: invoices,
+        contracte, antet: antetInstitutiei(),
+      });
+      const outcome = await saveFileAs(numeleFisei(device), blob);
+      if (outcome === 'failed') notify('Generarea fisei a esuat', 'error');
+    } catch (err: any) {
+      notify(`Generarea fisei a esuat${err?.message ? `: ${err.message}` : ''}`, 'error');
+    } finally {
+      setScrieFisa(false);
+    }
+  }, [device, tasks, referate, foundationDocs, invoices, contracte]);
+
   return (
     <div className="bg-white rounded-3xl shadow-sm sm:shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-fade-in">
       <ConfirmDialog
@@ -638,6 +670,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             text="Eticheta QR"
             scurt="Eticheta"
             onClick={() => setActiveTab('qr')}
+          />
+          {/*
+            Fisa intreaga ca document. Sta langa eticheta fiindca amandoua
+            scot aparatul din ecran pe hartie — una ca sa fie lipita pe el,
+            cealalta ca sa intre in dosar.
+          */}
+          <ActiuneFisa
+            icon={<FileText className="w-4 h-4 shrink-0" />}
+            text="Fisa in Word"
+            scurt="Fisa"
+            onClick={descarcaFisa}
+            busy={scrieFisa}
           />
         </div>
       )}
@@ -2050,15 +2094,16 @@ const FileCard = React.memo(({ file, color = 'blue', onView, onDownload, onDelet
  * cinci actiuni cadeau pe patru randuri si impingeau fisa aparatului sub
  * marginea ecranului.
  */
-const ActiuneFisa = React.memo(({ icon, text, scurt, onClick }: {
-  icon: React.ReactNode; text: string; scurt: string; onClick: () => void;
+const ActiuneFisa = React.memo(({ icon, text, scurt, onClick, busy }: {
+  icon: React.ReactNode; text: string; scurt: string; onClick: () => void; busy?: boolean;
 }) => (
   <button
     onClick={onClick}
+    disabled={busy}
     aria-label={text}
-    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-[13px] font-semibold hover:border-blue-300 hover:text-blue-700 transition active:scale-95"
+    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-[13px] font-semibold hover:border-blue-300 hover:text-blue-700 transition active:scale-95 disabled:opacity-50"
   >
-    {icon}
+    {busy ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" /> : icon}
     <span className="sm:hidden">{scurt}</span>
     <span className="hidden sm:inline">{text}</span>
   </button>

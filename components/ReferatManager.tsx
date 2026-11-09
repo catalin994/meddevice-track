@@ -15,6 +15,7 @@ import { citesteWord, eFisierWord } from '../services/docxCitit';
 import { citesteReferatDinWord, CampuriReferat } from '../services/achizitieWordParse';
 import { citesteReferatPdf } from '../services/achizitiePdf';
 import useEscape from './useEscape';
+import { antetInstitutiei, punAntetul } from '../services/antet';
 import CampAles from './CampAles';
 import {
   CheieLista, PersoanaReferat, optiunileCampului, primaOptiune, tineMinte, uita,
@@ -50,10 +51,7 @@ const STATUS_STYLES: Record<ReferatStatus, string> = {
  * compartimentul emitent, seful care aproba, persoana de contact. Se retin de
  * la ultimul referat, ca sa nu fie tastate din nou de fiecare data.
  */
-const CHEIE_ANTET = 'meditrack_referat_antet';
-const antetSalvat = () => {
-  try { return JSON.parse(localStorage.getItem(CHEIE_ANTET) || '{}'); } catch { return {}; }
-};
+const antetSalvat = antetInstitutiei;
 
 const pozitieNoua = (): ReferatItem => ({
   id: crypto.randomUUID(), name: '', unit: 'Buc', quantity: 1, unitPrice: 0, specs: '',
@@ -415,14 +413,12 @@ const ReferatManager: React.FC<Props> = ({
       const urcat = await uploadDataUrl(buildPath('referate', id, id, form.fileName || 'referat.pdf'), inline);
       if (urcat.path) { filePath = urcat.path; inline = undefined; }
     }
-    try {
-      localStorage.setItem(CHEIE_ANTET, JSON.stringify({
-        autoritate: form.autoritate, manager: form.manager,
-        issuedBy: form.issuedBy, approvedBy: form.approvedBy,
-        contactName: form.contactName, contactRole: form.contactRole,
-        contactEmail: form.contactEmail, contactPhone: form.contactPhone,
-      }));
-    } catch { /* antetul e o comoditate, nu o obligatie */ }
+    punAntetul({
+      autoritate: form.autoritate, manager: form.manager,
+      issuedBy: form.issuedBy, approvedBy: form.approvedBy,
+      contactName: form.contactName, contactRole: form.contactRole,
+      contactEmail: form.contactEmail, contactPhone: form.contactPhone,
+    });
 
     /*
      * Ce s-a scris acum intra in lista pentru data viitoare, in fata. Asa creste
