@@ -59,6 +59,7 @@ import { mergeDeviceRecords, buildUploadSet } from './services/syncMerge';
 import { buildPath, uploadDataUrl } from './services/fileStorage';
 import { randMaiNou, campuriDiferite, Diferenta } from './services/conflicte';
 import { notify } from './services/notices';
+import { VERSIUNEA_RULATA } from './services/versiune';
 import LoginScreen from './components/LoginScreen';
 import { vineDinEmailDeRecuperare } from './services/authService';
 import { LogoTile, LogoMark } from './components/Logo';
@@ -1850,6 +1851,18 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
                   {isSyncingNow && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {isSyncingNow ? 'In curs...' : 'Re-sincronizare'}
                 </button>
+
+                {/*
+                  Versiunea care ruleaza, la vedere.
+                  Statea ingropata la capatul paginii de Configurare, si de
+                  acolo n-a citit-o nimeni: cand o schimbare publicata nu se
+                  vedea in aplicatie, nu se putea spune daca n-a fost facuta
+                  sau daca telefonul serveste o copie veche. Scrisa aici,
+                  intrebarea se lamureste dintr-o privire.
+                */}
+                <p className="text-[9px] font-mono font-bold text-slate-400 text-center tracking-tight">
+                  v{VERSIUNEA_RULATA}
+                </p>
               </>
             );
           })()}

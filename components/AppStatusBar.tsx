@@ -4,6 +4,7 @@ import { RefreshCw, WifiOff, X, Database, AlertTriangle, CheckCircle2, Info } fr
 import Portal from './Portal';
 import { getStorageProblem, onStorageProblem, StorageProblem } from '../services/storageService';
 import { getNotice, onNotice, dismissNotice, Notice } from '../services/notices';
+import { versiuneaPublicata, reincarcaDeLaZero, VERSIUNEA_RULATA } from '../services/versiune';
 
 /**
  * Two things the app has to be honest about once it works offline.
@@ -18,6 +19,16 @@ const AppStatusBar: React.FC = () => {
   /* Inregistrarea, ca sa poata fi intrebata din nou daca a aparut ceva nou. */
   const sw = useRef<ServiceWorkerRegistration | undefined>(undefined);
   const ultimaCautare = useRef(0);
+
+  /*
+   * Versiunea publicata pe server, cand se stie si e alta decat a noastra.
+   *
+   * E a doua cale catre aceeasi stire, si exista fiindca prima tace cand nu
+   * reuseste: service worker-ul nu spune nimic daca n-a putut intreba, si
+   * atunci aplicatia pare la zi desi ruleaza dintr-o copie de acum o luna.
+   */
+  const [publicata, setPublicata] = useState<string | null>(null);
+  const [reincarc, setReincarc] = useState(false);
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -41,6 +52,10 @@ const AppStatusBar: React.FC = () => {
    * Schimbarea tot omul o apasa: un bundle schimbat in mijlocul unei scanari
    * ar pierde paginile deja fotografiate.
    */
+  const intreabaServerul = () => {
+    versiuneaPublicata().then(v => setPublicata(v.fel === 'noua' ? v.publicata : null));
+  };
+
   useEffect(() => {
     const PAUZA = 5 * 60 * 1000;
     const cauta = () => {
@@ -48,8 +63,13 @@ const AppStatusBar: React.FC = () => {
       if (!sw.current || !navigator.onLine || acum - ultimaCautare.current < PAUZA) return;
       ultimaCautare.current = acum;
       sw.current.update().catch(() => { /* fara semnal, se incearca data viitoare */ });
+      intreabaServerul();
     };
     const laVedere = () => { if (!document.hidden) cauta(); };
+
+    /* Si o data la pornire, fara sa asteptam pauza: cineva care deschide
+       aplicatia dupa o luna trebuie sa afle acum, nu peste jumatate de ora. */
+    intreabaServerul();
 
     const ceas = window.setInterval(cauta, 30 * 60 * 1000);
     window.addEventListener('focus', cauta);
@@ -86,7 +106,9 @@ const AppStatusBar: React.FC = () => {
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', down); };
   }, []);
 
-  if (!needRefresh && !offline && !storage && !notice) return null;
+  const eCevaNou = needRefresh || !!publicata;
+
+  if (!eCevaNou && !offline && !storage && !notice) return null;
 
   const NOTICE_STYLES: Record<Notice['tone'], { box: string; icon: React.ReactNode }> = {
     error:   { box: 'bg-red-600 text-white',     icon: <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> },
@@ -139,18 +161,39 @@ const AppStatusBar: React.FC = () => {
           </div>
         )}
 
-        {needRefresh && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-2xl shadow-2xl">
-            <RefreshCw className="w-4 h-4 shrink-0" />
-            <p className="flex-1 text-[13px] font-semibold leading-snug">Versiune noua disponibila</p>
+        {eCevaNou && (
+          <div className="flex items-start gap-3 px-4 py-3 bg-blue-600 text-white rounded-2xl shadow-2xl">
+            <RefreshCw className={`w-4 h-4 shrink-0 mt-0.5 ${reincarc ? 'animate-spin' : ''}`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold leading-snug">Versiune noua disponibila</p>
+              {/* Cele doua versiuni, scrise. Altfel, cand reincarcarea nu
+                  prinde, nu se poate spune daca n-a mers sau n-a fost nimic
+                  nou — si asta e exact nelamurirea de pana acum. */}
+              {publicata && (
+                <p className="text-[11px] font-bold text-blue-100 leading-snug mt-0.5 font-mono">
+                  {VERSIUNEA_RULATA} → {publicata}
+                </p>
+              )}
+            </div>
             <button
-              onClick={() => updateServiceWorker(true)}
-              className="px-3 py-2 bg-white text-blue-700 rounded-xl text-[12px] font-bold hover:bg-blue-50 transition active:scale-95 shrink-0"
+              onClick={async () => {
+                setReincarc(true);
+                /*
+                 * Intai pe calea obisnuita. Daca service worker-ul n-are nicio
+                 * versiune noua pregatita — adica stirea a venit de la server,
+                 * nu de la el — pagina nu s-ar reincarca niciodata, si omul ar
+                 * apasa degeaba. De aceea, dupa o secunda, se curata tot.
+                 */
+                try { await updateServiceWorker(true); } catch { /* trecem la treapta urmatoare */ }
+                setTimeout(() => { reincarcaDeLaZero(); }, 1200);
+              }}
+              disabled={reincarc}
+              className="px-3 py-2 bg-white text-blue-700 rounded-xl text-[12px] font-bold hover:bg-blue-50 transition active:scale-95 shrink-0 disabled:opacity-60"
             >
-              Reincarca
+              {reincarc ? 'Se reincarca...' : 'Reincarca'}
             </button>
             <button
-              onClick={() => setNeedRefresh(false)}
+              onClick={() => { setNeedRefresh(false); setPublicata(null); }}
               aria-label="Mai tarziu"
               className="p-2 hover:bg-white/15 rounded-lg transition shrink-0"
             >

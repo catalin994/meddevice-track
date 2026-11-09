@@ -6,6 +6,33 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+
+    /*
+     * Stampila compilarii. Se calculeaza o data si se foloseste in doua locuri:
+     * in bundle (ca aplicatia sa stie ce versiune e ea) si in version.json (ca
+     * sa poata intreba serverul ce versiune e publicata). Doua ceasuri citite
+     * separat ar da doua valori si aplicatia s-ar crede mereu invechita.
+     */
+    const STAMPILA = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+    /**
+     * version.json, scris la fiecare compilare.
+     *
+     * E singurul fisier pe care aplicatia il cere mereu de pe server, nu din
+     * copia ei locala: raspunde la intrebarea "s-a publicat ceva nou?" fara sa
+     * depinda de service worker, care tace cand nu reuseste sa intrebe.
+     */
+    const stampilaPeServer = {
+      name: 'biomedic-version-json',
+      generateBundle() {
+        (this as any).emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({ build: STAMPILA }),
+        });
+      },
+    };
+
     return {
       base: mode === 'production' ? '/meddevice-track/' : '/',
       server: {
@@ -22,6 +49,7 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [
         react(),
+        stampilaPeServer,
         tailwindcss(),
         VitePWA({
           // 'prompt', not 'autoUpdate': a silent reload could interrupt a scan
@@ -59,6 +87,9 @@ export default defineConfig(({ mode }) => {
             globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js,docx}'],
             maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
             globIgnores: [
+              // Precacheat, ar raspunde chiar din copia despre care intreaba,
+              // si ar spune mereu ca totul e la zi.
+              'version.json',
               '**/vendor-exceljs-*.js',   // 920K — scrie toate listele in Excel
               '**/vendor-xlsx-*.js',      // 420K — citeste importurile, inclusiv .xls vechi
               '**/vendor-recharts-*.js',  // 376K — graficele din Panou
@@ -123,7 +154,7 @@ export default defineConfig(({ mode }) => {
       define: {
         // Lets the UI show which build is actually running — invaluable when a
         // phone silently serves a cached bundle.
-        '__BUILD_ID__': JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+        '__BUILD_ID__': JSON.stringify(STAMPILA),
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
