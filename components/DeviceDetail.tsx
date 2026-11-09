@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { MedicalDevice, DeviceStatus, TaskPriority, TaskStatus, MedicalTask, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, DeviceFile, DeviceComponent, Referat, FoundationDoc, REFERAT_STATUS_RO, FOUNDATION_DOC_RO, normaliseFoundationType, getUniqueDepartments, calculateNextMaintenanceDate, MaintenanceRecord, MaintenanceType, Invoice, Contract, AuditEntry, DEVICE_STATUS_RO, TASK_STATUS_RO, MAINTENANCE_TYPE_RO } from '../types';
 import { valabilitatePropusa, areDovadaVerificarii, ziuaCererii, LUNI_INAINTE_DE_CERERE } from '../services/termene';
-import { valabilitatea, hartiaInVigoare } from '../services/valabilitate';
+import { valabilitatea, hartiaInVigoare, zi } from '../services/valabilitate';
 import CampData from './CampData';
 import { dosarulAparatului, stadiulReferatului, baniiAparatului, BaniiAparatului, DosarulAparatului, contracteleAparatului } from '../services/dosarAparat';
 import { AlegeHartiile } from './LegaturaReferat';
@@ -19,10 +19,12 @@ import { getAppBaseUrl, getDeviceUrl } from '../services/appUrl';
 import { LogoTile } from './Logo';
 import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
+import MutaAparatul from './MutaAparatul';
+import { mutaAparatul, istoriculLocurilor } from '../services/mutari';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
-  ShieldAlert, Cpu, Wrench, Gavel, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt, FileSignature, FolderOpen, Link2
+  ShieldAlert, Cpu, Wrench, Gavel, CheckCircle2, Fingerprint, Save, ArrowLeft, Camera, RotateCcw, FileText, Upload, DownloadCloud, Eye, Building2, Tag, Layers, Download, Calendar, Printer, Wallet, ShieldCheck, Receipt, FileSignature, FolderOpen, Link2, ArrowRightLeft
 } from 'lucide-react';
 const LazyQRCode = React.lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeCanvas })));
 const CameraDocCapture = React.lazy(() => import('./CameraDocCapture'));
@@ -80,6 +82,8 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [scrieFisa, setScrieFisa] = useState(false);
+  const [aratMutarea, setAratMutarea] = useState(false);
+  const [muta, setMuta] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DeviceFile['type']>('report');
@@ -196,6 +200,9 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     return getUniqueDepartments(allDevices);
   }, [allDevices]);
 
+  /* Sirul locurilor prin care a trecut aparatul, cel mai nou primul. */
+  const istoricLocuri = useMemo(() => istoriculLocurilor(device), [device]);
+
   const deviceCountByDepartment = useMemo(() => {
     const counts: Record<string, number> = {};
     (allDevices || []).forEach(d => {
@@ -217,7 +224,17 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   }, [device.id, onDelete]);
 
   const handleSaveEdit = useCallback(async () => {
-    const updatedDevice = { ...device, ...editForm, department: editForm.department.trim() };
+    /*
+     * Schimbarea sectiei din editarea fisei e tot o mutare, si lasa acelasi
+     * rand in istoric ca butonul de mutare. Altfel ar fi doua feluri de a muta
+     * un aparat, din care numai unul s-ar vedea in registrul de evidenta.
+     */
+    const mutat = mutaAparatul(device, editForm.department, undefined, 'Schimbata din editarea fisei');
+    const updatedDevice = {
+      ...device, ...editForm,
+      department: editForm.department.trim(),
+      locationHistory: mutat.locationHistory,
+    };
     if (updatedDevice.purchaseDate !== device.purchaseDate || updatedDevice.category !== device.category) {
       updatedDevice.nextMaintenanceDate = calculateNextMaintenanceDate(updatedDevice.purchaseDate, updatedDevice.category);
     }
@@ -461,8 +478,38 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     }
   }, [device, tasks, referate, foundationDocs, invoices, contracte]);
 
+  /**
+   * Mutarea aparatului, scrisa in istoric.
+   *
+   * Nu trece prin formularul de editare: cine muta un aparat n-are ce cauta
+   * intr-un ecran in care se pot schimba si seria, si numarul de inventar.
+   */
+  const faMutarea = useCallback(async (catre: string, cand: string, nota: string) => {
+    setMuta(true);
+    try {
+      const mutat = mutaAparatul(device, catre, cand, nota);
+      if (mutat === device) { setAratMutarea(false); return; }
+      await onUpdate(mutat);
+      setAratMutarea(false);
+      notify(`Aparatul a fost mutat la ${mutat.department}.`, 'success');
+    } catch (err: any) {
+      notify(`Mutarea nu s-a salvat${err?.message ? `: ${err.message}` : ''}`, 'error');
+    } finally {
+      setMuta(false);
+    }
+  }, [device, onUpdate]);
+
   return (
     <div className="bg-white rounded-3xl shadow-sm sm:shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full relative animate-fade-in">
+      <MutaAparatul
+        open={aratMutarea}
+        device={device}
+        sectii={allAvailableDepartments}
+        cateAparate={deviceCountByDepartment}
+        busy={muta}
+        onMuta={faMutarea}
+        onCancel={() => setAratMutarea(false)}
+      />
       <ConfirmDialog
         open={showPurgeConfirm}
         busy={isPurging}
@@ -665,6 +712,17 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
             scurt="Scaneaza"
             onClick={() => setShowDocCapture(true)}
           />
+          {/*
+            Mutarea sta intre actiunile aparatului, nu in formularul de
+            editare: e ceva ce se intampla aparatului, ca o interventie, nu o
+            corectie a datelor lui.
+          */}
+          <ActiuneFisa
+            icon={<ArrowRightLeft className="w-4 h-4 shrink-0" />}
+            text="Muta in alta sectie"
+            scurt="Muta"
+            onClick={() => setAratMutarea(true)}
+          />
           <ActiuneFisa
             icon={<QrCode className="w-4 h-4 shrink-0" />}
             text="Eticheta QR"
@@ -851,7 +909,50 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                         )}
                      </div>
                    )}
-                   
+
+                   {/*
+                     Unde a stat aparatul.
+
+                     Registrul de evidenta cere locul de utilizare al fiecarui
+                     dispozitiv, si locul de utilizare nu e un camp, e un sir:
+                     de cand pana cand a stat unde. Se arata numai cand aparatul
+                     chiar a umblat — pe unul care n-a plecat niciodata din
+                     sectia lui, sirul ar fi un rand care repeta campul de
+                     deasupra. Primul rand spune si de unde a venit, deci
+                     punctul de plecare nu se pierde.
+                   */}
+                   {!isEditing && (device.locationHistory || []).length > 0 && (
+                     <div className="mt-8 pt-6 border-t border-slate-100">
+                       <div className="flex items-center gap-2 mb-4">
+                         <ArrowRightLeft className="w-4 h-4 text-indigo-600 shrink-0" />
+                         <h4 className="text-[13px] font-black text-slate-800 uppercase tracking-wide">Locul de utilizare</h4>
+                         <span className="text-[11px] font-bold text-slate-400">{istoricLocuri.length} {istoricLocuri.length === 1 ? 'inregistrare' : 'inregistrari'}</span>
+                       </div>
+                       <ol className="space-y-2">
+                         {istoricLocuri.map((l, i) => (
+                           <li key={`${l.date}-${l.department}-${i}`}
+                             className={`flex flex-wrap items-baseline gap-x-2 gap-y-1 px-4 py-3 rounded-2xl border ${
+                               i === 0 ? 'bg-indigo-50/60 border-indigo-200' : 'bg-slate-50 border-slate-200'
+                             }`}>
+                             <span className="text-[11px] font-black text-slate-500 tabular-nums w-[5.5rem] shrink-0">
+                               {l.date ? zi(l.date) : 'Data necunoscuta'}
+                             </span>
+                             <span className="text-[13px] font-bold text-slate-800">{l.department || '—'}</span>
+                             {l.from && (
+                               <span className="text-[11px] font-semibold text-slate-500">de la {l.from}</span>
+                             )}
+                             {i === 0 && (
+                               <span className="px-2 py-0.5 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wide">Acum</span>
+                             )}
+                             {l.note && (
+                               <span className="w-full text-[11px] font-semibold text-slate-500">{l.note}</span>
+                             )}
+                           </li>
+                         ))}
+                       </ol>
+                     </div>
+                   )}
+
                    {/*
                      Elementele din care e facut aparatul.
 

@@ -514,9 +514,29 @@ export interface DeviceComponent {
   notes?: string;
 }
 
+/**
+ * O mutare a aparatului dintr-o secţie in alta.
+ *
+ * Art. 20 cere ca registrul de evidenta sa arate locul de utilizare al
+ * fiecarui dispozitiv — adica nu numai unde e acum, ci si unde a fost. Pana
+ * acum aparatul isi schimba secţia prin editarea unui camp, si locul de
+ * dinainte se pierdea: la un control nu se putea arata cand a ajuns aparatul
+ * in sectia in care sta, nici de unde venea.
+ */
 export interface LocationLog {
   date: string;
+  /** Unde a ajuns. */
   department: string;
+  /**
+   * De unde a venit.
+   *
+   * Se scrie in rand, desi s-ar putea deduce din randul de dinainte: un rand
+   * din registru trebuie sa se citeasca singur, si primul rand n-are rand de
+   * dinainte.
+   */
+  from?: string;
+  /** De ce s-a mutat si cine a mutat-o — ce nu se poate deduce. */
+  note?: string;
 }
 
 export interface MedicalDevice {
