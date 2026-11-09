@@ -7,6 +7,7 @@ import { par, gol, tabel, construieste, dataRo, suma, Cell } from './docx';
 import { ziuaCererii, LUNI_INAINTE_DE_CERERE } from './termene';
 import { dosarulAparatului, contracteleAparatului } from './dosarAparat';
 import { AntetInstitutie } from './antet';
+import { scris } from './loctiitori';
 
 /**
  * Fisa dispozitivului medical, ca document.
@@ -34,11 +35,14 @@ import { AntetInstitutie } from './antet';
 
 const A4 = 9638; // dxa disponibili intre margini pe A4 portret
 
-/** Rubrica goala se scrie, nu se sare: cititorul trebuie sa vada ca lipseste. */
-const ori = (v: unknown, implicit = '—'): string => {
-  const s = String(v ?? '').trim();
-  return s || implicit;
-};
+/**
+ * Rubrica goala se scrie, nu se sare: cititorul trebuie sa vada ca lipseste.
+ *
+ * Trece prin `scris`, fiindca aplicatia umple golurile cu "N/A" si
+ * "Unassigned" ca ecranul sa aiba ce arata. Pe o fisa care se semneaza, o
+ * serie scrisa "N/A" e mai rea decat o liniuta: liniuta se vede ca lipsa.
+ */
+const ori = (v: unknown, implicit = '—'): string => scris(v) || implicit;
 
 const UMBRA = 'EFEFEF';
 
@@ -116,8 +120,8 @@ export const fisaAparatuluiDocx = async (
   corp.push(par('FIŞA DISPOZITIVULUI MEDICAL', { bold: true, size: 14, align: 'center', after: 2 }));
   corp.push(par(ori(device.name), { bold: true, size: 12, align: 'center', after: 2 }));
   corp.push(par(
-    [device.inventoryNumber && `Nr. inventar ${device.inventoryNumber}`,
-     device.serialNumber && `Seria ${device.serialNumber}`].filter(Boolean).join(' · ') || ' ',
+    [scris(device.inventoryNumber) && `Nr. inventar ${scris(device.inventoryNumber)}`,
+     scris(device.serialNumber) && `Seria ${scris(device.serialNumber)}`].filter(Boolean).join(' · ') || ' ',
     { size: 10, align: 'center', after: 10 }));
 
   /* ── 1. identificare ── */

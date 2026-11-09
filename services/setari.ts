@@ -16,7 +16,23 @@ import { supabase } from './supabase';
 
 const PREFIX = 'meditrack_setare_';
 
-export type Setare = 'limita_stocare_gb' | 'cuvinte_triaj';
+export type Setare = 'limita_stocare_gb' | 'cuvinte_triaj' | 'persoana_responsabila';
+
+/**
+ * Persoana responsabila cu dispozitivele medicale si decizia care o numeste.
+ *
+ * E prima hartie care se cere la un control, si singura din dosar care nu se
+ * poate deduce din evidenta: numirea e o hotarare a conducerii. Sta in setari,
+ * nu pe un aparat, fiindca priveste unitatea; si sta in cloud, nu pe
+ * calculator, fiindca e aceeasi pentru toata lumea.
+ */
+export interface PersoanaResponsabila {
+  nume?: string;
+  functie?: string;
+  /** Numarul si data deciziei de numire. */
+  decizieNumar?: string;
+  decizieData?: string;
+}
 
 const local = (cheie: Setare) => `${PREFIX}${cheie}`;
 

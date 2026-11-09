@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
-import { LayoutDashboard, List, Menu, X, ShieldCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, List, Menu, X, ShieldCheck, ClipboardCheck, Loader2, CheckSquare, Settings as SettingsIcon, CalendarRange, RefreshCw, Cloud, CloudOff, Database, AlertCircle, Zap, QrCode, ScanLine, Wallet, Search, LogOut, User, Plus, Sun, Moon } from 'lucide-react';
 
 const importDashboard = () => import('./components/Dashboard');
 const importDeviceList = () => import('./components/DeviceList');
@@ -13,6 +13,7 @@ const importQRScanner = () => import('./components/QRScanner');
 const importDocumentScanner = () => import('./components/DocumentScanner');
 const importFinanceManager = () => import('./components/FinanceManager');
 const importCommandPalette = () => import('./components/CommandPalette');
+const importPregatitControl = () => import('./components/PregatitControl');
 
 const Dashboard = lazy(importDashboard);
 const QRScanner = lazy(importQRScanner);
@@ -26,6 +27,7 @@ const Settings = lazy(importSettings);
 const TaskTracker = lazy(importTaskTracker);
 const FinanceManager = lazy(importFinanceManager);
 const CommandPalette = lazy(importCommandPalette);
+const PregatitControl = lazy(importPregatitControl);
 
 const prefetchModules = () => {
   // In dev mode Vite serves unminified deps — prefetching causes the browser to
@@ -1614,6 +1616,17 @@ const App: React.FC = () => {
                 )}
                 {view === 'ADD_DEVICE' && <AddDeviceForm devices={devices} onSave={async (d) => { await handleUpsertDevices(d); navigate('INVENTORY'); }} onBulkSave={async (ds) => { await handleUpsertDevices(ds); navigate('INVENTORY'); }} onCancel={goBack} />}
                 {view === 'PLANNER' && <MaintenancePlanner devices={devices} onApplyPlan={handleUpsertDevices} onSelectDevice={handleSelectDevice} />}
+                {view === 'CONTROL' && (
+                  <PregatitControl
+                    devices={devices}
+                    tasks={tasks}
+                    contracte={contracte}
+                    referate={referate}
+                    foundationDocs={foundationDocs}
+                    invoices={invoices}
+                    onSelectDevice={id => navigate('DEVICE_DETAIL', id)}
+                  />
+                )}
                 {view === 'FINANCE' && canFinance && (
                   <FinanceManager
                     devices={devices}
@@ -1787,6 +1800,7 @@ const AppSidebar = React.memo(({ isSidebarOpen, view, setView, setSidebarOpen, s
         <NavItem active={view === 'INVENTORY'} onClick={() => { setView('INVENTORY'); setSidebarOpen(false); }} icon={<List className="w-4 h-4" />} label="Inventar" />
         <NavItem active={view === 'TASKS'} onClick={() => { setView('TASKS'); setSidebarOpen(false); }} icon={<CheckSquare className="w-4 h-4" />} label="Tichete Service" />
         <NavItem active={view === 'PLANNER'} onClick={() => { setView('PLANNER'); setSidebarOpen(false); }} icon={<CalendarRange className="w-4 h-4" />} label="Mentenanta" />
+        <NavItem active={view === 'CONTROL'} onClick={() => { setView('CONTROL'); setSidebarOpen(false); }} icon={<ClipboardCheck className="w-4 h-4" />} label="Control" />
         {canFinance && <NavItem active={view === 'FINANCE'} onClick={() => { setView('FINANCE'); setSidebarOpen(false); }} icon={<Wallet className="w-4 h-4" />} label="Financiar" />}
         <div className="px-3 mt-8 mb-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Sistem</p></div>
         <NavItem active={view === 'SETTINGS'} onClick={() => { setView('SETTINGS'); setSidebarOpen(false); }} icon={<SettingsIcon className="w-4 h-4" />} label="Configurare" />

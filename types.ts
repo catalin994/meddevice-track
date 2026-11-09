@@ -659,7 +659,7 @@ export const calculateNextMaintenanceDate = (baseDate: string, category: string)
   return date.toISOString().split('T')[0];
 };
 
-export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS' | 'FINANCE';
+export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS' | 'FINANCE' | 'CONTROL';
 
 /**
  * Where an invoice stands with ConectX.
