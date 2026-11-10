@@ -1,0 +1,1 @@
+const s=new Set(["n/a","na","n.a.","nan","null","undefined","unassigned","unknown","unnamed asset","none","nedefinit","necunoscut","nespecificat","fara","-","--","---","—","?","."]),t=n=>{const e=String(n??"").trim();return s.has(e.toLowerCase())?"":e},a=n=>!t(n);export{a as l,t as s};
