@@ -6,6 +6,7 @@ import { termeneleTuturor, termeneDeUrmarit, metrologieExpirata, metrologieNecun
 import { situatiaHartiilor } from '../services/dosarAparat';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
+const SituatieBuletine = lazy(() => import('./SituatieBuletine'));
 
 interface DashboardProps {
   devices: MedicalDevice[];
@@ -135,7 +136,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     [...contracteRegistru, ...devices.flatMap(d => d.contracts || [])]
       .map(c => [c.contractNumber, c])).values()), [devices, contracteRegistru]);
   const termene = useMemo(
-    () => termeneDeUrmarit(termeneleTuturor(devices, contracte)).filter(t => t.fel !== 'mentenanta'),
+    () => termeneDeUrmarit(termeneleTuturor(devices, contracte))
+      .filter(t => t.fel !== 'mentenanta' && t.fel !== 'metrologie' && t.fel !== 'cerere'),
     [devices, contracte]);
   const metrologieRea = useMemo(() => metrologieExpirata(devices), [devices]);
   const metrologieGoala = useMemo(() => metrologieNecunoscuta(devices), [devices]);
@@ -439,16 +441,30 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/*
-        Termenele care se apropie, toate la un loc. Aplicatia se uita pana acum
-        doar la mentenanta; restul ceasurilor ticaiau nevazute.
+        Buletinele de verificare, cu lista, nu doar cu cifra.
+
+        Cifra de sus spune cate sunt expirate; ca sa afli care, se deschidea
+        aparat dupa aparat. Sta deasupra termenelor generale fiindca e singurul
+        termen din aplicatie care nu se negociaza cu nimeni: un aparat cu
+        buletinul expirat nu are voie sa fie folosit.
+      */}
+      <Suspense fallback={<div className="hardware-card rounded-3xl h-48 animate-pulse bg-slate-50" />}>
+        <SituatieBuletine devices={devices} onSelectDevice={onSelectDevice} />
+      </Suspense>
+
+      {/*
+        Celelalte termene care se apropie. Metrologia si cererea de verificare
+        si-au luat cartonasul lor de mai sus, cu lista intreaga si cu zilele
+        scrise; lasate si aici, acelasi aparat ar fi aparut de doua ori pe
+        acelasi ecran.
       */}
       {termene.length > 0 && (
         <div className="hardware-card p-5 sm:p-10 rounded-3xl">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-6 sm:mb-8">
             <div>
-              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Termene care expira</h3>
+              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Alte termene care expira</h3>
               <p className="text-[13px] font-semibold text-slate-500 mt-1">
-                Cereri de verificare, buletine metrologice, garantii, contracte, autorizatii
+                Garantii, contracte de service, autorizatii CNCAN
               </p>
             </div>
             <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl"><CalendarClock className="w-6 h-6" /></div>
