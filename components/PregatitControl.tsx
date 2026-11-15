@@ -13,6 +13,7 @@ import { antetInstitutiei } from '../services/antet';
 import { scris } from '../services/loctiitori';
 import { saveFileAs } from '../services/fileService';
 import { notify } from '../services/notices';
+import SupuseVerificarii from './SupuseVerificarii';
 import DepartmentPicker from './DepartmentPicker';
 import CampData from './CampData';
 
@@ -46,12 +47,15 @@ interface Props {
   foundationDocs?: FoundationDoc[];
   invoices?: Invoice[];
   onSelectDevice: (id: string) => void;
+  /** Salveaza mai multe aparate deodata — pentru insemnarea celor supuse verificarii. */
+  onUpdateDevices?: (devices: MedicalDevice[]) => Promise<void> | void;
 }
 
 const CHEIE_RESP = 'persoana_responsabila';
 
 const PregatitControl: React.FC<Props> = ({
   devices, tasks = [], contracte = [], referate = [], foundationDocs = [], invoices = [], onSelectDevice,
+  onUpdateDevices,
 }) => {
   const [resp, setResp] = useState<PersoanaResponsabila>(() => iaSetareLocal<PersoanaResponsabila>(CHEIE_RESP, {}));
   const [formResp, setFormResp] = useState<PersoanaResponsabila>(resp);
@@ -246,6 +250,18 @@ const PregatitControl: React.FC<Props> = ({
           ))}
         </div>
       </div>
+
+      {/*
+        Aparatele supuse verificarii periodice.
+
+        Sta dupa cerinte si inainte de plan, fiindca asta e si ordinea
+        intrebarilor: ce lipseste, care sunt aparatele, cand le vine randul.
+      */}
+      <SupuseVerificarii
+        devices={aleSectiei}
+        onSelectDevice={onSelectDevice}
+        onInsemneaza={onUpdateDevices}
+      />
 
       {/* ── planul anului ── */}
       <div className="hardware-card rounded-3xl p-6 sm:p-8">

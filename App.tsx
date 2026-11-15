@@ -1627,6 +1627,7 @@ const App: React.FC = () => {
                     foundationDocs={foundationDocs}
                     invoices={invoices}
                     onSelectDevice={id => navigate('DEVICE_DETAIL', id)}
+                    onUpdateDevices={handleUpsertDevices}
                   />
                 )}
                 {view === 'FINANCE' && canFinance && (

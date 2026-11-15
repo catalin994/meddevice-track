@@ -1,5 +1,5 @@
 import { MedicalDevice, Contract, DeviceStatus } from '../types';
-import { ziuaCererii } from './termene';
+import { ziuaCererii, CATEGORII_CU_METROLOGIE } from './termene';
 import { contracteleAparatului } from './dosarAparat';
 import { PersoanaResponsabila } from './setari';
 import { scris, lipseste } from './loctiitori';
@@ -27,7 +27,7 @@ import { scris, lipseste } from './loctiitori';
  */
 
 export type CheieCerinta =
-  | 'responsabil' | 'registru' | 'punere' | 'metrologie' | 'cerere'
+  | 'responsabil' | 'registru' | 'punere' | 'supuse' | 'metrologie' | 'cerere'
   | 'cncan' | 'mentenanta' | 'dosar';
 
 export interface Cerinta {
@@ -62,6 +62,12 @@ export const CERINTE: Cerinta[] = [
     titlu: 'Data punerii in functiune',
     ce: 'Se stie de cand e dispozitivul in exploatare — nu doar de cand e cumparat.',
     temei: 'De la punerea in functiune curge garantia si se numara vechimea reala.',
+  },
+  {
+    cheie: 'supuse',
+    titlu: 'Aparatele supuse verificarii periodice sunt insemnate',
+    ce: 'Aparatele din categoriile care poarta buletin de verificare au bifa pusa, deci intra in toate celelalte verificari.',
+    temei: 'Un aparat neinsemnat nu apare in nicio alarma si in niciun plan: scapa tacut din toata evidenta.',
   },
   {
     cheie: 'metrologie',
@@ -152,6 +158,25 @@ export const pregatirea = (
   /** Cine intra in socoteala fiecarei cerinte, si ce ii lipseste. */
   const reguli: Record<CheieCerinta, { priveste: (d: MedicalDevice) => boolean; deCe: (d: MedicalDevice) => string }> = {
     responsabil: { priveste: () => false, deCe: () => '' },
+    /*
+     * Aparatele care ar trebui sa poarte buletin de verificare, dar n-au bifa.
+     *
+     * Bifa se pune singura la adaugare, dupa categorie. Dar aparatele intrate
+     * printr-un import Excel, sau adaugate inainte sa existe regula asta, au
+     * ramas fara ea — si fara ea nu sunt intrebate de nimic: nu apar nici in
+     * situatia buletinelor, nici in planul verificarilor, nici in celelalte
+     * cerinte de mai jos. Un aparat neinsemnat nu e un aparat in regula, e un
+     * aparat despre care nu se stie nimic.
+     *
+     * Categoria e doar un semn, nu o hotarare: lista oficiala e mai lunga si
+     * se schimba, iar ultimul cuvant il are serviciul tehnic. De asta e scrisa
+     * ca "verifica si bifeaza", nu ca "e gresit".
+     */
+    supuse: {
+      priveste: d => CATEGORII_CU_METROLOGIE.includes(d.category),
+      deCe: d => d.metrologyRequired ? ''
+        : `categoria "${d.category}" poarta de obicei buletin de verificare, dar aparatul nu e insemnat ca supus`,
+    },
     registru: {
       priveste: () => true,
       /*

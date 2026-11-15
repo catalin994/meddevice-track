@@ -6,9 +6,11 @@ import { fisaAparatuluiDocx, numeleFisei } from './fisaAparat';
 import { PersoanaResponsabila } from './setari';
 import { AntetInstitutie } from './antet';
 import { scris } from './loctiitori';
+import { situatiaBuletinelor, cateZile } from './situatieBuletine';
+import { CATEGORII_CU_METROLOGIE } from './termene';
 import {
   titluFoii, subtitluFoii, aer, capulTabelului, randDeDate, inghetaSiFiltreaza,
-  PAGINA_PEISAJ, ROSU, CENUSIU,
+  PAGINA_PEISAJ, ROSU, CENUSIU, CHIHLIMBAR,
 } from './excelStil';
 
 /**
@@ -139,7 +141,10 @@ const cuprins = (
     + 'pe lunile în care se depun cererile.');
   randuri.push('**03 Lipsuri la control.xlsx** — ce lipseşte din evidenţă, pe cerinţe şi pe dispozitive. '
     + 'E foaia de lucru, nu una de arătat.');
-  if (cateFise) randuri.push(`**04 Fise dispozitive/** — ${cateFise} fişe în Word, una pe dispozitiv, cu tot istoricul lui.`);
+  randuri.push('**04 Supuse verificarii periodice.xlsx** — lista aparatelor supuse verificării periodice, cu starea '
+    + 'buletinului fiecăruia şi cu ziua cererii următoare; a doua foaie ţine aparatele care par să aibă nevoie de buletin, '
+    + 'dar nu sunt însemnate ca atare, deci nu intră în nicio alarmă.');
+  if (cateFise) randuri.push(`**05 Fise dispozitive/** — ${cateFise} fişe în Word, una pe dispozitiv, cu tot istoricul lui.`);
 
   randuri.push('', '## Cum stă evidenţa acum', '');
   randuri.push(`${p.gata} din ${p.dinCate} cerinţe îndeplinite · `
@@ -165,6 +170,98 @@ const cuprins = (
     + 'O cerinţă îndeplinită înseamnă că aplicaţia nu vede nimic lipsă, nu că actul există şi e valabil.');
 
   return randuri.join('\n');
+};
+
+/**
+ * Lista aparatelor supuse verificarii periodice.
+ *
+ * E prima intrebare la control — "cate aparate aveti supuse verificarii si
+ * care sunt" — si pana acum raspunsul se aduna de pe sase ecrane. A doua foaie
+ * tine aparatele care ar trebui sa fie pe prima, dar n-au bifa pusa: ele nu
+ * apar in nicio alarma si in niciun plan, deci nici in cifra de pe prima
+ * foaie, si tocmai de asta trebuie scrise separat, nu amestecate.
+ */
+const supuseExcel = async (devices: MedicalDevice[], autoritate: string): Promise<Blob> => {
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Biomedic';
+  wb.created = new Date();
+
+  const s = situatiaBuletinelor(devices);
+
+  const COL = 12;
+  const ws = wb.addWorksheet('Supuse verificarii', { pageSetup: PAGINA_PEISAJ });
+  ws.columns = [
+    { width: 5 }, { width: 32 }, { width: 18 }, { width: 18 }, { width: 16 },
+    { width: 13 }, { width: 22 }, { width: 14 }, { width: 13 }, { width: 18 },
+    { width: 13 }, { width: 22 },
+  ];
+  titluFoii(ws, 'APARATELE SUPUSE VERIFICĂRII PERIODICE', COL);
+  subtitluFoii(ws, [
+    autoritate,
+    `${s.supuse} aparate supuse`,
+    `${s.expirate.length} cu buletinul expirat`,
+    `${s.lipsa.length} fără buletin trecut`,
+    `generat ${new Date().toLocaleString('ro-RO')}`,
+  ].filter(Boolean).join('  •  '), COL);
+  aer(ws);
+
+  const cap = capulTabelului(ws, [
+    '#', 'Dispozitivul', 'Producător', 'Model', 'Serie',
+    'Nr. inventar', 'Punct de lucru', 'Starea', 'Buletin nr.', 'Valabil până la',
+    'Zile', 'Cererea până la',
+  ]);
+  s.randuri.forEach((r, i) => {
+    const d = r.device;
+    const expirat = r.stare === 'expirat';
+    randDeDate(ws, [
+      i + 1, scris(d.name), scris(d.manufacturer), scris(d.model), scris(d.serialNumber),
+      scris(d.inventoryNumber), scris(d.department),
+      r.stare === 'expirat' ? 'Expirat' : r.stare === 'expira' ? 'Expiră curând'
+        : r.stare === 'lipsa' ? 'Fără buletin' : 'Valabil',
+      r.numar, r.pana, r.zile === null ? '' : cateZile(r.zile), r.cerere,
+    ], i, {
+      1: { centrat: true, culoare: 'FF94A3B8' },
+      2: { bold: true, rupe: true },
+      5: { cod: true }, 6: { cod: true },
+      8: { centrat: true, bold: true, culoare: expirat ? ROSU : r.stare === 'valabil' ? undefined : CENUSIU },
+      10: { centrat: true, bold: expirat, culoare: expirat ? ROSU : undefined },
+      11: { centrat: true, bold: expirat, culoare: expirat ? ROSU : undefined },
+      12: { centrat: true, bold: !!r.cerere && r.cerere < new Date().toISOString().split('T')[0],
+            culoare: !!r.cerere && r.cerere < new Date().toISOString().split('T')[0] ? ROSU : undefined },
+    });
+  });
+  inghetaSiFiltreaza(ws, cap, s.randuri.length, COL);
+
+  /* ── foaia 2: cele care par sa aiba nevoie, dar n-au bifa ── */
+  const neinsemnate = devices.filter(d =>
+    d.status !== 'Retired' && !d.metrologyRequired && CATEGORII_CU_METROLOGIE.includes(d.category));
+
+  const ws2 = wb.addWorksheet('Neinsemnate', { pageSetup: PAGINA_PEISAJ });
+  ws2.columns = [
+    { width: 5 }, { width: 32 }, { width: 24 }, { width: 18 }, { width: 16 },
+    { width: 13 }, { width: 22 },
+  ];
+  titluFoii(ws2, 'APARATE CARE PAR SĂ AIBĂ NEVOIE DE BULETIN, DAR NU SUNT ÎNSEMNATE', 7);
+  subtitluFoii(ws2,
+    'Fără bifa „supus controlului" nu intră în nicio alarmă şi în niciun plan — deci nici în cifra de pe prima foaie. '
+    + 'Categoria e un semn, nu o hotărâre: lista se verifică înainte să fie însemnate.', 7);
+  aer(ws2);
+  const cap2 = capulTabelului(ws2, ['#', 'Dispozitivul', 'Categoria', 'Producător / model', 'Serie', 'Nr. inventar', 'Punct de lucru']);
+  neinsemnate.forEach((d, i) => {
+    randDeDate(ws2, [
+      i + 1, scris(d.name), scris(d.category),
+      [scris(d.manufacturer), scris(d.model)].filter(Boolean).join(' '),
+      scris(d.serialNumber), scris(d.inventoryNumber), scris(d.department),
+    ], i, {
+      1: { centrat: true, culoare: 'FF94A3B8' }, 2: { bold: true, rupe: true },
+      3: { culoare: CHIHLIMBAR, bold: true }, 5: { cod: true }, 6: { cod: true },
+    });
+  });
+  inghetaSiFiltreaza(ws2, cap2, neinsemnate.length, 7);
+
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 };
 
 export const dosarulDeControlZip = async (
@@ -197,13 +294,18 @@ export const dosarulDeControlZip = async (
   pas?.('Scriu lista lipsurilor...');
   zip.file('03 Lipsuri la control.xlsx', await lipsuriExcel(p, autoritate));
 
+  pas?.('Scriu lista aparatelor supuse verificarii...');
+  const aleSectiei = devices.filter(d =>
+    !ce.sectie || (d.department || '').trim().toLowerCase() === ce.sectie.trim().toLowerCase());
+  zip.file('04 Supuse verificarii periodice.xlsx', await supuseExcel(aleSectiei, autoritate));
+
   let cateFise = 0;
   if (ce.cuFise) {
     const cuLipsuri = new Set(p.aparateCuLipsuri.map(x => x.device.id));
     const alese = devices
       .filter(d => !ce.sectie || (d.department || '').trim().toLowerCase() === ce.sectie.trim().toLowerCase())
       .filter(d => !ce.doarFiseleCuLipsuri || cuLipsuri.has(d.id));
-    const folder = zip.folder('04 Fise dispozitive')!;
+    const folder = zip.folder('05 Fise dispozitive')!;
     for (const d of alese) {
       cateFise++;
       pas?.(`Scriu fişele dispozitivelor (${cateFise} din ${alese.length})...`);
