@@ -15,6 +15,9 @@ import { versiuneaPublicata, reincarcaDeLaZero, VERSIUNEA_RULATA } from '../serv
  * copy, which is only reassuring if it says so; otherwise stale data looks
  * like fresh data.
  */
+/** Ce versiune s-a incercat deja in tabul asta, ca sa nu se reporneasca la nesfarsit. */
+const CHEIE_INCERCARE = 'meditrack_reincarcat_pentru';
+
 const AppStatusBar: React.FC = () => {
   /* Inregistrarea, ca sa poata fi intrebata din nou daca a aparut ceva nou. */
   const sw = useRef<ServiceWorkerRegistration | undefined>(undefined);
@@ -49,11 +52,40 @@ const AppStatusBar: React.FC = () => {
    *
    * Acum se intreaba si din cand in cand, si la intoarcerea pe fereastra, cu
    * o pauza intre intrebari ca sa nu batem serverul la fiecare alt-tab.
-   * Schimbarea tot omul o apasa: un bundle schimbat in mijlocul unei scanari
-   * ar pierde paginile deja fotografiate.
+   *
+   * La pornire, insa, nu se mai intreaba omul: se ia singura. Banda de
+   * "versiune noua" a fost de doua ori pe ecran si tot a ramas aplicatia pe
+   * copia veche — fiindca o banda se poate inchide, se poate rata, si apare
+   * tocmai cand omul are altceva de facut. Iar o aplicatie care arata
+   * purtarea de acum o luna e mai rea decat una care se reincarca singura o
+   * data, in prima secunda, inainte sa fi inceput cineva ceva.
+   *
+   * Numai la pornire. Dupa aceea ramane banda: un bundle schimbat in mijlocul
+   * unei scanari ar pierde paginile deja fotografiate, si asta chiar trebuie
+   * sa ramana la mana omului.
    */
-  const intreabaServerul = () => {
-    versiuneaPublicata().then(v => setPublicata(v.fel === 'noua' ? v.publicata : null));
+  const intreabaServerul = (siSingura = false) => {
+    versiuneaPublicata().then(v => {
+      if (v.fel !== 'noua') { setPublicata(null); return; }
+      setPublicata(v.publicata);
+      if (!siSingura) return;
+
+      /*
+       * O singura incercare pentru fiecare versiune publicata, tinuta pe tab.
+       *
+       * Fara ea, o reincarcare care nu rezolva nimic — un proxy care serveste
+       * mai departe un index.html vechi, o stocare blocata — ar reporni pagina
+       * la nesfarsit, si aplicatia n-ar mai fi de folosit deloc. Asa, se
+       * incearca o data; daca tot nu s-a schimbat nimic, ramane banda, care
+       * spune pe fata de la ce versiune la ce versiune.
+       */
+      let incercata = '';
+      try { incercata = sessionStorage.getItem(CHEIE_INCERCARE) || ''; } catch { /* sessionStorage blocat */ }
+      if (incercata === v.publicata) return;
+      try { sessionStorage.setItem(CHEIE_INCERCARE, v.publicata); } catch { /* atunci nu incercam deloc */ return; }
+
+      reincarcaDeLaZero();
+    });
   };
 
   useEffect(() => {
@@ -67,9 +99,11 @@ const AppStatusBar: React.FC = () => {
     };
     const laVedere = () => { if (!document.hidden) cauta(); };
 
-    /* Si o data la pornire, fara sa asteptam pauza: cineva care deschide
-       aplicatia dupa o luna trebuie sa afle acum, nu peste jumatate de ora. */
-    intreabaServerul();
+    /* La pornire, fara sa asteptam pauza si fara sa intrebam pe nimeni:
+       cineva care deschide aplicatia dupa o luna trebuie sa primeasca
+       versiunea de azi acum, nu peste jumatate de ora si nu dupa ce apasa
+       pe o banda. */
+    intreabaServerul(true);
 
     const ceas = window.setInterval(cauta, 30 * 60 * 1000);
     window.addEventListener('focus', cauta);
