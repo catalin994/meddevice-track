@@ -21,6 +21,9 @@ import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
 import MutaAparatul from './MutaAparatul';
 import { mutaAparatul, istoriculLocurilor } from '../services/mutari';
+import Poza, { pozaAparatului, SursaPozei } from './Poza';
+import { ConsumabileEditor, ConsumabileLista } from './Consumabile';
+import { micsoreaza, punePoza, stergePoza } from '../services/poze';
 import {
   Activity, Box, QrCode, Trash2, X, Edit2, Plus, BookOpen,
   Info, CheckSquare, Loader2, Check, ChevronDown, Clock,
@@ -82,6 +85,18 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [scrieFisa, setScrieFisa] = useState(false);
+  /*
+   * Schimbarea pozei aparatului, tinuta separat de restul formularului.
+   *
+   * null inseamna "nu s-a umblat la poza", sirul gol inseamna "s-a scos", iar
+   * un data: inseamna "asta e poza noua, inca neurcata". Fara cele trei stari
+   * nu se poate deosebi o fisa salvata fara sa fie atinsa poza de una la care
+   * poza a fost stearsa anume — si una din doua ar sterge poze din greseala.
+   */
+  const [pozaSchimbata, setPozaSchimbata] = useState<string | null>(null);
+  const [lucrezLaPoza, setLucrezLaPoza] = useState(false);
+  const pozaInput = useRef<HTMLInputElement>(null);
+
   const [aratMutarea, setAratMutarea] = useState(false);
   const [muta, setMuta] = useState(false);
 
@@ -128,6 +143,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     purchaseDate: device.purchaseDate,
     nextMaintenanceDate: device.nextMaintenanceDate,
     components: device.components || [],
+    consumables: device.consumables || [],
     tags: device.tags || []
   });
 
@@ -161,6 +177,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
         purchaseDate: device.purchaseDate,
         nextMaintenanceDate: device.nextMaintenanceDate,
         components: device.components || [],
+        consumables: device.consumables || [],
         tags: device.tags || []
       });
     }
@@ -238,9 +255,77 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
     if (updatedDevice.purchaseDate !== device.purchaseDate || updatedDevice.category !== device.category) {
       updatedDevice.nextMaintenanceDate = calculateNextMaintenanceDate(updatedDevice.purchaseDate, updatedDevice.category);
     }
+
+    /*
+     * Pozele se urca abia acum, la salvare, nu cand sunt alese.
+     *
+     * Urcate la alegere, fiecare poza incercata si apoi inlocuita ar ramane
+     * pentru totdeauna in stocare, iar o editare anulata ar lasa in urma tot
+     * ce s-a fotografiat in ea. Asa, in stocare ajunge numai ce s-a salvat.
+     */
+    if (pozaSchimbata !== null) {
+      await stergePoza({ photoPath: device.imagePath });
+      if (!pozaSchimbata) {
+        updatedDevice.image = '';
+        updatedDevice.imagePath = '';
+      } else {
+        const pusa = await punePoza('aparate', device.id, device.id, pozaSchimbata);
+        updatedDevice.imagePath = pusa.photoPath || '';
+        /* Fara semnal, poza ramane in rand: un rand gras e mult mai bun decat
+           o poza pierduta si decat un om care crede ca a salvat ceva. */
+        updatedDevice.image = pusa.photoUrl || '';
+      }
+    }
+
+    /* Consumabilele scoase in editarea asta isi iau pozele cu ele. */
+    const raman = new Set((editForm.consumables || []).map(c => c.id));
+    for (const vechi of device.consumables || []) {
+      if (!raman.has(vechi.id)) await stergePoza({ photoPath: vechi.photoPath });
+    }
+
+    updatedDevice.consumables = [];
+    for (const c of editForm.consumables || []) {
+      if (c.photoUrl?.startsWith('data:')) {
+        await stergePoza({ photoPath: c.photoPath });
+        const pusa = await punePoza('consumabile', device.id, c.id, c.photoUrl);
+        updatedDevice.consumables.push({
+          ...c, photoPath: pusa.photoPath || '', photoUrl: pusa.photoUrl || '',
+        });
+      } else if (!c.photoPath && !c.photoUrl) {
+        /* Poza scoasa din editor: se scoate si din stocare. */
+        const vechi = (device.consumables || []).find(x => x.id === c.id);
+        if (vechi?.photoPath) await stergePoza({ photoPath: vechi.photoPath });
+        updatedDevice.consumables.push(c);
+      } else {
+        updatedDevice.consumables.push(c);
+      }
+    }
+
     await onUpdate(updatedDevice);
+    setPozaSchimbata(null);
     setIsEditing(false);
-  }, [device, editForm, onUpdate]);
+  }, [device, editForm, onUpdate, pozaSchimbata]);
+
+  /** Poza aleasa acum: se micsoreaza pe loc, se urca abia la salvare. */
+  const alegePoza = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setLucrezLaPoza(true);
+    try {
+      setPozaSchimbata(await micsoreaza(f));
+    } catch (err: any) {
+      notify(err?.message || 'Poza nu a putut fi prelucrata.', 'error');
+    } finally {
+      setLucrezLaPoza(false);
+    }
+  }, []);
+
+  /** Ce poza se arata acum: cea schimbata in editare, altfel cea salvata. */
+  const sursaPozei: SursaPozei = pozaSchimbata === null
+    ? pozaAparatului(device)
+    : pozaSchimbata ? { url: pozaSchimbata } : {};
+  const arePoza = !!(sursaPozei.path || sursaPozei.url);
 
   /**
    * Deschide alegerea aparatelor pentru un document.
@@ -658,7 +743,7 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                isEditing ? (
                  <>
                    <button onClick={handleSaveEdit} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl shadow-sm shadow-blue-600/20 font-bold text-[13px] active:scale-95 transition hover:bg-blue-700"><Save className="w-4 h-4 shrink-0" /> Salveaza</button>
-                   <button onClick={() => setIsEditing(false)} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-[13px] active:scale-95 transition hover:bg-slate-200">Anuleaza</button>
+                   <button onClick={() => { setPozaSchimbata(null); setIsEditing(false); }} className="flex-1 lg:flex-none min-w-0 flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-[13px] active:scale-95 transition hover:bg-slate-200">Anuleaza</button>
                  </>
                ) : (
                  /* "Editeaza" era negru si plin, "Sterge" rosu si plin, la fel
@@ -980,6 +1065,34 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                    </div>
 
                    {/*
+                     Ce consuma aparatul.
+
+                     Sta langa elementele din care e facut fiindca raspunde la
+                     cealalta jumatate a aceleiasi intrebari: din ce e si cu ce
+                     merge. Pana acum nu statea nicaieri — era in capul omului
+                     care lucreaza de zece ani pe sectie, pe o eticheta lipita
+                     pe carcasa, sau in manualul din sertar.
+                   */}
+                   <div className="pt-6 sm:pt-8 border-t border-slate-100">
+                      {isEditing ? (
+                        <ConsumabileEditor
+                          valoare={editForm.consumables}
+                          onChange={c => setEditForm(p => ({ ...p, consumables: c }))}
+                        />
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <label className="tech-label block">
+                              Consumabile{(device.consumables || []).length > 0 &&
+                                <span className="text-blue-600"> · {(device.consumables || []).length}</span>}
+                            </label>
+                          </div>
+                          <ConsumabileLista consumabile={device.consumables || []} />
+                        </div>
+                      )}
+                   </div>
+
+                   {/*
                      Termenele care nu se negociaza. Buletinul metrologic expirat
                      scoate aparatul din uz oricat de bine ar functiona, iar
                      garantia expirata inseamna o reparatie platita degeaba.
@@ -1163,12 +1276,57 @@ const DeviceDetail: React.FC<DeviceDetailProps> = ({ device, tasks, allDevices =
                   chenar gol nu spune "nu are poza", doar ia locul costurilor si
                   al termenelor, care chiar au ce spune.
                 */}
-                {device.image && (
+                <input ref={pozaInput} type="file" accept="image/*" className="hidden"
+                  onChange={alegePoza} aria-label="Poza aparatului" />
+
+                {arePoza ? (
                   <div className="hardware-card p-3 sm:p-4 rounded-3xl overflow-hidden group">
                      <div className="h-44 sm:h-auto sm:aspect-square bg-white rounded-2xl border border-slate-100 flex items-center justify-center overflow-hidden relative">
-                        <img src={device.image} alt={device.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" referrerPolicy="no-referrer" />
+                        <Poza sursa={sursaPozei} alt={device.name}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        {lucrezLaPoza && (
+                          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                            <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
+                          </div>
+                        )}
                      </div>
+                     {isEditing && (
+                       <div className="flex gap-2 mt-3">
+                         <button type="button" onClick={() => pozaInput.current?.click()} disabled={lucrezLaPoza}
+                           className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wide hover:bg-slate-200 transition flex items-center justify-center gap-1.5 disabled:opacity-50">
+                           <Camera className="w-3.5 h-3.5" /> Schimba poza
+                         </button>
+                         <button type="button" onClick={() => setPozaSchimbata('')} disabled={lucrezLaPoza}
+                           title="Scoate poza" aria-label="Scoate poza aparatului"
+                           className="px-3 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition disabled:opacity-50">
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
+                     )}
                   </div>
+                ) : isEditing ? (
+                  /* In editare, locul pozei e deschis: aici vine cineva ca s-o
+                     puna, si un buton subtire ar fi greu de nimerit. */
+                  <button type="button" onClick={() => pozaInput.current?.click()} disabled={lucrezLaPoza}
+                    className="w-full hardware-card p-3 sm:p-4 rounded-3xl group">
+                    <span className="h-44 sm:h-auto sm:aspect-square bg-white rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-2 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-500 transition">
+                      {lucrezLaPoza ? <Loader2 className="w-7 h-7 animate-spin" /> : <Camera className="w-8 h-8" />}
+                      <span className="text-[11px] font-black uppercase tracking-wide">Pune poza aparatului</span>
+                    </span>
+                  </button>
+                ) : (
+                  /*
+                    Fara poza si fara editare, nu se lasa un patrat gol cat un
+                    sfert de ecran: un chenar gol nu spune "nu are poza", doar ia
+                    locul costurilor si al termenelor, care chiar au ce spune.
+                    Ramane o dunga, cat sa se stie ca se poate pune una.
+                  */
+                  !isStandalone && (
+                    <button type="button" onClick={() => { setIsEditing(true); setTimeout(() => pozaInput.current?.click(), 80); }}
+                      className="w-full px-4 py-3 rounded-2xl border border-dashed border-slate-300 text-slate-500 text-[11px] font-black uppercase tracking-wide hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2">
+                      <Camera className="w-4 h-4" /> Pune poza aparatului
+                    </button>
+                  )
                 )}
 
                 {/* Cost of ownership */}

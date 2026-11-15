@@ -523,6 +523,38 @@ export interface DeviceComponent {
  * dinainte se pierdea: la un control nu se putea arata cand a ajuns aparatul
  * in sectia in care sta, nici de unde venea.
  */
+/**
+ * Un consumabil de care are nevoie aparatul.
+ *
+ * Cand se strica un aparat la trei noaptea, intrebarea nu e "ce aparat e", e
+ * "ce senzor ii trebuie". Informatia asta nu statea nicaieri in evidenta: era
+ * in capul celui care lucreaza de zece ani pe sectia aia, pe o eticheta lipita
+ * pe carcasa, sau in manualul din sertar. Cand omul e in concediu, se comanda
+ * gresit — si o manseta de tensiune nepotrivita se intoarce dupa doua
+ * saptamani.
+ *
+ * Poza conteaza mai mult decat numele. Un cod de catalog se citeste gresit, iar
+ * "set linii pacient" inseamna patru lucruri diferite la patru producatori; o
+ * poza se recunoaste de la un metru, si cu ea in mana se poate compara cu ce e
+ * in magazie.
+ */
+export interface Consumable {
+  id: string;
+  /** Cum ii zice lumea pe sectie, nu neaparat cum ii zice in catalog. */
+  name: string;
+  /** Codul de catalog al producatorului. Dupa el se comanda. */
+  code?: string;
+  manufacturer?: string;
+  /** Unitatea: bucata, set, cutie de 50. */
+  unit?: string;
+  /** Ce stie numai omul: cat tine, de unde s-a luat, ce nu merge. */
+  notes?: string;
+  /** Poza, in stocare. */
+  photoPath?: string;
+  /** Copia inline, cand urcarea n-a mers — ca sa nu se piarda poza facuta. */
+  photoUrl?: string;
+}
+
 export interface LocationLog {
   date: string;
   /** Unde a ajuns. */
@@ -615,7 +647,19 @@ export interface MedicalDevice {
   metrologyExpiry?: string;
   /** Laboratorul care a facut verificarea. */
   metrologyLab?: string;
+  /**
+   * Poza aparatului, pastrata inline ca sir base64.
+   *
+   * Asa au fost salvate pozele de la inceput, si raman asa ca sa se vada mai
+   * departe. Cele noi merg in stocare, pe `imagePath`: o poza inline sta in
+   * randul aparatului si se trimite intreaga la fiecare sincronizare, chiar
+   * cand s-a schimbat numai sectia.
+   */
   image?: string;
+  /** Poza aparatului in stocare. Are intaietate fata de cea inline. */
+  imagePath?: string;
+  /** Consumabilele de care are nevoie aparatul. */
+  consumables?: Consumable[];
   notes?: string;
   maintenanceHistory: MaintenanceRecord[];
   contracts: Contract[];

@@ -362,6 +362,7 @@ const App: React.FC = () => {
       contracts: Array.isArray(d.contracts) ? d.contracts : [],
       files: files,
       components: Array.isArray(d.components) ? d.components : [],
+      consumables: Array.isArray(d.consumables) ? d.consumables : [],
       tags: Array.isArray(d.tags) ? d.tags : [],
       updated_at: d.updated_at || d.updatedAt
     } as MedicalDevice;

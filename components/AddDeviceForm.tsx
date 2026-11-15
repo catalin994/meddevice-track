@@ -2,6 +2,8 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { MedicalDevice, DeviceStatus, DeviceComponent, HOSPITAL_DEPARTMENTS, DEVICE_CATEGORIES, getUniqueDepartments, calculateNextMaintenanceDate } from '../types';
+import { micsoreaza } from '../services/poze';
+import { notify } from '../services/notices';
 import { CATEGORII_CU_METROLOGIE } from '../services/termene';
 import { X, Save, Wand2, Box, Trash2, FileSpreadsheet, Upload, Camera, Layers, Hash, ChevronDown, Activity, ArrowRight, ShieldAlert, AlertTriangle } from 'lucide-react';
 import DepartmentPicker from './DepartmentPicker';
@@ -78,37 +80,28 @@ const AddDeviceForm: React.FC<AddDeviceFormProps> = ({ devices, onSave, onBulkSa
     setFormData(prev => ({ ...prev, [name]: val }));
   }, []);
 
-  const compressImage = useCallback((file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_DIM = 1000; 
-          if (width > height) { if (width > MAX_DIM) { height *= MAX_DIM / width; width = MAX_DIM; } }
-          else { if (height > MAX_DIM) { width *= MAX_DIM / height; height = MAX_DIM; } }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject(new Error("Canvas missing"));
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.6));
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
-  }, []);
-
+  /*
+   * Poza aparatului nou, micsorata cu aceeasi reteta ca peste tot.
+   *
+   * Formularul isi avea micsorarea lui, scrisa separat, si cele doua se
+   * departasera deja: una lasa fundalul transparent al unui PNG sa iasa negru
+   * in JPEG si pastra datele EXIF, inclusiv locul unde a fost facuta poza.
+   *
+   * Aici poza ramane in rand, nu in stocare: la adaugare, randul aparatului
+   * inca nu exista, iar o urcare esuata ar pierde poza intr-un formular pe
+   * care omul tocmai l-a completat. Se muta singura in stocare la prima
+   * editare a fisei.
+   */
   const handleImageChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const compressed = await compressImage(e.target.files[0]);
-      setFormData(prev => ({ ...prev, image: compressed }));
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const mica = await micsoreaza(f);
+      setFormData(prev => ({ ...prev, image: mica }));
+    } catch (err: any) {
+      notify(err?.message || 'Poza nu a putut fi prelucrata.', 'error');
     }
-  }, [compressImage]);
+  }, []);
 
   /**
    * Aparatul care are deja seria scrisa acum.

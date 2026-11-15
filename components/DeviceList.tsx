@@ -10,6 +10,7 @@ import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
 import { termenulVerificarii, valabilitatea, zi } from '../services/valabilitate';
 import { ziuaCererii, PRAGURI } from '../services/termene';
+import Poza, { pozaAparatului } from './Poza';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
 
 /**
@@ -944,12 +945,12 @@ const DeviceCard = React.memo(({
         pixels a card on a phone — pure scrolling for nothing. The radiation
         marker still needs somewhere to live, so it keeps a small box.
       */}
-      {device.image ? (
+      {(device.image || device.imagePath) ? (
         <div
           className="w-12 h-12 rounded-xl bg-white border border-slate-100 overflow-hidden flex items-center justify-center relative shrink-0 cursor-pointer"
           onClick={() => onSelect(device)}
         >
-          <img src={device.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt={device.name} />
+          <Poza sursa={pozaAparatului(device)} alt={device.name} className="w-full h-full object-cover" />
         </div>
       ) : null}
 

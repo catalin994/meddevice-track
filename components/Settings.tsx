@@ -308,6 +308,8 @@ CREATE TABLE IF NOT EXISTS public.devices (
     "createdAt" TEXT,
     "serviceTender" BOOLEAN DEFAULT FALSE,
     image TEXT,
+    "imagePath" TEXT,
+    consumables JSONB DEFAULT '[]'::jsonb,
     notes TEXT,
     tags JSONB DEFAULT '[]'::jsonb,
     "maintenanceHistory" JSONB DEFAULT '[]'::jsonb,
@@ -458,6 +460,7 @@ BEGIN
       ('devices','iscncan','isCNCAN'),
       ('devices','maintenancehistory','maintenanceHistory'),
       ('devices','locationhistory','locationHistory'),
+      ('devices','imagepath','imagePath'),
       ('tasks','deviceid','deviceId'),
       ('tasks','devicename','deviceName'),
       ('tasks','createdat','createdAt'),
@@ -513,6 +516,11 @@ ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS files JSONB DEFAULT '[]'::j
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS components JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS image TEXT;
+-- Poza aparatului mutata in stocare, si consumabilele lui. Poza inline se
+-- trimitea intreaga la fiecare sincronizare, chiar cand se schimba numai
+-- sectia; coloana noua tine doar calea catre ea.
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS "imagePath" TEXT;
+ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS consumables JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.devices  ADD COLUMN IF NOT EXISTS notes TEXT;
 -- Campuri adaugate dupa ce evidenta a fost pusa fata in fata cu munca de zi cu
 -- zi. Fara coloana, randul aparatului care le poarta e refuzat intreg la urcare

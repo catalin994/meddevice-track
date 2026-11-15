@@ -227,8 +227,29 @@ export const fisaAparatuluiDocx = async (
   ));
   corp.push(gol());
 
-  /* ── 7. contractele care il acopera ── */
-  corp.push(sectiune(7, 'CONTRACTE CARE ACOPERĂ DISPOZITIVUL'));
+  /* ── 7. consumabilele ── */
+  /*
+   * Pe hartie merg numele si codul, nu pozele. O fisa de aparat se tipareste
+   * si se semneaza; pozele consumabilelor sunt de recunoscut piesa in magazie,
+   * adica se uita cineva la ele pe telefon, nu pe o coala alb-negru.
+   */
+  corp.push(sectiune(7, 'CONSUMABILE'));
+  corp.push(tabelSau(
+    ['Denumirea', 'Cod de catalog', 'Producătorul', 'Unitatea', 'Observaţii'],
+    [2838, 1900, 1900, 1300, 1700],
+    (device.consumables || []).map(c => [
+      { text: ori(c.name), width: 2838, style: { size: 9 } },
+      { text: ori(c.code), width: 1900, style: { size: 9 } },
+      { text: ori(c.manufacturer), width: 1900, style: { size: 9 } },
+      { text: ori(c.unit), width: 1300, style: { size: 9 } },
+      { text: ori(c.notes), width: 1700, style: { size: 9 } },
+    ]),
+    'Nu sunt consumabile înregistrate.',
+  ));
+  corp.push(gol());
+
+  /* ── 8. contractele care il acopera ── */
+  corp.push(sectiune(8, 'CONTRACTE CARE ACOPERĂ DISPOZITIVUL'));
   corp.push(tabelSau(
     ['Nr. contract', 'Prestatorul', 'De la', 'Până la', 'Valoare anuală'],
     [2000, 2838, 1300, 1300, 2200],
@@ -244,7 +265,7 @@ export const fisaAparatuluiDocx = async (
   corp.push(gol());
 
   /* ── 8. documentele din dosar ── */
-  corp.push(sectiune(8, 'DOCUMENTE ÎN DOSARUL DISPOZITIVULUI'));
+  corp.push(sectiune(9, 'DOCUMENTE ÎN DOSARUL DISPOZITIVULUI'));
   corp.push(tabelSau(
     ['Felul', 'Denumirea fişierului', 'Adăugat la', 'Valabil până la'],
     [2200, 3938, 1750, 1750],
@@ -259,7 +280,7 @@ export const fisaAparatuluiDocx = async (
   corp.push(gol());
 
   /* ── 9. hartiile de achizitie ── */
-  corp.push(sectiune(9, 'REFERATE, DOCUMENTE DE FUNDAMENTARE ŞI FACTURI'));
+  corp.push(sectiune(10, 'REFERATE, DOCUMENTE DE FUNDAMENTARE ŞI FACTURI'));
   const hartii: Cell[][] = [
     ...dosar.referate.map(r => [
       { text: 'Referat de necesitate', width: 2600, style: { size: 9 } },
@@ -292,7 +313,7 @@ export const fisaAparatuluiDocx = async (
   corp.push(gol());
 
   /* ── 10. observatii ── */
-  corp.push(sectiune(10, 'OBSERVAŢII'));
+  corp.push(sectiune(11, 'OBSERVAŢII'));
   corp.push(par(ori(device.notes, ' '), { size: 10, after: 16 }));
 
   /*

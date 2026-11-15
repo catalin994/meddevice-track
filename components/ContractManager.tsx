@@ -10,6 +10,7 @@ import { marime } from '../services/spatiu';
 import { saveFileAs } from '../services/fileService';
 
 import Portal from './Portal';
+import Poza, { pozaAparatului } from './Poza';
 import useTragere from './useTragere';
 const FileViewer = React.lazy(() => import('./FileViewer'));
 interface ContractManagerProps {
@@ -471,9 +472,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                 {acoperite.map(d => (
                   <div key={d.id} className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
                     <div className="h-9 w-9 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
-                      {d.image
-                        ? <img src={d.image} alt="" className="h-full w-full object-cover" />
-                        : <span className="text-[11px] font-black text-slate-500">{d.name.charAt(0)}</span>}
+                      <Poza sursa={pozaAparatului(d)} alt="" className="h-full w-full object-cover"
+                        gol={<span className="text-[11px] font-black text-slate-500">{d.name.charAt(0)}</span>} />
                     </div>
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold text-slate-900 truncate">{d.name}</p>
@@ -654,9 +654,8 @@ const ContractManager: React.FC<ContractManagerProps> = ({ devices, invoices = [
                       {aratate.map(d => (
                         <div key={d.id} className="flex items-center gap-2.5 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl">
                           <div className="h-7 w-7 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
-                            {d.image
-                              ? <img src={d.image} alt="" className="h-full w-full object-cover" />
-                              : <span className="text-[10px] font-black text-slate-500">{d.name.charAt(0)}</span>}
+                            <Poza sursa={pozaAparatului(d)} alt="" className="h-full w-full object-cover"
+                              gol={<span className="text-[10px] font-black text-slate-500">{d.name.charAt(0)}</span>} />
                           </div>
                           <div className="min-w-0">
                             <p className="text-[12px] font-bold text-slate-900 truncate">{d.name}</p>
