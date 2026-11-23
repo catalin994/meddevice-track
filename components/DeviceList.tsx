@@ -9,6 +9,7 @@ import Pager, { PAGE_SIZES } from './Pager';
 import DepartmentPicker from './DepartmentPicker';
 import ConfirmDialog from './ConfirmDialog';
 import { termenulVerificarii, valabilitatea, zi } from '../services/valabilitate';
+import { dataDinCelula } from '../services/dataExcel';
 import { ziuaCererii, PRAGURI } from '../services/termene';
 import Poza, { pozaAparatului } from './Poza';
 const QRLabelSheet = React.lazy(() => import('./QRLabelSheet'));
@@ -420,7 +421,16 @@ const exportToExcel = async (devices: MedicalDevice[]) => {
   URL.revokeObjectURL(url);
 };
 
-type ImportResult = { added: number; updated: number; skipped: number; errors: string[] };
+/**
+ * Ce a iesit dintr-un import.
+ *
+ * `errors` sunt randurile care n-au intrat. `warnings` sunt randurile care au
+ * intrat, dar cu ceva schimbat fara sa fi cerut cineva — o data pe care
+ * aplicatia n-a putut-o citi si in locul careia a pus ziua de azi. A doua
+ * categorie lipsea, si tocmai ea e periculoasa: randul intra, pare in regula,
+ * si poarta o data care nu e a lui.
+ */
+type ImportResult = { added: number; updated: number; skipped: number; errors: string[]; warnings: string[] };
 
 const importFromExcel = (
   file: File,
@@ -432,7 +442,9 @@ const importFromExcel = (
     try {
       const XLSX = await import('xlsx');
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: 'array' });
+      /* cellDates: altfel o celula de data adevarata vine ca numar de zile
+         (44941), si citita ca text da anul 44941. */
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
 
       // Find "Device Inventory" sheet, fall back to first sheet
       const sheetName = wb.SheetNames.includes('Device Inventory') ? 'Device Inventory' : wb.SheetNames[0];
@@ -442,7 +454,7 @@ const importFromExcel = (
       // Find the header row: look for a row containing "Device Name" (legacy) or "Denumire echipament"
       const headerRowIdx = rows.findIndex(r => r.some((c: any) => ['Device Name', 'Denumire echipament'].includes(String(c).trim())));
       if (headerRowIdx === -1) {
-        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Nu am gasit randul de antet. Asigurati-va ca importati un export Excel Biomedic.'] });
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Nu am gasit randul de antet. Asigurati-va ca importati un export Excel Biomedic.'], warnings: [] });
         return;
       }
 
@@ -469,61 +481,99 @@ const importFromExcel = (
       const notesCol     = col('Notes', 'Note');
 
       if (nameCol === -1) {
-        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Coloana "Denumire echipament" nu a fost gasita in fisier.'] });
+        onDone([], { added: 0, updated: 0, skipped: 0, errors: ['Coloana "Denumire echipament" nu a fost gasita in fisier.'], warnings: [] });
         return;
       }
 
       const existingMap = new Map(existingDevices.map(d => [d.id, d]));
-      const result: ImportResult = { added: 0, updated: 0, skipped: 0, errors: [] };
+      const result: ImportResult = { added: 0, updated: 0, skipped: 0, errors: [], warnings: [] };
       const upserted: MedicalDevice[] = [];
 
       const dataRows = rows.slice(headerRowIdx + 1);
-      for (const row of dataRows) {
-        const name = String(row[nameCol] ?? '').trim();
-        if (!name || name === 'N/A') { result.skipped++; continue; }
+      for (const [i, row] of dataRows.entries()) {
+        /*
+         * Fiecare rand pe raspunderea lui.
+         *
+         * Pana acum, o singura celula pe care aplicatia n-o intelegea arunca
+         * din mijlocul buclei si cadea tot importul — doua mii de randuri bune
+         * pierdute pentru unul stricat, cu un mesaj care nu spunea care. Acum
+         * randul stricat se trece la erori, cu numarul lui si cu numele
+         * aparatului, si restul intra.
+         */
+        try {
+          const name = String(row[nameCol] ?? '').trim();
+          if (!name || name === 'N/A') { result.skipped++; continue; }
 
-        const rawId    = idCol !== -1 ? String(row[idCol] ?? '').trim() : '';
-        const statusRaw = String(row[statusCol] ?? 'Active').trim();
-        // Accept both stored enum values and Romanian display labels
-        const statusFromRo = (Object.keys(DEVICE_STATUS_RO) as DeviceStatus[]).find(k => DEVICE_STATUS_RO[k].toLowerCase() === statusRaw.toLowerCase());
-        const status   = (statusFromRo ?? statusRaw) as DeviceStatus;
-        const category = String(row[catCol]     ?? 'Altele').trim();
-        const purchase = String(row[purchaseCol] ?? '').trim();
+          const rawId    = idCol !== -1 ? String(row[idCol] ?? '').trim() : '';
+          const statusRaw = String(row[statusCol] ?? 'Active').trim();
+          // Accept both stored enum values and Romanian display labels
+          const statusFromRo = (Object.keys(DEVICE_STATUS_RO) as DeviceStatus[]).find(k => DEVICE_STATUS_RO[k].toLowerCase() === statusRaw.toLowerCase());
+          const status   = (statusFromRo ?? statusRaw) as DeviceStatus;
+          const category = String(row[catCol]     ?? 'Altele').trim();
+          /* Datele nu se mai iau cu String(): fisierul se intoarce din Excel cu
+             ele ca numere, iar tabelele tinute de mana le au ca 15.03.2023. */
+          const purchase  = purchaseCol !== -1 ? dataDinCelula(row[purchaseCol]) : '';
+          const garantie  = warrantyCol !== -1 ? dataDinCelula(row[warrantyCol]) : '';
+          const mentenanta = nextPMCol !== -1 ? dataDinCelula(row[nextPMCol]) : '';
 
-        const existing = rawId ? existingMap.get(rawId) : undefined;
+          /*
+           * Celula avea ceva scris in ea, dar nu o data pe care s-o intelegem.
+           * Randul intra oricum — un aparat fara data achizitiei e mai bun
+           * decat un aparat lipsa — dar se spune, fiindca aparatul va purta
+           * ziua de azi ca data a achizitiei si nimic altceva n-ar arata-o.
+           */
+          const nuSAPutut = (col: number, cum: string, citit: string) => {
+            if (col === -1 || citit) return;
+            const brut = String(row[col] ?? '').trim();
+            if (brut && brut !== '—' && brut.toUpperCase() !== 'N/A') {
+              result.warnings.push(`Randul ${headerRowIdx + 2 + i} (${name}): ${cum} "${brut}" nu a putut fi citita`);
+            }
+          };
 
-        const device: MedicalDevice = {
-          ...(existing ?? {
-            id: rawId || `DEV-IMP-${crypto.randomUUID()}`,
-            maintenanceHistory: [],
-            contracts: [],
-            files: [],
-            components: [],
-          }),
-          name,
-          category,
-          manufacturer:        String(row[mfrCol]      ?? '').trim() || existing?.manufacturer || '',
-          model:               String(row[modelCol]    ?? '').trim() || existing?.model || '',
-          serialNumber:        String(row[snCol]       ?? '').trim() || existing?.serialNumber || '',
-          inventoryNumber:     invCol !== -1 ? (String(row[invCol] ?? '').trim() || existing?.inventoryNumber) : existing?.inventoryNumber,
-          department:          String(row[deptCol]     ?? 'Nealocat').trim(),
-          status:              Object.values(DeviceStatus).includes(status) ? status : DeviceStatus.ACTIVE,
-          purchaseDate:        purchase || existing?.purchaseDate || new Date().toISOString().split('T')[0],
-          warrantyExpiration:  String(row[warrantyCol] ?? '').trim().replace('—', '') || existing?.warrantyExpiration,
-          nextMaintenanceDate: String(row[nextPMCol]   ?? '').trim().replace('—', '') || (purchase ? calculateNextMaintenanceDate(purchase, category) : existing?.nextMaintenanceDate),
-          isCNCAN:             cncanCol !== -1 ? ['YES', 'DA'].includes(String(row[cncanCol]).trim().toUpperCase()) : (existing?.isCNCAN ?? false),
-          serviceTender:       licitatieCol !== -1 ? ['YES', 'DA'].includes(String(row[licitatieCol]).trim().toUpperCase()) : (existing?.serviceTender ?? false),
-          notes:               notesCol !== -1 ? String(row[notesCol] ?? '').trim() : (existing?.notes ?? ''),
-          updated_at:          new Date().toISOString(),
-        } as MedicalDevice;
+          const existing = rawId ? existingMap.get(rawId) : undefined;
 
-        upserted.push(device);
-        if (existing) result.updated++; else result.added++;
+          const device: MedicalDevice = {
+            ...(existing ?? {
+              id: rawId || `DEV-IMP-${crypto.randomUUID()}`,
+              maintenanceHistory: [],
+              contracts: [],
+              files: [],
+              components: [],
+            }),
+            name,
+            category,
+            manufacturer:        String(row[mfrCol]      ?? '').trim() || existing?.manufacturer || '',
+            model:               String(row[modelCol]    ?? '').trim() || existing?.model || '',
+            serialNumber:        String(row[snCol]       ?? '').trim() || existing?.serialNumber || '',
+            inventoryNumber:     invCol !== -1 ? (String(row[invCol] ?? '').trim() || existing?.inventoryNumber) : existing?.inventoryNumber,
+            department:          String(row[deptCol]     ?? 'Nealocat').trim(),
+            status:              Object.values(DeviceStatus).includes(status) ? status : DeviceStatus.ACTIVE,
+            purchaseDate:        purchase || existing?.purchaseDate || new Date().toISOString().split('T')[0],
+            warrantyExpiration:  garantie || existing?.warrantyExpiration,
+            nextMaintenanceDate: mentenanta || (purchase ? calculateNextMaintenanceDate(purchase, category) : existing?.nextMaintenanceDate),
+            isCNCAN:             cncanCol !== -1 ? ['YES', 'DA'].includes(String(row[cncanCol]).trim().toUpperCase()) : (existing?.isCNCAN ?? false),
+            serviceTender:       licitatieCol !== -1 ? ['YES', 'DA'].includes(String(row[licitatieCol]).trim().toUpperCase()) : (existing?.serviceTender ?? false),
+            notes:               notesCol !== -1 ? String(row[notesCol] ?? '').trim() : (existing?.notes ?? ''),
+            updated_at:          new Date().toISOString(),
+          } as MedicalDevice;
+
+          nuSAPutut(purchaseCol, 'data achizitiei', purchase);
+          nuSAPutut(warrantyCol, 'expirarea garantiei', garantie);
+          nuSAPutut(nextPMCol, 'urmatoarea mentenanta', mentenanta);
+
+          upserted.push(device);
+          if (existing) result.updated++; else result.added++;
+        } catch (err: any) {
+          result.skipped++;
+          const cumIlCheama = String(row?.[nameCol] ?? '').trim();
+          result.errors.push(
+            `Randul ${headerRowIdx + 2 + i}${cumIlCheama ? ` (${cumIlCheama})` : ''}: ${err?.message || 'nu a putut fi citit'}`);
+        }
       }
 
       onDone(upserted, result);
     } catch (err: any) {
-      onDone([], { added: 0, updated: 0, skipped: 0, errors: [`Eroare la citirea fisierului: ${err.message}`] });
+      onDone([], { added: 0, updated: 0, skipped: 0, errors: [`Eroare la citirea fisierului: ${err.message}`], warnings: [] });
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1338,7 +1388,15 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
       if (upserted.length > 0) onBulkUpdate(upserted);
       setImportResult(result);
       if (importTimeoutRef.current) clearTimeout(importTimeoutRef.current);
-      importTimeoutRef.current = setTimeout(() => setImportResult(null), 6000);
+      /*
+       * Raportul fara probleme pleaca singur; cel cu probleme ramane pana il
+       * inchide omul. Sase secunde ajung ca sa citesti "40 adaugate"; nu ajung
+       * ca sa citesti care trei randuri n-au intrat si de ce, si odata plecat
+       * nu mai are de unde sa fie adus inapoi.
+       */
+      if (result.errors.length === 0 && result.warnings.length === 0) {
+        importTimeoutRef.current = setTimeout(() => setImportResult(null), 6000);
+      }
     });
     e.target.value = '';
   }, [devices, onBulkUpdate]);
@@ -1583,23 +1641,52 @@ const DeviceList = React.memo<DeviceListProps>(({ devices, onSelectDevice, onUpd
           </div>
         </div>
 
-        {importResult && (
-          <div className={`mx-2 p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${importResult.errors.length > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-            {importResult.errors.length > 0
-              ? <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              : <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+        {/*
+          Raportul importului.
+
+          Arata intai cifrele si abia apoi ce n-a mers. Pana acum, la cea mai
+          mica eroare, cifrele dispareau cu totul si ramanea un singur rand
+          rosu — deci cine importa doua mii de aparate si avea un rand stricat
+          nu afla ca celelalte o mie noua sute nouazeci si noua au intrat, si
+          importa inca o data.
+        */}
+        {importResult && (() => {
+          const probleme = [...importResult.errors, ...importResult.warnings];
+          const ton = importResult.errors.length > 0 ? 'rau'
+            : importResult.warnings.length > 0 ? 'cam asa'
+            : 'bun';
+          return (
+          <div className={`mx-2 p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${
+            ton === 'rau' ? 'bg-red-50 border-red-200'
+            : ton === 'cam asa' ? 'bg-amber-50 border-amber-200'
+            : 'bg-emerald-50 border-emerald-200'}`}>
+            {ton === 'bun'
+              ? <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+              : <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${ton === 'rau' ? 'text-red-500' : 'text-amber-500'}`} />
             }
-            <div className="flex-1">
-              {importResult.errors.length > 0
-                ? <p className="text-xs font-bold text-red-700">{importResult.errors[0]}</p>
-                : <p className="text-xs font-bold text-emerald-700">
-                    Import finalizat — <span className="text-emerald-600">{importResult.added} adaugate</span>, <span className="text-blue-600">{importResult.updated} actualizate</span>{importResult.skipped > 0 ? `, ${importResult.skipped} sarite` : ''}
-                  </p>
-              }
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-bold ${ton === 'rau' ? 'text-red-700' : ton === 'cam asa' ? 'text-amber-800' : 'text-emerald-700'}`}>
+                Import finalizat — <span className="text-emerald-600">{importResult.added} adaugate</span>, <span className="text-blue-600">{importResult.updated} actualizate</span>{importResult.skipped > 0 ? `, ${importResult.skipped} sarite` : ''}
+              </p>
+              {probleme.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {probleme.slice(0, 5).map((x, k) => (
+                    <li key={k} className={`text-[11px] font-semibold leading-snug ${k < importResult.errors.length ? 'text-red-700' : 'text-amber-800'}`}>
+                      {x}
+                    </li>
+                  ))}
+                  {probleme.length > 5 && (
+                    <li className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      si inca {probleme.length - 5}
+                    </li>
+                  )}
+                </ul>
+              )}
             </div>
-            <button onClick={() => setImportResult(null)} className="text-slate-500 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            <button onClick={() => setImportResult(null)} aria-label="Inchide raportul importului" className="text-slate-500 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
           </div>
-        )}
+          );
+        })()}
 
         <div className="grid grid-cols-1 gap-4">
           {/* Un singur bloc, cu linii intre aparate, in loc de o cartela

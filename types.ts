@@ -696,11 +696,22 @@ export const PM_INTERVALS_MONTHS: Record<string, number> = {
   'Altele': 12
 };
 
+/**
+ * Cand ii vine randul urmatoarei mentenante, socotit din data de plecare.
+ *
+ * Intoarce sir gol cand data de plecare nu se poate citi. Pana acum arunca:
+ * `new Date("15.03.2023")` da o data nevalida, iar `toISOString()` pe ea
+ * arunca "Invalid time value" — si asta omora tot importul de Excel, cu un
+ * mesaj care nu spunea nici ce rand, nici ce coloana. O data pe care n-o
+ * intelegem e un camp gol, nu o nenorocire.
+ */
 export const calculateNextMaintenanceDate = (baseDate: string, category: string): string => {
-  const date = new Date(baseDate);
+  const plecare = Date.parse(`${String(baseDate || '').trim()}T00:00:00`);
+  if (Number.isNaN(plecare)) return '';
+  const date = new Date(plecare);
   const interval = PM_INTERVALS_MONTHS[category] || 12;
   date.setMonth(date.getMonth() + interval);
-  return date.toISOString().split('T')[0];
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
 };
 
 export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'DEVICE_DETAIL' | 'ADD_DEVICE' | 'SETTINGS' | 'PLANNER' | 'CONTRACTS' | 'TASKS' | 'FINANCE' | 'CONTROL';
